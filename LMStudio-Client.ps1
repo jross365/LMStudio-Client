@@ -51,7 +51,10 @@ begin {
             $Histories = New-Object System.Collections.ArrayList
             $Histories.Add($DummyEntry) | Out-Null
 
-            $History.Add([pscustomobject]@{"Greetings" = $Greetings; "Histories" = $Histories}) | Out-Null
+            $Models = @{}
+            (0..1).ForEach({$Models.Add("$_","dummymodel")})
+
+            $History.Add([pscustomobject]@{"Models" = $Models; "Greetings" = $Greetings; "Histories" = $Histories}) | Out-Null
         }
         catch{throw "Unable to create history file $HistoryFile : $($_.Exception.Message))"}
 
@@ -65,12 +68,15 @@ begin {
         try {$HistoryContent = Get-Content $HistoryFile -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop}
         catch {throw "Unable to import history file $HistoryFile : $($_.Exception.Message))"}
 
-        If ($HistoryContent.Histories[0].Opener -ne "This is a dummy entry."){throw "History file $HistoryFile is missing the dummy entry (bad format)"}
+        If ($HistoryContent.Histories[0].Opener -ne "This is a dummy entry."){throw "History file $HistoryFile is missing the history dummy entry (bad format)"}
+        If ($HistoryContent.Greetings[0].role -ne "dummy"){throw "History file $HistoryFile is missing the greeting dummy entry (bad format)"}
+        If ($HistoryContent.Models.0 -ne "dummymodel"){throw "History file $HistoryFile is missing the models dummy entry (bad format)"}
 
         #move over content from Fixed-Length arrays to New ArrayLists:
         $NewHistory = New-HistoryFile
 
-        $HistoryContent.Greetings.Where({$_.Role -ne "dummy"}) | ForEach-Object {$NewHistory.Greetings.Add($_) | Out-Null}
+        #.Where({$_.Role -ne "dummy"}) removed:
+        $HistoryContent.Greetings | ForEach-Object {$NewHistory.Greetings.Add($_) | Out-Null}
 
         $NewHistory.Histories.Remove($NewHistory.Histories[0]) | Out-Null
 
@@ -86,6 +92,10 @@ begin {
 
         })
 
+        #move over models from PSCustomObject to HashTable
+        $NewHistory.Models = @{}
+        $H.Models.psobject.Properties.Name.ForEach({$NewHistory.Models.Add("$_","$($H.Models.$_)")})
+
         Remove-Variable HistoryContent -ErrorAction SilentlyContinue
 
         return $NewHistory
@@ -98,6 +108,16 @@ begin {
     catch {throw "Unable to save history to $HistoryFile"}
 
     return $True
+
+    }
+
+    function Show-Help {
+        Add-Type -AssemblyName PresentationCore,PresentationFramework
+        $ButtonType = [System.Windows.MessageBoxButton]::OK
+        $MessageboxTitle = “LMStudio-Client Help”
+        $Messageboxbody = “!h - Displays this help`r`n!s - Change the system prompt`r`n!t - Change the temperature`r`n!f - Change the history file`r`n!q - Save and Quit”
+        $MessageIcon = [System.Windows.MessageBoxImage]::Question
+        [System.Windows.MessageBox]::Show($Messageboxbody,$MessageboxTitle,$ButtonType,$messageicon)
 
     }
 
@@ -118,7 +138,6 @@ begin {
     $host.UI.RawUI.WindowTitle = "LM Studio Client v$Version ### Show Help: !h "
 
     $SystemPrompt = "Please be polite, concise and informative."
-    $NewGreeting = New-GreetingPrompt
     #endregion
 
     #region Define the BODY Template and Body
@@ -166,85 +185,86 @@ begin {
 
     
     If (!$SkipGreeting){
-    
-    #region Walk backwards through the $History.Greetings index to create a correct context replay:
-    $ContextReplays = New-Object System.Collections.ArrayList
-    
-    $x = 1
-    $LastGreetingIndex = $History.Greetings.Count - 1
-    $SysPromptChainBroken = $False
-    
-    :iloop Foreach ($Index in $LastGreetingIndex..2){
-
-        If ($Index -eq $LastGreetingIndex -and (($History.Greetings[$Index].role -eq "system") -or ($History.Greetings[$Index].role -eq "user"))){continue iloop}
-
-        If ($History.Greetings[$Index].role -eq "system" -and $SysPromptChainBroken -eq $False){
-            
-            If ($History.Greetings[$Index].content -ieq "$SystemPrompt"){continue iloop}
-            Else {
-                    $ContextReplays.Add(($History.Greetings[$Index])) | Out-Null
-                    $SysPromptChainBroken = $True
-                    $x++
-                }
-        }
-
-        If ($History.Greetings[$Index].role -eq "assistant" -or $History.Greetings[$Index].role -eq "user"){
-            $ContextReplays.Add(($History.Greetings[$Index])) | Out-Null
-            $x++
-        }
-
-        If ($x -eq ($ReplayLimit)){break iloop}
-
-    }
-    #endregion
-
-    #region Fill in the Model, System Prompt and User Prompt of the $Body:
-    $Body = $BodyTemplate | ConvertFrom-Json
-    $Body.model = $Model
-    $Body.messages = @()
-    $SystemPromptObj = ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})
-    $UserPromptObj = ([pscustomobject]@{"role" = "user"; "content" = $NewGreeting})
-
-    # Add a "system" role to the top to set the interpretation:
-    If ($ContextReplays.role -notcontains "system"){$body.messages += ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})}
-    # Replay the relevant/captured interactions back into $Body.messages:
-    $ContextReplays[($ContextReplays.Count - 1)..0].ForEach({$Body.messages += $_})
-    # If we detected a broken system prompt chain, add the current system prompt back in:
-    If ($SysPromptChainBroken){$body.messages += ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})}
-    # Finally, add our new greeting prompt back in:
-    $body.messages += $UserPromptObj
+        $NewGreeting = New-GreetingPrompt
         
-    #Add the messages to the history, and save the history:
-    $History.Greetings.Add($SystemPromptObj) | Out-Null
-    $History.Greetings.Add($UserPromptObj) | Out-Null
-    $SaveHistory = Set-HistoryFile -HistoryFile $HistoryFile -History $History
-    #endregion
+        #region Walk backwards through the $History.Greetings index to create a correct context replay:
+        $ContextReplays = New-Object System.Collections.ArrayList
+        
+        $x = 1
+        $LastGreetingIndex = $History.Greetings.Count - 1
+        $SysPromptChainBroken = $False
+        
+        :iloop Foreach ($Index in $LastGreetingIndex..2){
 
-    #region Write the generated greeting to the console
-    Write-Host "You: " -ForegroundColor Green -NoNewline; Write-Host "$NewGreeting"
-    Write-Host " "
-    #endregion
+            If ($Index -eq $LastGreetingIndex -and (($History.Greetings[$Index].role -eq "system") -or ($History.Greetings[$Index].role -eq "user"))){continue iloop}
 
-    #region Prompt for and receiving greeting
-    $GreetingParams = @{
-        "Uri" = "$CompletionURI"
-        "Method" = "POST"
-        "Body" = ($Body | ConvertTo-Json -Depth 3)
-        "ContentType" = "application/json"
-    }
+            If ($History.Greetings[$Index].role -eq "system" -and $SysPromptChainBroken -eq $False){
+                
+                If ($History.Greetings[$Index].content -ieq "$SystemPrompt"){continue iloop}
+                Else {
+                        $ContextReplays.Add(($History.Greetings[$Index])) | Out-Null
+                        $SysPromptChainBroken = $True
+                        $x++
+                    }
+            }
 
-    try {$Response = Invoke-RestMethod @GreetingParams -UseBasicParsing -ErrorAction Stop}
-    catch {$_.Exception.Message}
+            If ($History.Greetings[$Index].role -eq "assistant" -or $History.Greetings[$Index].role -eq "user"){
+                $ContextReplays.Add(($History.Greetings[$Index])) | Out-Null
+                $x++
+            }
 
-    $ResponseText = $Response.choices.message.content
-    #endregion
+            If ($x -eq ($ReplayLimit)){break iloop}
 
-    #region Response and file management
-    Write-Host "AI: " -ForegroundColor DarkMagenta -NoNewline; Write-Host "$ResponseText"
+        }
+        #endregion
 
-    $History.Greetings += ([pscustomobject]@{"role" = "assistant"; "content" = "$ResponseText"})
-    $SaveHistory = Set-HistoryFile -HistoryFile $HistoryFile -History $History
-    #endregion
+        #region Fill in the Model, System Prompt and User Prompt of the $Body:
+        $Body = $BodyTemplate | ConvertFrom-Json
+        $Body.model = $Model
+        $Body.messages = @()
+        $SystemPromptObj = ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})
+        $UserPromptObj = ([pscustomobject]@{"role" = "user"; "content" = $NewGreeting})
+
+        # Add a "system" role to the top to set the interpretation:
+        If ($ContextReplays.role -notcontains "system"){$body.messages += ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})}
+        # Replay the relevant/captured interactions back into $Body.messages:
+        $ContextReplays[($ContextReplays.Count - 1)..0].ForEach({$Body.messages += $_})
+        # If we detected a broken system prompt chain, add the current system prompt back in:
+        If ($SysPromptChainBroken){$body.messages += ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})}
+        # Finally, add our new greeting prompt back in:
+        $body.messages += $UserPromptObj
+            
+        #Add the messages to the history, and save the history:
+        $History.Greetings.Add($SystemPromptObj) | Out-Null
+        $History.Greetings.Add($UserPromptObj) | Out-Null
+        $SaveHistory = Set-HistoryFile -HistoryFile $HistoryFile -History $History
+        #endregion
+
+        #region Write the generated greeting to the console
+        Write-Host "You: " -ForegroundColor Green -NoNewline; Write-Host "$NewGreeting"
+        Write-Host " "
+        #endregion
+
+        #region Prompt for and receiving greeting
+        $GreetingParams = @{
+            "Uri" = "$CompletionURI"
+            "Method" = "POST"
+            "Body" = ($Body | ConvertTo-Json -Depth 3)
+            "ContentType" = "application/json"
+        }
+
+        try {$Response = Invoke-RestMethod @GreetingParams -UseBasicParsing -ErrorAction Stop}
+        catch {$_.Exception.Message}
+
+        $ResponseText = $Response.choices.message.content
+        #endregion
+
+        #region Response and file management
+        Write-Host "AI: " -ForegroundColor DarkMagenta -NoNewline; Write-Host "$ResponseText"
+
+        $History.Greetings += ([pscustomobject]@{"role" = "assistant"; "content" = "$ResponseText"})
+        $SaveHistory = Set-HistoryFile -HistoryFile $HistoryFile -History $History
+        #endregion
 
     } #Close If $SkipGreeting isn't Present
 
