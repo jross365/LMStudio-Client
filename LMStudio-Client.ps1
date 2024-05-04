@@ -11,8 +11,7 @@ param (
 begin {
 
     #region Define functions
- 
-    function New-GreetingPrompt {
+     function New-GreetingPrompt {
         
         $TodayIsADay = "It is $((Get-Date).DayOfWeek)"
         
@@ -36,6 +35,72 @@ begin {
 
     } #Close Function
 
+    function New-HistoryFile {
+        try {
+
+            $History = New-Object System.Collections.ArrayList
+
+            $Greetings = New-Object System.Collections.ArrayList
+            (0..1).ForEach({$Greetings.Add(([pscustomobject]@{"role" = "dummy"; "content" = "This is a dummy entry."})) | Out-Null})
+
+            $DummyContent = New-Object System.Collections.ArrayList
+            (0..1).ForEach({$DummyContent.Add(([pscustomobject]@{"role" = "dummy"; "content" = "This is a dummy entry."})) | Out-Null})
+
+            $DummyEntry = [pscustomobject]@{"Date" = "$((Get-Date).ToString())"; "Opener" = "This is a dummy entry."; "Content" = $DummyContent}
+
+            $Histories = New-Object System.Collections.ArrayList
+            $Histories.Add($DummyEntry) | Out-Null
+
+            $History.Add([pscustomobject]@{"Greetings" = $Greetings; "Histories" = $Histories}) | Out-Null
+        }
+        catch{throw "Unable to create history file $HistoryFile : $($_.Exception.Message))"}
+
+    return $History       
+
+    }
+
+    function Get-HistoryFile ($HistoryFile) {
+
+        #Import the original History file
+        try {$HistoryContent = Get-Content $HistoryFile -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop}
+        catch {throw "Unable to import history file $HistoryFile : $($_.Exception.Message))"}
+
+        If ($HistoryContent.Histories[0].Opener -ne "This is a dummy entry."){throw "History file $HistoryFile is missing the dummy entry (bad format)"}
+
+        #move over content from Fixed-Length arrays to New ArrayLists:
+        $NewHistory = New-HistoryFile
+
+        $HistoryContent.Greetings.Where({$_.Role -ne "dummy"}) | ForEach-Object {$NewHistory.Greetings.Add($_) | Out-Null}
+
+        $NewHistory.Histories.Remove($NewHistory.Histories[0]) | Out-Null
+
+        $HistoryContent.Histories.Foreach({
+        
+            $Entry = $_
+            $Content = New-Object System.Collections.ArrayList
+            $Entry.Content | ForEach-Object {$Content.Add($_) | out-null}
+            
+            $EntryCopy = [pscustomobject]@{"Date" = $Entry.Date; "Opener" = $Entry.Opener; "Content" = $Content}
+
+            $NewHistory.Histories.Add($EntryCopy) | Out-Null
+
+        })
+
+        Remove-Variable HistoryContent -ErrorAction SilentlyContinue
+
+        return $NewHistory
+
+    } #Close Function
+
+    function Set-HistoryFile ($HistoryFile, $History){
+
+    try {$History | ConvertTo-Json -Depth 10 -ErrorAction Stop | Out-File -FilePath $HistoryFile -ErrorAction Stop}
+    catch {throw "Unable to save history to $HistoryFile"}
+
+    return $True
+
+    }
+
     #endregion
     
     #region Prerequisite Variables
@@ -44,15 +109,15 @@ begin {
 
     $Version = "0.5"
 
-    [string]$Socket = $Server + ":" + $Port
+    [string]$EndPoint = $Server + ":" + $Port
 
-    $ModelURI = "http://$Socket/v1/models"
-    $CompletionURI = "http://$Socket/v1/chat/completions"
+    $ModelURI = "http://$EndPoint/v1/models"
+    $CompletionURI = "http://$EndPoint/v1/chat/completions"
 
     $host.UI.RawUI.WindowTitle = "LM Studio Client v$Version ### Show Help: !h "
 
     $SystemPrompt = "Please be polite, concise and informative."
-
+    $NewGreeting = New-GreetingPrompt
     #endregion
 
     #region Define the BODY Template and Body
@@ -79,74 +144,62 @@ begin {
     #region Try to Load or Create a history
     If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$HistoryFile = "$env:USERPROFILE\Documents\ai_history.json"}
 
-    If (!(Test-Path $HistoryFile)){
+    If (!(Test-Path $HistoryFile)){ #Build a dummy history file
 
         $IsHistoryFileNew = $True
 
         try {
 
-            $History = New-Object System.Collections.ArrayList
-
-            $Greetings = New-Object System.Collections.ArrayList
-            $Greetings.Add(([pscustomobject]@{"role" = "system"; "content" = "$SystemPrompt"})) | Out-Null
-            $Greetings.Add(([pscustomobject]@{"role" = "user"; "content" = "$(New-GreetingPrompt)"})) | Out-Null
-
-            $Histories = New-Object System.Collections.ArrayList
-            $DummyContent = New-Object System.Collections.ArrayList
-            $DummyContent.Add(([pscustomobject]@{"role" = "system"; "content" = "$SystemPrompt"})) | Out-Null
-            $DummyContent.Add(([pscustomobject]@{"role" = "user"; "content" = "This is a dummy entry."})) | Out-Null
-
-            $DummyEntry = [pscustomobject]@{"Date" = "$((Get-Date).ToString())"; "Opener" = "This is a dummy entry."; "Content" = $DummyContent}
-            $Histories.Add($DummyEntry) | Out-Null
-
-            $History.Add([pscustomobject]@{"Greetings" = $Greetings; "Histories" = $Histories}) | Out-Null
-
-            $History | ConvertTo-Json -Depth 10 | Out-File -FilePath $HistoryFile -ErrorAction Stop
+            $History = New-HistoryFile
+            $History | ConvertTo-Json -Depth 10 -ErrorAction Stop | Out-File -FilePath $HistoryFile -ErrorAction Stop
 
         }
         catch{throw "Unable to create history file $HistoryFile : $($_.Exception.Message))"}
 
     }
     Else {
-        $IsHistoryFileNew = $False
 
-        try {$History = Get-Content $HistoryFile -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop}
-        catch {throw "Unable to import history file $HistoryFile : $($_.Exception.Message))"}
-
-        If ($History.Histories[0].Opener -ne "This is a dummy entry."){throw "History file $HistoryFile is missing the dummy entry (bad format)"}
+        try {$History = Get-HistoryFile -HistoryFile $HistoryFile}
+        catch {throw "Unable to import history file $HistoryFile : $($_.Exception.Message)"}
 
     }
    
     #region Fill in the Model, System Prompt and User Prompt of the $Body:
     $Body = $BodyTemplate | ConvertFrom-Json
-    $Body = $Body -replace 'MODELHERE',"$Model"
-    $Body = $Body -replace 'SYSPROMPTHERE',"$SystemPrompt"
-    $Body = $Body -replace 'USERPROMPTHERE',"$UserPrompt"
+    $Body.model = $Model
+    $Body.messages[$Body.messages.Indexof($($Body.messages.Where({$_.role -eq "system"})))].content = $SystemPrompt
+    $Body.messages[$Body.messages.Indexof($($Body.messages.Where({$_.role -eq "user"})))].content = $NewGreeting
+
+    #Add the messages to the history, and save the history:
+    $Body.messages.ForEach({$History.Greetings += ($_)})
+    
+    $SaveHistory = Set-HistoryFile -HistoryFile $HistoryFile -History $History
+    #endregion
+
+    #region Write the generated greeting to the console
+    Write-Host "You: " -ForegroundColor Green -NoNewline; Write-Host "$NewGreeting"
+    Write-Host " "
     #endregion
 
     #region Prompt for and receiving greeting
     $GreetingParams = @{
         "Uri" = "$CompletionURI"
         "Method" = "POST"
-        "Body" = $Body
+        "Body" = ($Body | ConvertTo-Json -Depth 3)
         "ContentType" = "application/json"
     }
 
-    try {
-        $Response = Invoke-RestMethod @GreetingParams -UseBasicParsing -ErrorAction Stop
-        $TrackedGreetings.Add("Answer: $($Response.choices.message.content)") | Out-Null
-        $TrackedGreetings.Add(" ") | Out-Null
-        $TrackedGreetings | Set-Content $HistoryFile 
-        
-        Write-Host "AI: " -ForegroundColor DarkMagenta -NoNewline; Write-Host "$($Response.choices.message.content)"
-    }
+    try {$Response = Invoke-RestMethod @GreetingParams -UseBasicParsing -ErrorAction Stop}
     catch {$_.Exception.Message}
 
-    
-
+    $ResponseText = $Response.choices.message.content
     #endregion
 
-    #region Set up log file
+    #region Response and file management
+    Write-Host "AI: " -ForegroundColor DarkMagenta -NoNewline; Write-Host "$ResponseText"
+
+    $History.Greetings += ([pscustomobject]@{"role" = "assistant"; "content" = "$ResponseText"})
+    $SaveHistory = Set-HistoryFile -HistoryFile $HistoryFile -History $History
 
     #endregion
 
