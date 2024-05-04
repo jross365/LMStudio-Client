@@ -5,7 +5,7 @@ param (
     [Parameter(Mandatory=$false)][string]$HistoryFile,
     [Parameter(Mandatory=$false)][double]$Temperature = 0.7,
     [Parameter(Mandatory=$false)][switch]$NoTimestamps,
-    [Parameter(Mandatory=$false)][switch]$NoGreeting
+    [Parameter(Mandatory=$false)][switch]$SkipGreeting
     )
 
 begin {
@@ -44,9 +44,9 @@ begin {
             (0..1).ForEach({$Greetings.Add(([pscustomobject]@{"role" = "dummy"; "content" = "This is a dummy entry."})) | Out-Null})
 
             $DummyContent = New-Object System.Collections.ArrayList
-            (0..1).ForEach({$DummyContent.Add(([pscustomobject]@{"role" = "dummy"; "content" = "This is a dummy entry."})) | Out-Null})
+            (0..1).ForEach({$DummyContent.Add(([pscustomobject]@{"timestamp" = $((Get-Date).ToString()); "role" = "dummy"; "content" = "This is a dummy entry."})) | Out-Null})
 
-            $DummyEntry = [pscustomobject]@{"Date" = "$((Get-Date).ToString())"; "Opener" = "This is a dummy entry."; "Content" = $DummyContent}
+            $DummyEntry = [pscustomobject]@{"StartDate" = "$((Get-Date).ToString())"; "Opener" = "This is a dummy entry."; "Content" = $DummyContent}
 
             $Histories = New-Object System.Collections.ArrayList
             $Histories.Add($DummyEntry) | Out-Null
@@ -162,8 +162,12 @@ begin {
         catch {throw "Unable to import history file $HistoryFile : $($_.Exception.Message)"}
 
     }
-   
-    #region Walk backwards through the History.Greetings index to create a correct context replay:
+    #endregion
+
+    
+    If (!$SkipGreeting){
+    
+    #region Walk backwards through the $History.Greetings index to create a correct context replay:
     $ContextReplays = New-Object System.Collections.ArrayList
     
     $x = 1
@@ -240,8 +244,9 @@ begin {
 
     $History.Greetings += ([pscustomobject]@{"role" = "assistant"; "content" = "$ResponseText"})
     $SaveHistory = Set-HistoryFile -HistoryFile $HistoryFile -History $History
-
     #endregion
+
+    } #Close If $SkipGreeting isn't Present
 
     #Set up our Help menus:
 
