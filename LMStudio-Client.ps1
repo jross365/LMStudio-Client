@@ -140,7 +140,7 @@ begin {
     $SystemPrompt = "Please be polite, concise and informative."
     #endregion
 
-    #region Define the BODY Template and Body
+    #region Define the BODY Template
     $BodyTemplate = '{ 
         "model": "MODELHERE",
         "messages": [ 
@@ -154,13 +154,6 @@ begin {
 
     #endregion
 
-    #region Connection Test, and Model Name Retrieval
-    try {$ModelData = Invoke-RestMethod -Uri $ModelURI -SessionVariable R2D2 -ErrorAction Stop}
-    catch {throw "Unable to retrieve model information. Check to see if the server is up."}
-
-    $Model = $ModelData.data.id
-    #endregion
-   
     #region Try to Load or Create a history
     If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$HistoryFile = "$env:USERPROFILE\Documents\ai_history.json"}
 
@@ -169,7 +162,7 @@ begin {
         try {
 
             $History = New-HistoryFile
-            $History | ConvertTo-Json -Depth 10 -ErrorAction Stop | Out-File -FilePath $HistoryFile -ErrorAction Stop
+            Set-HistoryFile -HistoryFile $HistoryFile -History $History
 
         }
         catch{throw "Unable to create history file $HistoryFile : $($_.Exception.Message))"}
@@ -183,6 +176,33 @@ begin {
     }
     #endregion
 
+    #region Connection Test, and Model Name Retrieval, Add model to History
+    try {$ModelData = Invoke-RestMethod -Uri $ModelURI -SessionVariable R2D2 -ErrorAction Stop}
+    catch {throw "Unable to retrieve model information. Check to see if the server is up."}
+
+    $Model = $ModelData.data.id
+
+    If (($History.Models.GetEnumerator() | ForEach-Object {$_.Value}) -notcontains "$Model"){
+
+        $ModelAdded = $False
+        $ModelIndex = 2
+
+        do {
+            try {
+                $History.Models.Add("$ModelIndex",$Model)
+                $ModelAdded = $True
+            }
+           catch {$ModelIndex++; $ModelAdded = $False}
+
+        }
+        until ($ModelAdded -eq $True)
+        
+        Set-HistoryFile -HistoryFile $HistoryFile -History $History
+
+    } #Close If
+    Else {$ModelIndex = ($History.Models.GetEnumerator() | Where-Object {$_.Value -eq "$Model"}).Name}
+
+    #endregion
     
     If (!$SkipGreeting){
         $NewGreeting = New-GreetingPrompt
