@@ -17,7 +17,7 @@ begin {
         
         $TokenSet = @{U = [Char[]]'ABCDEFGHIJKLMNOPQRSTUVWXYZ'}
             
-        $ThreeLetters = (Get-Random -Count 3 -InputObject $TokenSet.U) -join ', '
+        $ThreeLetters = (Get-Random -Count 3 -InputObject $TokenSet.U -SetSeed ([System.Environment]::TickCount)) -join ', '
 
         $Greetings = @(
             "$TodayIsADay. Chose an adjective that contains these three letters: $ThreeLetters. Then use it to insult me in a short way without hurting my feelings too much.",
@@ -29,7 +29,7 @@ begin {
             "$TodayisADay. Please wish me well for today."
         )
         
-        $ChosenGreeting = $Greetings[$(Get-Random -Minimum 0 -Maximum $($Greetings.GetUpperBound(0)))]
+        $ChosenGreeting = $Greetings[$(Get-Random -Minimum 0 -Maximum $($Greetings.GetUpperBound(0)) -SetSeed ([System.Environment]::TickCount))]
 
         return $ChosenGreeting
 
@@ -106,6 +106,7 @@ begin {
     #region Prerequisite Variables
     $OrigProgPref = $ProgressPreference
     $ProgressPreference = 'SilentlyContinue'
+    $ReplayLimit = 10 #Sets the max number of assistant/user content context entries    
 
     $Version = "0.5"
 
@@ -146,8 +147,6 @@ begin {
 
     If (!(Test-Path $HistoryFile)){ #Build a dummy history file
 
-        $IsHistoryFileNew = $True
-
         try {
 
             $History = New-HistoryFile
@@ -164,15 +163,56 @@ begin {
 
     }
    
+    #region Walk backwards through the History.Greetings index to create a correct context replay:
+    $ContextReplays = New-Object System.Collections.ArrayList
+    
+    $x = 1
+    $LastGreetingIndex = $History.Greetings.Count - 1
+    $SysPromptChainBroken = $False
+    
+    :iloop Foreach ($Index in $LastGreetingIndex..2){
+
+        If ($Index -eq $LastGreetingIndex -and (($History.Greetings[$Index].role -eq "system") -or ($History.Greetings[$Index].role -eq "user"))){continue iloop}
+
+        If ($History.Greetings[$Index].role -eq "system" -and $SysPromptChainBroken -eq $False){
+            
+            If ($History.Greetings[$Index].content -ieq "$SystemPrompt"){continue iloop}
+            Else {
+                    $ContextReplays.Add(($History.Greetings[$Index])) | Out-Null
+                    $SysPromptChainBroken = $True
+                    $x++
+                }
+        }
+
+        If ($History.Greetings[$Index].role -eq "assistant" -or $History.Greetings[$Index].role -eq "user"){
+            $ContextReplays.Add(($History.Greetings[$Index])) | Out-Null
+            $x++
+        }
+
+        If ($x -eq ($ReplayLimit)){break iloop}
+
+    }
+    #endregion
+
     #region Fill in the Model, System Prompt and User Prompt of the $Body:
     $Body = $BodyTemplate | ConvertFrom-Json
     $Body.model = $Model
-    $Body.messages[$Body.messages.Indexof($($Body.messages.Where({$_.role -eq "system"})))].content = $SystemPrompt
-    $Body.messages[$Body.messages.Indexof($($Body.messages.Where({$_.role -eq "user"})))].content = $NewGreeting
+    $Body.messages = @()
+    $SystemPromptObj = ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})
+    $UserPromptObj = ([pscustomobject]@{"role" = "user"; "content" = $NewGreeting})
 
+    # Add a "system" role to the top to set the interpretation:
+    If ($ContextReplays.role -notcontains "system"){$body.messages += ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})}
+    # Replay the relevant/captured interactions back into $Body.messages:
+    $ContextReplays[($ContextReplays.Count - 1)..0].ForEach({$Body.messages += $_})
+    # If we detected a broken system prompt chain, add the current system prompt back in:
+    If ($SysPromptChainBroken){$body.messages += ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})}
+    # Finally, add our new greeting prompt back in:
+    $body.messages += $UserPromptObj
+        
     #Add the messages to the history, and save the history:
-    $Body.messages.ForEach({$History.Greetings += ($_)})
-    
+    $History.Greetings.Add($SystemPromptObj) | Out-Null
+    $History.Greetings.Add($UserPromptObj) | Out-Null
     $SaveHistory = Set-HistoryFile -HistoryFile $HistoryFile -History $History
     #endregion
 
