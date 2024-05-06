@@ -94,7 +94,7 @@ begin {
 
         #move over models from PSCustomObject to HashTable
         $NewHistory.Models = @{}
-        $H.Models.psobject.Properties.Name.ForEach({$NewHistory.Models.Add("$_","$($H.Models.$_)")})
+        $History.Models.psobject.Properties.Name.ForEach({$NewHistory.Models.Add("$_","$($H.Models.$_)")})
 
         Remove-Variable HistoryContent -ErrorAction SilentlyContinue
 
@@ -241,6 +241,8 @@ begin {
         #region Fill in the Model, System Prompt and User Prompt of the $Body:
         $Body = $BodyTemplate | ConvertFrom-Json
         $Body.model = $Model
+        #$Body.stream = $True #For testing
+
         $Body.messages = @()
         $SystemPromptObj = ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})
         $UserPromptObj = ([pscustomobject]@{"role" = "user"; "content" = $NewGreeting})
@@ -287,14 +289,6 @@ begin {
         #endregion
 
     } #Close If $SkipGreeting isn't Present
-
-    #Set up our Help menus:
-
-
-    # !s : Set system prompt 
-    # !o : Change save file
-    # !t : Toggle timestamps"
-    # !q : Quit
 
     #endregion
 
