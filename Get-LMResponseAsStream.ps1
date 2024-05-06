@@ -3,7 +3,8 @@ function Invoke-LMStream{
 param (
     [Parameter(Mandatory=$true)][string]$CompletionURI,
     [Parameter(Mandatory=$true)][pscustomobject]$Body,
-    [Parameter(Mandatory=$true)][string]$File
+    [Parameter(Mandatory=$true)][string]$File,
+    [Parameter(Mandatory=$false)][switch]$KeepJobs
     )
 
     begin {
@@ -12,13 +13,13 @@ param (
 
     $PSVersion = "$($PSVersionTable.PSVersion.Major)" + '.' + "$($PSVersionTable.PSVersion.Minor)"
 
-$StreamJob = {
+    $StreamJob = {
     
     $CompletionURI = $args[0]
     $Body = $args[1]    
     $File = $args[2]
 
-    "$PID" | out-File "$File.pid"
+    "$PID" | out-File "$File.pid" -Encoding utf8
 
 $PostForStream = @"
 using System;  
@@ -70,45 +71,57 @@ Add-Type -TypeDefinition $PostForStream
  
 Remove-Item $File -ErrorAction SilentlyContinue
 
+"" | out-file $File -Encoding utf8
+
 try {$Output = [LMStudio]::PostDataForStream($CompletionURI, ($Body | ConvertTo-Json), "application/json",$File)}
-catch {$_.Exception.Message}
+catch {
+
+    $ErrorMessage = "ERROR!?! $($_.Exception.Message)"
+
+    throw $_.Exception.Message
+}
   
 return $Output
 
 }
 
-$ParseJob = {
+    $ParseJob = {
 
-    $File = $args[0]
-    $FileExists = $False
-    $x = 0
-    do {
+        $File = $args[0]
+        $FileExists = $False
+        $x = 0
+        do {
 
-        $FileExists = Test-Path $File
-        Start-Sleep -Milliseconds 250
-        $x++
+            $FileExists = Test-Path $File
+            Start-Sleep -Milliseconds 250
+            $x++
+
+        }
+        until (($FileExists -eq $True) -or ($x -eq 10))
+
+        If ($FileExists -eq $False){throw "Unable to find $File"}
+        Else {Get-Content $File -Tail 4 -Wait}
 
     }
-    until (($FileExists -eq $True) -or ($x -eq 10))
 
-    If ($FileExists -eq $False){throw "Unable to find $File"}
-    Else {Get-Content $File -Tail 4 -Wait}
+    $KillProcedure = {
+        
+        if (!($KeepJobs.IsPresent)){
+            $StopJobs = get-Job | Stop-Job
+            $RemoveJobs = Get-Job | Remove-Job
+        }
+        
+        Remove-Item "$File.pid" -Force
+        Remove-Item $File -Force
 
-}
-
-#Capture Control+C
-#[Console]::TreatControlCAsInput = $True
-#Start-Sleep -Seconds 1
-#$Host.UI.RawUI.FlushInputBuffer()
+    }
 
 if ($PSVersion -match "5.1"){
     $StartParseJob = Start-Job -ScriptBlock $ParseJob -ArgumentList @($File)
-
     $StartStreamJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File)
 }
 elseif ($PSVersion -match "7.") {
     $StartParseJob = Start-Job -ScriptBlock $ParseJob -ArgumentList @($File) -PSVersion 5.1
-
     $StartStreamJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File) -PSVersion 5.1
 }
 else {throw "PSVersion $PSVersion doesn't match 5.1 or 7.x"}
@@ -132,23 +145,23 @@ process {
             
             $LMStreamPID = Get-Content "$File.pid" -First 1
             
-            Stop-Process -Id $LMStreamPID -Force -ErrorAction SilentlyContinue #If we can't stop it, it's because it ended already.
-            
-            $StopJobs = get-Job | Stop-Job
-            $RemoveJobs = Get-Job | Remove-Job
-            
-            Remove-Item "$File.pid" -Force
-            Remove-Item $File -Force
+            Stop-Process -Id $LMStreamPID -Force #-ErrorAction SilentlyContinue #If we can't stop it, it's because it ended already.
+            &C:\Windows\System32\taskkill.exe /F /PID $LMStreamPID
+            &$KillProcedure
         
             throw "Function was interrupted with SIGINT during execution"
             }
         }
     
-        $Output = Receive-Job $StartParseJob | Where-Object {$_ -match 'data:|ERROR!?!'}
+        $Output = Receive-Job $StartParseJob | Where-Object {$_ -match 'data:' -or $_ -match '|ERROR!?!'}
     
         :oloop foreach ($Line in $Output){
     
-            if ($Line -match "ERROR!?!"){throw "Exception: $($Line -replace 'ERROR!?!')"}
+            if ($Line -match "ERROR!?!"){
+            
+                &$KillProcedure
+                throw "Exception: $($Line -replace 'ERROR!?!')"
+            }
             else {
     
                 $LineAsObj = $Line.TrimStart('data: ') | ConvertFrom-Json
