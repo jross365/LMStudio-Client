@@ -534,7 +534,6 @@ return $Output
 
 }
 
-
 $ParseJob = {
 
     $File = $args[0]
@@ -550,8 +549,7 @@ $ParseJob = {
     until (($FileExists -eq $True) -or ($x -eq 10))
 
     If ($FileExists -eq $False){throw "Unable to find $File"}
-    Else {Get-content $File -Tail 5 -Wait}
-
+    Else {Get-Content $File -Tail 5 -Wait}
 
 }
 
@@ -560,6 +558,8 @@ $StartStreamJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionU
 $StartParseJob = Start-Job -ScriptBlock $ParseJob -ArgumentList @($File)
 
 $MessageBuffer = ""
+
+$x = 1
 
 do {
 
@@ -588,3 +588,6 @@ do {
 
 }
 until ($x -eq 5)
+
+$StopJobs = get-Job | Stop-Job
+$RemoveJobs = Get-Job | Remove-Job
