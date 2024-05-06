@@ -542,14 +542,14 @@ $ParseJob = {
     do {
 
         $FileExists = Test-Path $File
-        Start-Sleep -Milliseconds 500
+        Start-Sleep -Milliseconds 250
         $x++
 
     }
     until (($FileExists -eq $True) -or ($x -eq 10))
 
     If ($FileExists -eq $False){throw "Unable to find $File"}
-    Else {Get-Content $File -Tail 5 -Wait}
+    Else {Get-Content $File -Tail 4 -Wait}
 
 }
 
@@ -565,19 +565,20 @@ do {
 
     $Output = Receive-Job $StartParseJob | Where-Object {$_ -match 'data:|ERROR!?!'}
 
-    foreach ($Line in $Output){
+    :oloop foreach ($Line in $Output){
 
         if ($Line -match "ERROR!?!"){throw "Exception: $($Line -replace 'ERROR!?!')"}
         else {
 
             $LineAsObj = $Line.TrimStart('data: ') | ConvertFrom-Json
+            If ($LineAsObj.id.Length -eq 0){continue oloop}
 
             $Word = $LineAsObj.choices.delta.content
             Write-Host "$Word" -NoNewline
             $MessageBuffer += $Word
         
             If ($null -ne $LineAsObj.choices.finish_reason){
-                Write-Host "Finish reason: $($LineAsObj.choices.finish_reason)"
+                Write-Host ""; Write-Host "Finish reason: $($LineAsObj.choices.finish_reason)"
                 $x = 5
             }
 
