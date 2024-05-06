@@ -199,8 +199,8 @@ $JobOutput = $StartJob | Receive-Job
 $JobOutput
 #endregion
 
-#region 05/05/2024: This test pattern works perfect:
-#from: https://stackoverflow.com/questions/33111014/redirecting-output-from-an-external-dll-in-powershell#:~:text=You%20have%20to%20spawn%20new%20PowerShell%20process%2C%20and,of%20that%20new%20process%3A%20powershell%20-Command%20%22%5BConsole%5D%3A%3AWriteLine%28%27SomeText%27%29%22%7COut-File%20Test.txt
+#region 05/05/2024: Testing: This test pattern works somewhat:
+
 $OldConsoleOut=[Console]::Out
 $StringWriter=New-Object IO.StringWriter
 [Console]::SetOut($StringWriter)
@@ -216,7 +216,7 @@ $StringWriter.ToString()
 
 #endregion
 
-#region "Stream testing...it works!
+#region "Stream testing...it works! 05/04/2024
 $source3 = @"
 using System;  
 using System.IO;  
@@ -273,57 +273,7 @@ Add-Type -TypeDefinition $source3
 
 #endregion
 
-
-#region Tinkering with returning line instead of writing it to console: Working better! 05/03/2024
-$src6 = @"
-using System;  
-using System.IO;  
-using System.Net;  
-public class TestF {  
-     public static string PostData(string url, string data, string contentType) 
-     {   
-        HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);  
-        byte[] byteArray = System.Text.Encoding.UTF8.GetBytes(data);  
-        request.ContentLength = byteArray.Length;  
-        request.ContentType = contentType;   
-        request.Method = "POST"; 
-         try {    
-            using (Stream dataStream = request.GetRequestStream()) {     
-                dataStream.Write(byteArray, 0, byteArray.Length);      
-             }   
-             string responseData="";   // To hold the received chunks of text from server responses         
-             using(HttpWebResponse response = (HttpWebResponse)request.GetResponse()) {  
-                 Stream streamResponse = response.GetResponseStream();    
-                 if (streamResponse != null){  // Check for a valid data source     
-                     using (StreamReader reader = new StreamReader(streamResponse))   
-                     {      
-                         string line;       
-                         while ((line = reader.ReadLine()) != null)   // Read the response in chunks    
-                         {        
-                             if(line.Contains("data: "))  // Check for "data: {}" text     
-                                  Console.WriteLine(line);    // Process and/or store this chunk of data as needed      
-                             else                       
-                                 continue;               
-                         }  
-                     responseData = reader.ReadToEnd();     // Read the remaining part if any         
-                 }} 
-              return responseData;      // Return complete server's text   
-              }      
-         } catch (WebException ex) {                      // Handle exceptions properly here  
-            Console.WriteLine("Error occurred while sending request to URL :"+ url);    
-            Console.WriteLine(ex.Message);                 // Print the exception message 
-            return "An error has occured: "+ex.Message;    // Return an appropriate default value in case of errors     
-        } catch (Exception ex) {                          // Catch any other exceptions not specifically handled above  
-            Console.WriteLine("Error occurred while sending request to URL :"+ url);    
-            Console.WriteLine(ex.Message);                 // Print the exception message 
-            return "An error has occured: "+ex.Message;    // Return an appropriate default value in case of errors     
-        }  
-     } 
-}
-"@
-#endregion
-
-#region try writing to a file as a job: #05/06: Works!!! LEAVE THIS ALONE, COPY IT TO TRY TO FIX IT
+#region try writing to a file as a job: #05/06: Works!!! LEAVE THIS ALONE, COPY IT TO TINKER WITH IT
 $StreamJob = {
     
     $CompletionURI = $args[0]
@@ -462,4 +412,61 @@ return $Output
 
 $StartJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File)# -StreamingHost $Host
 
+#endregion
+
+#region 05/06: Copy of the Copy of the LEAVE THIS Alone code: tuning error output (WORKS):
+
+
+$PostForStream = @"
+using System;  
+using System.IO;  
+using System.Net;  
+public class POSTForStreamToFile {  
+     public static string PostData(string url, string data, string contentType, string outFile) 
+     {   
+        HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);  
+        byte[] byteArray = System.Text.Encoding.UTF8.GetBytes(data);  
+        request.ContentLength = byteArray.Length;  
+        request.ContentType = contentType;   
+        request.Method = "POST"; 
+              
+         try {    
+            using (Stream dataStream = request.GetRequestStream()) {     
+                dataStream.Write(byteArray, 0, byteArray.Length);      
+             }   
+             
+             using(HttpWebResponse response = (HttpWebResponse)request.GetResponse()) {  
+                 Stream streamResponse = response.GetResponseStream();
+                 string responseData="";   // To hold the received chunks of text from server responses
+                 if (streamResponse != null){  // Check for a valid data source     
+                     using (StreamReader reader = new StreamReader(streamResponse))   
+                     {      
+                         string line;
+                             
+                         while ((line = reader.ReadLine()) != null)   // Read the response in chunks    
+                         {        
+                             File.AppendAllText(outFile, line + Environment.NewLine);  // Write to file instead of console
+                             responseData += line + Environment.NewLine;
+                         }  
+                     responseData += reader.ReadToEnd();     // Read the remaining part if any
+                 }} 
+                 return responseData;      // Return complete server's text                    
+              }      
+         } catch (WebException ex) {                      // Handle exceptions properly here  
+            File.AppendAllText(outFile, "ERROR!?! Error occurred while sending request to URL :{url}, Exception Message: {ex.Message}" + Environment.NewLine);
+            throw new Exception ("An error has occurred: " + ex.Message, ex);
+        } catch (Exception ex) {                          // Catch any other exceptions not specifically handled above  
+            File.AppendAllText(outFile, "ERROR!?! Error occurred while sending request to URL :{url}, Exception Message: {ex.Message}" + Environment.NewLine);
+            throw new Exception ("An error has occured: " + ex.Message, ex);
+        }  
+     } 
+}
+"@
+
+Add-Type -TypeDefinition $PostForStream
+
+rm $File -ErrorAction SilentlyContinue
+
+try {$Output = [POSTForStreamToFile2]::PostData($CompletionURI, ($Body | ConvertTo-Json), "Application/JSON",$File)}
+catch {$_.Exception.Message; write-host "nope"}
 #endregion
