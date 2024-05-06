@@ -10,6 +10,7 @@ param (
 
         #region Define Jobs
 
+    $PSVersion = "$($PSVersionTable.PSVersion.Major)" + '.' + "$($PSVersionTable.PSVersion.Minor)"
 
 $StreamJob = {
     
@@ -100,9 +101,17 @@ $ParseJob = {
 #Start-Sleep -Seconds 1
 #$Host.UI.RawUI.FlushInputBuffer()
 
-$StartParseJob = Start-Job -ScriptBlock $ParseJob -ArgumentList @($File)
+if ($PSVersion -match "5.1"){
+    $StartParseJob = Start-Job -ScriptBlock $ParseJob -ArgumentList @($File)
 
-$StartStreamJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File)# 
+    $StartStreamJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File)
+}
+elseif ($PSVersion -match "7.") {
+    $StartParseJob = Start-Job -ScriptBlock $ParseJob -ArgumentList @($File) -PSVersion 5.1
+
+    $StartStreamJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File) -PSVersion 5.1
+}
+else {throw "PSVersion $PSVersion doesn't match 5.1 or 7.x"}
 
 #Used to force-kill the job, if necessary
 
@@ -119,11 +128,12 @@ process {
         If ($Host.UI.RawUI.KeyAvailable -and ($Key = $Host.UI.RawUI.ReadKey("AllowCtrlC,NoEcho,IncludeKeyUp"))) {
             If ([Int]$Key.Character -eq 27) {
         
-            Write-Warning "Escape was used - Shutting down any running jobs before exiting the script."
+            Write-Host ""; Write-Warning "Escape character detected"
             
             $LMStreamPID = Get-Content "$File.pid" -First 1
             
-            Stop-Process -Id $LMStreamPID -Force
+            Stop-Process -Id $LMStreamPID -Force -ErrorAction SilentlyContinue #If we can't stop it, it's because it ended already.
+            
             $StopJobs = get-Job | Stop-Job
             $RemoveJobs = Get-Job | Remove-Job
             
@@ -160,14 +170,16 @@ process {
     
     }
     until ($x -eq 5)
-    
 
-}
+} #Close Process
+
 end {
+
     $StopJobs = get-Job | Stop-Job
     $RemoveJobs = Get-Job | Remove-Job
-    
+    Remove-Item "$File.pid" -Force
+    Remove-Item "$File" -Force
     return $MessageBuffer
 
-}
-}
+} #Close End
+} #Close function
