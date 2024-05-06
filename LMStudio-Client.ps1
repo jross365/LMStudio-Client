@@ -300,7 +300,7 @@ process {
 
     do {
 
-        $UserPrompt = Read-Host -Prompt "You"
+        write-host "You: " -ForegroundColor Green -NoNewline; $UserPrompt = Read-Host
 
         $Body = $BodyTemplate
         $Body = $Body -replace 'MODELHERE',"$Model"
