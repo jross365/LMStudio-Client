@@ -9,6 +9,7 @@ $Body = get-content .\bodyexample.json | ConvertFrom-Json
 $Body.stream = $True
 
 $File = "D:\teststreamfile.txt"
+#endregion
 
 #region Original, Fixed
 $source = @"
@@ -470,7 +471,7 @@ try {$Output = [POSTForStreamToFile2]::PostData($CompletionURI, ($Body | Convert
 catch {$_.Exception.Message; write-host "nope"}
 #endregion
 
-#region 05/06: WORKING PROTOTYPE of the above:
+#region 05/06: WORKING PROTOTYPE of the above (LEAVE IT ALONE):
 $StreamJob = {
     
     $CompletionURI = $args[0]
@@ -592,3 +593,140 @@ until ($x -eq 5)
 
 $StopJobs = get-Job | Stop-Job
 $RemoveJobs = Get-Job | Remove-Job
+
+#endregion
+
+#region Same as the above, but testing Termination
+$StreamJob = {
+    
+    $CompletionURI = $args[0]
+    $Body = $args[1]
+    $File = $args[2]
+
+    "$PID" | out-File "$File.pid"
+
+$PostForStream = @"
+using System;  
+using System.IO;  
+using System.Net;  
+public class POSTForStreamToFile {  
+     public static string PostData(string url, string data, string contentType, string outFile) 
+     {   
+        HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);  
+        byte[] byteArray = System.Text.Encoding.UTF8.GetBytes(data);  
+        request.ContentLength = byteArray.Length;  
+        request.ContentType = contentType;   
+        request.Method = "POST"; 
+              
+         try {    
+            using (Stream dataStream = request.GetRequestStream()) {     
+                dataStream.Write(byteArray, 0, byteArray.Length);      
+             }   
+             
+             using(HttpWebResponse response = (HttpWebResponse)request.GetResponse()) {  
+                 Stream streamResponse = response.GetResponseStream();
+                 string responseData="";   // To hold the received chunks of text from server responses
+                 if (streamResponse != null){  // Check for a valid data source     
+                     using (StreamReader reader = new StreamReader(streamResponse))   
+                     {      
+                         string line;
+                             
+                         while ((line = reader.ReadLine()) != null)   // Read the response in chunks    
+                         {        
+                             File.AppendAllText(outFile, line + Environment.NewLine);  // Write to file instead of console
+                             responseData += line + Environment.NewLine;
+                         }  
+                     responseData += reader.ReadToEnd();     // Read the remaining part if any
+                 }} 
+                 return responseData;      // Return complete server's text                    
+              }      
+         } catch (WebException ex) {                      // Handle exceptions properly here  
+            File.AppendAllText(outFile, "ERROR!?! Error occurred while sending request to URL :{url}, Exception Message: {ex.Message}" + Environment.NewLine);
+            throw new Exception ("An error has occurred: " + ex.Message, ex);
+        } catch (Exception ex) {                          // Catch any other exceptions not specifically handled above  
+            File.AppendAllText(outFile, "ERROR!?! Error occurred while sending request to URL :{url}, Exception Message: {ex.Message}" + Environment.NewLine);
+            throw new Exception ("An error has occured: " + ex.Message, ex);
+        }  
+     } 
+}
+"@
+
+Add-Type -TypeDefinition $PostForStream
+ 
+Remove-Item $File -ErrorAction SilentlyContinue
+
+try {$Output = [POSTForStreamToFile]::PostData($CompletionURI, ($Body | ConvertTo-Json), "Application/JSON",$File)}
+catch {$_.Exception.Message}
+  
+return $Output
+
+}
+
+$ParseJob = {
+
+    $File = $args[0]
+    $FileExists = $False
+    $x = 0
+    do {
+
+        $FileExists = Test-Path $File
+        Start-Sleep -Milliseconds 250
+        $x++
+
+    }
+    until (($FileExists -eq $True) -or ($x -eq 10))
+
+    If ($FileExists -eq $False){throw "Unable to find $File"}
+    Else {Get-Content $File -Tail 4 -Wait}
+
+}
+
+$StartStreamJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File)# 
+
+#Used to force-kill the job, if necessary
+$StreamPID = Get-Content "$File.pid"
+Remove-item "$File.pid" -ErrorAction SilentlyContinue
+
+
+$StartParseJob = Start-Job -ScriptBlock $ParseJob -ArgumentList @($File)
+
+$MessageBuffer = ""
+
+$x = 1
+
+do {
+
+    $Output = Receive-Job $StartParseJob | Where-Object {$_ -match 'data:|ERROR!?!'}
+
+    :oloop foreach ($Line in $Output){
+
+        if ($Line -match "ERROR!?!"){throw "Exception: $($Line -replace 'ERROR!?!')"}
+        else {
+
+            $LineAsObj = $Line.TrimStart('data: ') | ConvertFrom-Json
+            If ($LineAsObj.id.Length -eq 0){continue oloop}
+
+            $Word = $LineAsObj.choices.delta.content
+            Write-Host "$Word" -NoNewline
+            $MessageBuffer += $Word
+        
+            If ($null -ne $LineAsObj.choices.finish_reason){
+                Write-Host ""; Write-Host "Finish reason: $($LineAsObj.choices.finish_reason)"
+                $x = 5
+            }
+
+        }
+
+    }
+
+
+}
+until ($x -eq 5)
+
+$StopJobs = get-Job | Stop-Job
+$RemoveJobs = Get-Job | Remove-Job
+
+
+
+
+#endregion
