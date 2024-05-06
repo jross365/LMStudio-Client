@@ -74,12 +74,7 @@ Remove-Item $File -ErrorAction SilentlyContinue
 "" | out-file $File -Encoding utf8
 
 try {$Output = [LMStudio]::PostDataForStream($CompletionURI, ($Body | ConvertTo-Json), "application/json",$File)}
-catch {
-
-    $ErrorMessage = "ERROR!?! $($_.Exception.Message)"
-
-    throw $_.Exception.Message
-}
+catch {throw $_.Exception.Message}
   
 return $Output
 
@@ -145,8 +140,8 @@ process {
             
             $LMStreamPID = Get-Content "$File.pid" -First 1
             
-            Stop-Process -Id $LMStreamPID -Force #-ErrorAction SilentlyContinue #If we can't stop it, it's because it ended already.
-            &C:\Windows\System32\taskkill.exe /F /PID $LMStreamPID
+            #Stop-Process -Id $LMStreamPID -Force -ErrorAction Continue #-ErrorAction SilentlyContinue #If we can't stop it, it's because it ended already.
+            Write-Warning "$(&C:\Windows\System32\taskkill.exe /PID $LMStreamPID /F)"
             &$KillProcedure
         
             throw "Function was interrupted with SIGINT during execution"
