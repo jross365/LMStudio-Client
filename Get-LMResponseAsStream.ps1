@@ -100,11 +100,11 @@ $ParseJob = {
 #Start-Sleep -Seconds 1
 #$Host.UI.RawUI.FlushInputBuffer()
 
+$StartParseJob = Start-Job -ScriptBlock $ParseJob -ArgumentList @($File)
+
 $StartStreamJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File)# 
 
 #Used to force-kill the job, if necessary
-$Global:LMStreamPID = Get-Content "$File.pid" -First 1
-$StartParseJob = Start-Job -ScriptBlock $ParseJob -ArgumentList @($File)
 
 $MessageBuffer = ""
         
@@ -171,30 +171,3 @@ end {
 
 }
 }
-
-#endregion
-
-# Change the default behavior of CTRL-C so that the script can intercept and use it versus just terminating the script.
-#[Console]::TreatControlCAsInput = $True
-#Start-Sleep -Milliseconds 250
-#$Host.UI.RawUI.FlushInputBuffer()
-
-#   out any running jobs and setting CTRL-C back to normal.
-If ($Host.UI.RawUI.KeyAvailable -and ($Key = $Host.UI.RawUI.ReadKey("AllowCtrlC,NoEcho,IncludeKeyUp"))) {
-    If ([Int]$Key.Character -eq 27) {
-
-    Write-Warning "Escape was used - Shutting down any running jobs before exiting the script."
-
-    Stop-Process -Id ($Global:LMStreamPID) -Force
-    $StopJobs = get-Job | Stop-Job
-    $RemoveJobs = Get-Job | Remove-Job
-
-    throw "Function was interrupted with SIGINT during execution"
-    }
-}
-# Flush the key buffer again for the next loop.
-
-$Host.UI.RawUI.FlushInputBuffer()
-
-
- 
