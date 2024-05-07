@@ -113,7 +113,7 @@ begin {
 
     } #Close Function
 
-    function New-HistoryFile {
+    function New-HistoryObject {
         try {
 
             $History = New-Object System.Collections.ArrayList
@@ -140,7 +140,7 @@ begin {
 
     }
 
-    function Get-HistoryFile ($HistoryFile) {
+    function Get-HistoryFile {
 
         #Check the Global Variable Store for the value
         If ($Global:LMStudioServer.HistoryFilepath.Length -eq 0 -or $null -eq $Global:LMStudioServer.HistoryFilepath){throw "Historyfilepath is empty. Run Set-LMHistoryPath to fix it :-)"}
@@ -155,7 +155,7 @@ begin {
         If ($HistoryContent.Models.0 -ne "dummymodel"){throw "History file $HistoryFile is missing the models dummy entry (bad format)"}
 
         #move over content from Fixed-Length arrays to New ArrayLists:
-        $NewHistory = New-HistoryFile
+        $NewHistory = New-HistoryObject
 
         #.Where({$_.Role -ne "dummy"}) removed:
         $HistoryContent.Greetings | ForEach-Object {$NewHistory.Greetings.Add($_) | Out-Null}
@@ -184,10 +184,12 @@ begin {
 
     } #Close Function
 
-    function Set-HistoryFile ($HistoryFile, $History){
+    function Set-HistoryFile ($History){
+    If ($Global:LMStudioServer.HistoryFilepath.Length -eq 0 -or $null -eq $Global:LMStudioServer.HistoryFilepath){throw "Historyfilepath is empty. Run Set-LMHistoryPath to fix it :-)"}
+    $HistoryFile = $Global:LMStudioServer.HistoryFilepath
 
     try {$History | ConvertTo-Json -Depth 10 -ErrorAction Stop | Out-File -FilePath $HistoryFile -ErrorAction Stop}
-    catch {throw "Unable to save history to $HistoryFile"}
+    catch {throw "Unable to save history to `$HistoryFile; $($_.Exception.Message)"}
 
     return $True
 
@@ -238,7 +240,6 @@ begin {
         return $Model
 
     }
-
     function Add-LMModelToHistory ([pscustomobject]$History, [string]$Model, [switch]$Save){
 
         $Model = $ModelData.data.id
@@ -305,7 +306,7 @@ begin {
 
         try {
 
-            $History = New-HistoryFile
+            $History = New-HistoryObject
             Set-HistoryFile -HistoryFile $HistoryFile -History $History
 
         }

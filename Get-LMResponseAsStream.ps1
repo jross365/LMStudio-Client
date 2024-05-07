@@ -4,7 +4,8 @@ param (
     [Parameter(Mandatory=$true)][string]$CompletionURI,
     [Parameter(Mandatory=$true)][pscustomobject]$Body,
     [Parameter(Mandatory=$true)][string]$File,
-    [Parameter(Mandatory=$false)][switch]$KeepJobs
+    [Parameter(Mandatory=$false)][switch]$KeepJobs,
+    [Parameter(Mandatory=$false)][switch]$KeepFiles
     )
 
     begin {
@@ -101,13 +102,21 @@ return $Output
 
     $KillProcedure = {
         
+        try {
+            $LMStreamPID = Get-Content "$File.pid" -First 1 -ErrorAction Stop
+            Write-Warning "$(&C:\Windows\System32\taskkill.exe /PID $LMStreamPID /F)"
+        }
+        catch {Write-Warning "Unable to read `$File.pid: $($.Exception.Message)"}
+
         if (!($KeepJobs.IsPresent)){
             $StopJobs = get-Job | Stop-Job
             $RemoveJobs = Get-Job | Remove-Job
         }
         
+        If (!$KeepFiles.IsPresent){
         Remove-Item "$File.pid" -Force
         Remove-Item $File -Force
+        }
 
     }
 
@@ -138,10 +147,10 @@ process {
         
             Write-Host ""; Write-Warning "Escape character detected, this party is over"
             
-            $LMStreamPID = Get-Content "$File.pid" -First 1
+            
             
             #Stop-Process -Id $LMStreamPID -Force -ErrorAction Continue #-ErrorAction SilentlyContinue #If we can't stop it, it's because it ended already.
-            Write-Warning "$(&C:\Windows\System32\taskkill.exe /PID $LMStreamPID /F)"
+            
             &$KillProcedure
         
             throw "Function was interrupted with SIGINT during execution"
