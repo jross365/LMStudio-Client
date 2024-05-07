@@ -10,6 +10,84 @@ param (
 
 begin {
 
+    function Initialize-LMVarStore {
+        $Global:LMStudioServer = @{}
+        $Global:LMStudioServer.Add("ServerInfo",@{})
+        $Global:LMStudioServer.Add("HistoryFilepath","")
+
+    }
+    function Set-LMStudioServer ([string]$Server,[int]$Port, [switch]$Show){
+        If ($Port.Length -gt 0 -and ($Port -lt 0 -or $Port -gt 65535)){throw "$Port must be in a range of 0-65535"}
+        If ($Server.Length -ne 0 -and $null -ne $Server -and $Port.Length -gt 0){throw "Please provide a name or IP address for parameter -Server"}
+
+        If ($Server.Length -ne 0 -and $Port.Length -ne 0){
+
+            If$Global:LMStudioServer = @{}
+
+            try {$Global:LMStudioServer.ServerInfo.Add($Server)}
+            catch {$Global:LMStudioServer.ServerInfo.Server = $Server}
+            
+            try {$Global:LMStudioServer.ServerInfo.Add($Port)}
+            catch {$Global:LMStudioServer.ServerInfo.Port = $Port}
+
+        }
+
+        If ($Show.IsPresent){$Global:LMStudioServer}
+
+    }
+
+    function Set-LMHistoryPath ([string]$HistoryFile,[switch]$CreatePath){
+        If ($HistoryFile.Length -eq 0 -or $null -eq $HistoryFile){throw "Please enter a valid path to the history file"}
+
+        $HistFileDirs = $HistoryFile -split '\\'
+
+        $HistFileDirs = $HistFileDirs[0..($HistFileDirs.GetUpperBound(0) -1)]
+
+        switch (Test-Path "$($HistFileDirs -join '\')"){
+
+            $True {if ($CreatePath.IsPresent){Write-Verbose "Folder paths exists, path creation not necessary :-) " -Verbose}}
+
+            $False {
+
+                if ($CreatePath.IsPresent){
+
+                    (0..($HistFileDirs.GetUpperBound(0))).ForEach({
+
+                        $Index = $_
+            
+                        if ($Index -eq 0){
+            
+                            $Drive = $HistFileDirs[$Index]
+            
+                            try {&$Drive}
+                            catch {throw "Drive $Drive is not valid or accessible. Cannot create path :-( "}
+            
+                        }
+                        else {
+                            $ThisFolder = $HistFileDirs[0..$Index] -join '\'
+                            
+                            try {$F = New-Item -Path $ThisFolder -ItemType Directory -Confirm:$false}
+                            catch {throw "Unable to create $ThisFolder : $($_.Exception.Message)"}
+
+                        }           
+            
+                    })
+
+                }
+                else {throw "Provided directory path does not exist. Try using the -CreatePath parameter to create it :-) "}
+
+            }
+
+        }
+
+        $FolderPath = (0..($HistFileDirs.GetUpperBound(0))) -join '\'
+
+        try {$Global:LMStudioServer.HistoryFilepath = $FolderPath}
+        catch {throw "Unable to set HistoryFilepath. Run Initialize-LMVarStore to create it."}
+
+        if ($null -eq $Global:LMStudioServer.HistoryFilepath -or $Global:LMStudioServer.HistoryFilepath.Length -eq 0){throw "HistoryFilepath is empty. Please Run Initialize-LMVarStore to fix it."}
+    }
+
     #region Define functions
      function New-GreetingPrompt {
         
@@ -63,6 +141,10 @@ begin {
     }
 
     function Get-HistoryFile ($HistoryFile) {
+
+        #Check the Global Variable Store for the value
+        If ($Global:LMStudioServer.HistoryFilepath.Length -eq 0 -or $null -eq $Global:LMStudioServer.HistoryFilepath){throw "Historyfilepath is empty. Run Set-LMHistoryPath to fix it :-)"}
+        $HistoryFile = $Global:LMStudioServer.HistoryFilepath
 
         #Import the original History file
         try {$HistoryContent = Get-Content $HistoryFile -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop}
@@ -121,7 +203,27 @@ begin {
 
     }
 
-    function Get-LMStudioModel ($Server, $Port){
+    function Get-LMModel {
+        
+        #region Check LMStudioServer values
+        If ($Global:LMStudioServer -eq $Null){throw "Please run Set-LMStudioServer first."}
+        
+        If ($Global:LMStudioServer.Server.Length -eq 0 -or $null -eq $Global:LMStudioServer.Server){
+
+            If ($Global:LMStudioServer.Port.Length -eq 0 -or $null -eq $Global:LMStudioServer.Port){
+
+                throw "Server and Port are not valid, please run Set-LMStudioServer again"
+
+            }
+
+        }
+        
+        If ($Global:LMStudioServer.Port.Length -eq 0 -or $null -eq $Global:LMStudioServer.Port){
+
+            throw "Port is not valid, please run Set-LMStudioServer again"
+
+        }
+        #endregion
         
         [string]$EndPoint = $Server + ":" + $Port
         $ModelURI = "http://$EndPoint/v1/models"
@@ -134,6 +236,34 @@ begin {
         If ($Model.Length -eq 0 -or $null -eq $Model.Length){throw "`$Model.data.id is empty."}
 
         return $Model
+
+    }
+
+    function Add-LMModelToHistory ([pscustomobject]$History, [string]$Model, [switch]$Save){
+
+        $Model = $ModelData.data.id
+
+        If (($History.Models.GetEnumerator() | ForEach-Object {$_.Value}) -notcontains "$Model"){
+    
+            $ModelAdded = $False
+            $ModelIndex = 2
+    
+            do {
+                try {
+                    $History.Models.Add("$ModelIndex",$Model)
+                    $ModelAdded = $True
+                }
+               catch {$ModelIndex++; $ModelAdded = $False}
+    
+            }
+            until ($ModelAdded -eq $True)
+            
+            Set-HistoryFile -HistoryFile $HistoryFile -History $History
+    
+        } #Close If
+        Else {$ModelIndex = ($History.Models.GetEnumerator() | Where-Object {$_.Value -eq "$Model"}).Name}
+
+
 
     }
 
@@ -191,7 +321,7 @@ begin {
     #endregion
 
     #region Connection Test, and Model Name Retrieval, Add model to History
-    try {$ModelData = Invoke-RestMethod -Uri $ModelURI -SessionVariable R2D2 -ErrorAction Stop}
+    try {$Model = Get-LMModel -Server $Server -Port $Port}
     catch {throw "Unable to retrieve model information. Check to see if the server is up."}
 
     $Model = $ModelData.data.id

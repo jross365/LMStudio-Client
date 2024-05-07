@@ -1,0 +1,3 @@
+(04/27 - 05/05) - Built prototype, built greeting system, built history file system, began functionalizing
+05/06 - Found a way to simulate asynchronous HTTP stream, built a working "streaming" response system; converted over to Powershell 7 standards; began functionalizing the code.
+Left off: Moving all inputs for $HistoryFile over to $Global:LMStudioServer.HistoryFilepath, with checks for the path's validity
