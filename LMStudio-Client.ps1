@@ -121,6 +121,22 @@ begin {
 
     }
 
+    function Get-LMStudioModel ($Server, $Port){
+        
+        [string]$EndPoint = $Server + ":" + $Port
+        $ModelURI = "http://$EndPoint/v1/models"
+        
+        try {$ModelData = Invoke-RestMethod -Uri $ModelURI -ErrorAction Stop}
+        catch {throw "Unable to retrieve model information: $($_.Exception.Message)"}
+
+        $Model = $ModelData.data.id
+
+        If ($Model.Length -eq 0 -or $null -eq $Model.Length){throw "`$Model.data.id is empty."}
+
+        return $Model
+
+    }
+
     #endregion
     
     #region Prerequisite Variables
@@ -130,9 +146,7 @@ begin {
 
     $Version = "0.5"
 
-    [string]$EndPoint = $Server + ":" + $Port
-
-    $ModelURI = "http://$EndPoint/v1/models"
+    
     $CompletionURI = "http://$EndPoint/v1/chat/completions"
 
     $host.UI.RawUI.WindowTitle = "LM Studio Client v$Version ### Show Help: !h "

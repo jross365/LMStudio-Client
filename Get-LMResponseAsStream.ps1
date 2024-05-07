@@ -136,7 +136,7 @@ process {
         If ($Host.UI.RawUI.KeyAvailable -and ($Key = $Host.UI.RawUI.ReadKey("AllowCtrlC,NoEcho,IncludeKeyUp"))) {
             If ([Int]$Key.Character -eq 27) {
         
-            Write-Host ""; Write-Warning "Escape character detected"
+            Write-Host ""; Write-Warning "Escape character detected, this party is over"
             
             $LMStreamPID = Get-Content "$File.pid" -First 1
             
