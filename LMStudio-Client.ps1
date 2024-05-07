@@ -66,7 +66,7 @@ begin {
                         else {
                             $ThisFolder = $HistFileDirs[0..$Index] -join '\'
                             
-                            try {$F = New-Item -Path $ThisFolder -ItemType Directory -Confirm:$false}
+                            try {$F = New-Item -Path $ThisFolder -ItemType Directory -Confirm:$false -ErrorAction Stop}
                             catch {throw "Unable to create $ThisFolder : $($_.Exception.Message)"}
 
                         }           
@@ -206,7 +206,7 @@ begin {
     function Get-LMModel {
         
         #region Check LMStudioServer values
-        If ($Global:LMStudioServer -eq $Null){throw "Please run Set-LMStudioServer first."}
+        If ($null -eq $Global:LMStudioServer){throw "Please run Set-LMStudioServer first."}
         
         If ($Global:LMStudioServer.Server.Length -eq 0 -or $null -eq $Global:LMStudioServer.Server){
 
