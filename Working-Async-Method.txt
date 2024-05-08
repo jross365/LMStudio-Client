@@ -512,8 +512,6 @@ namespace MyNamespace
         }
     }
 }
-
-
 "@
 
 
@@ -525,19 +523,25 @@ $File = "D:\test.log"
 rm $File -ErrorAction SilentlyContinue
 cd D:\git\LMStudio-AI-Client\
 
-
 #Endpoint setup
 $Server = "localhost"
 $Port = 1234
 [string]$EndPoint = $Server + ":" + $Port
 $CompletionURI = "http://$EndPoint/v1/chat/completions"
 
-
 #Build the body:
 $Body = get-content .\bodyexample.json | ConvertFrom-Json
 $Body.messages[3].content = "Please give me 50 facts about Ohio"
 $Body.stream = $True
 #endregion
+
+
+#cancel testing:
+rm $File -erroraction silentlycontinue
+ $handler = New-Object MyNamespace.WebRequestHandler #Recreate handler every time
+$N = $handler.PostAndStreamResponse($CompletionURI, ($Body | Convertto-Json), "$File")
+start-sleep -seconds 3; $handler.Cancel()
+
 
 # Initiate the session:
 $handler = New-Object MyNamespace.WebRequestHandler #Recreate handler every time
