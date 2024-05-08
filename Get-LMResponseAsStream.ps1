@@ -13,15 +13,13 @@ param (
         #region Define Jobs
 
     $PSVersion = "$($PSVersionTable.PSVersion.Major)" + '.' + "$($PSVersionTable.PSVersion.Minor)"
-
+    
     $StreamJob = {
     
     $CompletionURI = $args[0]
     $Body = $args[1]    
     $File = $args[2]
-
-    "$PID" | out-File "$File.pid" -Encoding utf8
-
+    
 $PostForStream = @"
 using System;  
 using System.IO;  
@@ -74,10 +72,11 @@ Remove-Item $File -ErrorAction SilentlyContinue
 
 "" | out-file $File -Encoding utf8
 
-try {$Output = [LMStudio]::PostDataForStream($CompletionURI, ($Body | ConvertTo-Json), "application/json",$File)}
-catch {throw $_.Exception.Message}
-  
-return $Output
+$jobOutput = [LMStudio]::PostDataForStream($CompletionURI, ($Body | ConvertTo-Json), "application/json",$File)
+
+
+#return $jobOutput
+#$jobOutput
 
 }
 
@@ -102,20 +101,29 @@ return $Output
 
     $KillProcedure = {
         
-        try {
-            $LMStreamPID = Get-Content "$File.pid" -First 1 -ErrorAction Stop
-            Write-Warning "$(&C:\Windows\System32\taskkill.exe /PID $LMStreamPID /F)"
+        If ($Complete -ne $true){
+            try {
+                #$LMStreamPID = Get-Content "$File.pid" -First 1 -ErrorAction Stop
+                #Write-Verbose "$(&C:\Windows\System32\taskkill.exe /PID $LMStreamPID /F)" -Verbose
+                #Stop-Process -Id $LMStreamPID -Force -ErrorAction Stop
+            }
+            catch {Write-Warning "Unable to read `$File.pid: $($_.Exception.Message)"}
         }
-        catch {Write-Warning "Unable to read `$File.pid: $($.Exception.Message)"}
-
         if (!($KeepJobs.IsPresent)){
-            $StopJobs = get-Job | Stop-Job
-            $RemoveJobs = Get-Job | Remove-Job
+
+            Start-Sleep -Milliseconds 500
+
+            $EndJobs = Get-Job | Sort-Object -Descending | ForEach-Object {
+                $_ | Stop-Job
+                $_ | Remove-Job 
+            }
+ 
         }
         
-        If (!$KeepFiles.IsPresent){
-        Remove-Item "$File.pid" -Force
-        Remove-Item $File -Force
+        If (!($KeepFiles.IsPresent)){
+        Remove-Item "$File.pid" -Force -ErrorAction SilentlyContinue
+        Remove-Item $File -Force -ErrorAction SilentlyContinue
+        Remove-Item "$File.stop" -Force -ErrorAction SilentlyContinue
         }
 
     }
@@ -137,7 +145,8 @@ $MessageBuffer = ""
 }
 process {
 
-    $x = 1
+    $Complete = $False
+    $Interrupted = $False
 
     do {
 
@@ -146,29 +155,30 @@ process {
             If ([Int]$Key.Character -eq 27) {
         
             Write-Host ""; Write-Warning "Escape character detected, this party is over"
-            
-            
-            
-            #Stop-Process -Id $LMStreamPID -Force -ErrorAction Continue #-ErrorAction SilentlyContinue #If we can't stop it, it's because it ended already.
-            
             &$KillProcedure
-        
-            throw "Function was interrupted with SIGINT during execution"
+            $Interrupted = $True
+            
             }
+
         }
+
+        If ($Interrupted){break}
     
-        $Output = Receive-Job $StartParseJob | Where-Object {$_ -match 'data:' -or $_ -match '|ERROR!?!'}
+        $jobOutput = Receive-Job $StartParseJob #| Where-Object {$_ -match 'data:' -or $_ -match '|ERROR!?!'} #Need to move this into :oloop 
     
-        :oloop foreach ($Line in $Output){
-    
+        :oloop foreach ($Line in $jobOutput){
+
             if ($Line -match "ERROR!?!"){
             
                 &$KillProcedure
                 throw "Exception: $($Line -replace 'ERROR!?!')"
             }
+            elseif ($Line -match "data: [DONE]"){break oloop}
+            elseif ($Line -notmatch "data: "){continue oloop}
             else {
     
                 $LineAsObj = $Line.TrimStart('data: ') | ConvertFrom-Json
+                
                 If ($LineAsObj.id.Length -eq 0){continue oloop}
     
                 $Word = $LineAsObj.choices.delta.content
@@ -176,27 +186,30 @@ process {
                 $MessageBuffer += $Word
             
                 If ($null -ne $LineAsObj.choices.finish_reason){
-                    Write-Host ""; Write-Host "Finish reason: $($LineAsObj.choices.finish_reason)"
-                    $x = 5
+                    Write-Host ""
+                    #Write-Verbose "Finish reason: $($LineAsObj.choices.finish_reason)" -Verbose
+                    $Complete = $True
+                    break oloop
                 }
     
             }
     
         }
     
-    
     }
-    until ($x -eq 5)
+    until ($Complete -eq $True)
 
 } #Close Process
 
 end {
 
-    $StopJobs = get-Job | Stop-Job
-    $RemoveJobs = Get-Job | Remove-Job
-    Remove-Item "$File.pid" -Force
-    Remove-Item "$File" -Force
-    return $MessageBuffer
+    If (!($Interrupted)){
+        
+        &$KillProcedure
+        return $MessageBuffer}
+
+    Write-Host ""
 
 } #Close End
+
 } #Close function
