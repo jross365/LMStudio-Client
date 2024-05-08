@@ -21,50 +21,109 @@ param (
     $File = $args[2]
     
 $PostForStream = @"
-using System;  
-using System.IO;  
-using System.Net;  
-public class LMStudio {  
-     public static string PostDataForStream(string url, string data, string contentType, string outFile) 
-     {   
-        HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);  
-        byte[] byteArray = System.Text.Encoding.UTF8.GetBytes(data);  
-        request.ContentLength = byteArray.Length;  
-        request.ContentType = contentType;   
-        request.Method = "POST"; 
-              
-         try {    
-            using (Stream dataStream = request.GetRequestStream()) {     
-                dataStream.Write(byteArray, 0, byteArray.Length);      
-             }   
-             
-             using(HttpWebResponse response = (HttpWebResponse)request.GetResponse()) {  
-                 Stream streamResponse = response.GetResponseStream();
-                 string responseData="";   // To hold the received chunks of text from server responses
-                 if (streamResponse != null){  // Check for a valid data source     
-                     using (StreamReader reader = new StreamReader(streamResponse))   
-                     {      
-                         string line;
-                             
-                         while ((line = reader.ReadLine()) != null)   // Read the response in chunks    
-                         {        
-                             File.AppendAllText(outFile, line + Environment.NewLine);  // Write to file instead of console
-                             responseData += line + Environment.NewLine;
-                         }  
-                     responseData += reader.ReadToEnd();     // Read the remaining part if any
-                 }} 
-                 return responseData;      // Return complete server's text                    
-              }      
-         } catch (WebException ex) {                      // Handle exceptions properly here  
-            File.AppendAllText(outFile, "ERROR!?! Error occurred while sending request to URL :{url}, Exception Message: {ex.Message}" + Environment.NewLine);
-            throw new Exception ("An error has occurred: " + ex.Message, ex);
-        } catch (Exception ex) {                          // Catch any other exceptions not specifically handled above  
-            File.AppendAllText(outFile, "ERROR!?! Error occurred while sending request to URL :{url}, Exception Message: {ex.Message}" + Environment.NewLine);
-            throw new Exception ("An error has occured: " + ex.Message, ex);
-        }  
-     } 
+using System;
+using System.IO;
+using System.Net;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace LMStudio
+{
+    public class WebRequestHandler : IDisposable
+    {
+        private CancellationTokenSource _cancellationTokenSource;
+
+        public CancellationTokenSource CancellationTokenSource
+        {
+            get { return _cancellationTokenSource; }
+            private set { _cancellationTokenSource = value; }
+        }
+
+        public WebRequestHandler()
+        {
+            CancellationTokenSource = new CancellationTokenSource();
+        }
+
+        public async Task PostAndStreamResponse(string url, string requestBody, string outputPath)
+        {
+            try
+            {
+                // Register SIGINT and SIGTERM handlers
+                Console.CancelKeyPress += (_, e) =>
+                {
+                    e.Cancel = true;
+                    Cancel();
+                };
+                AppDomain.CurrentDomain.ProcessExit += (_, __) =>
+                {
+                    Cancel();
+                };
+
+                // Create a HTTP request
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "POST";
+                request.ContentType = "application/json";
+
+                // Write each line of request body
+                using (StreamWriter streamWriter = new StreamWriter(request.GetRequestStream()))
+                {
+                    string[] lines = requestBody.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+                    foreach (string line in lines)
+                    {
+                        await streamWriter.WriteLineAsync(line);
+                        if (line == "data: [DONE]")
+                        {
+                            Cancel();
+                            return;
+                        }
+                    }
+                }
+
+                // Get response
+                using (HttpWebResponse response = (HttpWebResponse)await request.GetResponseAsync())
+                using (Stream responseStream = response.GetResponseStream())
+                using (StreamWriter fileWriter = new StreamWriter(outputPath, append: true))
+                using (StreamReader reader = new StreamReader(responseStream))
+                {
+                    // Read response line by line and write to file
+                    string line;
+                    while ((line = await reader.ReadLineAsync()) != null)
+                    {
+                        if (CancellationTokenSource.IsCancellationRequested)
+                        {
+                            await fileWriter.WriteLineAsync("ERROR!?! Method Cancelled");
+                            return;
+                        }
+
+                        await fileWriter.WriteLineAsync(line);
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Clean up resources
+                Console.WriteLine("Operation canceled. Closing connection...");
+            }
+            catch (Exception ex)
+            {
+                File.AppendAllText(outputPath,"ERROR!?! Error occurred while sending request to URL: {url}, Exception Message: {ex.Message}" + Environment.NewLine);
+                throw new Exception("An error has occurred: " + ex.Message, ex);
+            }
+        }
+
+        public void Cancel()
+        {
+            CancellationTokenSource.Cancel();
+        }
+
+        public void Dispose()
+        {
+            CancellationTokenSource.Dispose();
+        }
+    }
 }
-"@
+
+"@   
 
 Add-Type -TypeDefinition $PostForStream
  
@@ -72,9 +131,11 @@ Remove-Item $File -ErrorAction SilentlyContinue
 
 "" | out-file $File -Encoding utf8
 
-$jobOutput = [LMStudio]::PostDataForStream($CompletionURI, ($Body | ConvertTo-Json), "application/json",$File)
+$StreamSession = New-Object LMStudio.WebRequestHandler
 
+$jobOutput = $StreamSession.PostAndStreamResponse($CompletionURI, ($Body | Convertto-Json), "$File")
 
+#I could probably put the reader into this code as well, and consolidate my jobs
 #return $jobOutput
 #$jobOutput
 
