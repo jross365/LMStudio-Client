@@ -221,10 +221,10 @@ process {
         If ($Host.UI.RawUI.KeyAvailable -and ($Key = $Host.UI.RawUI.ReadKey("AllowCtrlC,NoEcho,IncludeKeyUp"))) {
             If ([Int]$Key.Character -eq 27) {
         
-            Write-Host ""; Write-Warning "Escape character detected, this party is over"
-            &$KillProcedure
-            $Interrupted = $True
-            
+                Write-Host ""; Write-Warning "Escape character detected, this party is over"
+                &$KillProcedure
+                $Interrupted = $True
+
             }
 
         }
@@ -233,26 +233,9 @@ process {
     
         $jobOutput = Receive-Job $StartParseJob #| Where-Object {$_ -match 'data:' -or $_ -match '|ERROR!?!'} #Need to move this into :oloop 
     
-            #for help:
-        if ($Line -match "ERROR!?!"){
-            $StopReading = $True    
-            return ([string]($Line -replace 'ERROR!?!',"HALT: ERROR"))
-            break readloop
-        }
-
-        if ($Line -match "STOP!?! Cancel Detected"){
-            $StopReading = $True    
-            return ([string]($Line -replace 'ERROR!?!',"HALT: CANCELED"))
-            break readloop
-        }
-
-        If ($Line -match "data: [DONE]"){
-            $StopReading = $true
-            return "HALT: COMPLETE"
-            break readloop
-        }
-            #end for help
         :oloop foreach ($Line in $jobOutput){
+
+            If ($Line.Length -eq 0){continue oloop}
 
             if ($Line -cmatch 'HALT: ERROR|HALT: CANCELED' ){
             
@@ -260,7 +243,7 @@ process {
                 throw "Exception: $($Line -replace 'HALT: ERROR' -replace 'HALT: CANCELED')"
 
             }
-            elseif ($Line -match "data: [DONE]"){break oloop}
+            elseif ($Line -match "HALT: COMPLETE"){break oloop}
             elseif ($Line -notmatch "data: "){continue oloop}
             else {
     
