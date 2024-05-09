@@ -151,7 +151,7 @@ namespace LMStudio
 
         else {
         #It "should" be the case that the reader is slower than the writer, because of all these conditions:
-            :readloop Foreach ($line in ($FileStreamReader.ReadToEnd() -split '\r\n')){
+            :readloop Foreach ($Line in ($FileStreamReader.ReadToEnd() -split '\r\n')){
                 
                 $LineIndex++
 
@@ -174,7 +174,7 @@ namespace LMStudio
 
                 }
 
-                If ($Line -match "data: {"){return ([string]($Line.TrimStart('data: ')))}
+                If ($Line -match "data: {"){return $Line}
 
             }            
 
@@ -191,31 +191,19 @@ namespace LMStudio
 
     $KillProcedure = {
             
-        if (!($KeepJob.IsPresent)){
-
-            Start-Sleep -Milliseconds 500
-
-            $EndJobs = Get-Job | Sort-Object -Descending | ForEach-Object {
-                $_ | Stop-Job
-                $_ | Remove-Job 
-            }
- 
-        }
-        
-        If (!($KeepFile.IsPresent)){
-        Remove-Item "$File.pid" -Force -ErrorAction SilentlyContinue
-        Remove-Item $File -Force -ErrorAction SilentlyContinue
-        Remove-Item "$File.stop" -Force -ErrorAction SilentlyContinue
-        }
+        if (!($KeepJob.IsPresent)){$EndJobs = Get-Job $StartStreamJob | Foreach-Object {$_ | Stop-Job; $_| Remove-Job}}
+        If (!($KeepFile.IsPresent)){Remove-Item $File -Force -ErrorAction SilentlyContinue}
 
     }
+    
+    #Send the right parameters to let the old C# code run:
+    $PSVersion = "$($PSVersionTable.PSVersion.Major)" + '.' + "$($PSVersionTable.PSVersion.Minor)"
 
-if ($PSVersion -match "5.1"){$StartStreamJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File)}
-elseif ($PSVersion -match "7.") {$StartStreamJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File) -PSVersion 5.1}
-else {throw "PSVersion $PSVersion doesn't match 5.1 or 7.x"}
+    if ($PSVersion -match "5.1"){$StartStreamJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File)}
+    elseif ($PSVersion -match "7.") {$StartStreamJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File) -PSVersion 5.1}
+    else {throw "PSVersion $PSVersion doesn't match 5.1 or 7.x"}
 
-#Used to force-kill the job, if necessary
-
+#To store our return output
 $MessageBuffer = ""
         
 }
@@ -242,12 +230,32 @@ process {
     
         $jobOutput = Receive-Job $StartParseJob #| Where-Object {$_ -match 'data:' -or $_ -match '|ERROR!?!'} #Need to move this into :oloop 
     
+            #for help:
+        if ($Line -match "ERROR!?!"){
+            $StopReading = $True    
+            return ([string]($Line -replace 'ERROR!?!',"HALT: ERROR"))
+            break readloop
+        }
+
+        if ($Line -match "STOP!?! Cancel Detected"){
+            $StopReading = $True    
+            return ([string]($Line -replace 'ERROR!?!',"HALT: CANCELED"))
+            break readloop
+        }
+
+        If ($Line -match "data: [DONE]"){
+            $StopReading = $true
+            return "HALT: COMPLETE"
+            break readloop
+        }
+            #end for help
         :oloop foreach ($Line in $jobOutput){
 
-            if ($Line -match "ERROR!?!"){
+            if ($Line -cmatch 'HALT: ERROR|HALT: CANCELED' ){
             
                 &$KillProcedure
-                throw "Exception: $($Line -replace 'ERROR!?!')"
+                throw "Exception: $($Line -replace 'HALT: ERROR' -replace 'HALT: CANCELED')"
+
             }
             elseif ($Line -match "data: [DONE]"){break oloop}
             elseif ($Line -notmatch "data: "){continue oloop}
