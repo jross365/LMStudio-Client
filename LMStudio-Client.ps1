@@ -13,22 +13,22 @@ begin {
     function Initialize-LMVarStore {
         $Global:LMStudioServer = @{}
         $Global:LMStudioServer.Add("ServerInfo",@{})
+        $Global:LMStudioServer.ServerInfo.Add("Server","")
+        $Global:LMStudioServer.ServerInfo.Add("Port","")
         $Global:LMStudioServer.Add("HistoryFilepath","")
 
     }
     function Set-LMStudioServer ([string]$Server,[int]$Port, [switch]$Show){
-        If ($Port.Length -gt 0 -and ($Port -lt 0 -or $Port -gt 65535)){throw "$Port must be in a range of 0-65535"}
-        If ($Server.Length -ne 0 -and $null -ne $Server -and $Port.Length -gt 0){throw "Please provide a name or IP address for parameter -Server"}
+        If ($Port.Length -eq 0 -or ($Port -lt 0 -or $Port -gt 65535)){throw "$Port must be in a range of 0-65535"}
+        If (($Server.Length -eq 0 -or $null -eq $Server) -and $Port.Length -gt 0){throw "Please provide a name or IP address for parameter -Server"}
 
         If ($Server.Length -ne 0 -and $Port.Length -ne 0){
 
-            If$Global:LMStudioServer = @{}
-
-            try {$Global:LMStudioServer.ServerInfo.Add($Server)}
-            catch {$Global:LMStudioServer.ServerInfo.Server = $Server}
+            try {$Global:LMStudioServer.ServerInfo.Server = $Server}
+            catch {throw "Unable to set Global variable LMStudioServer for value Server: $Server"}
             
-            try {$Global:LMStudioServer.ServerInfo.Add($Port)}
-            catch {$Global:LMStudioServer.ServerInfo.Port = $Port}
+            try {$Global:LMStudioServer.ServerInfo.Port = $Port}
+            catch {throw "Unable to set Global variable LMStudioServer for value Port: $Port"}
 
         }
 
