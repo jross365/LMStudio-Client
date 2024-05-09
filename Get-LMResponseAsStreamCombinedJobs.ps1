@@ -128,10 +128,11 @@ namespace LMStudio
     Remove-Item $File -ErrorAction SilentlyContinue
 
     try {"" | out-file $File -Encoding utf8 -ErrorAction Stop}
-    catch {}
-    # $line has your line
+    catch {throw "Unable to create file $File"}
 
-    $LineIndex = 
+    $CreationTime = ([System.IO.File]::GetLastWriteTime($File)).Ticks
+
+    $LineIndex = -1
     $StopReading = $False
     $Reads = 0
 
@@ -140,9 +141,27 @@ namespace LMStudio
     try {$jobOutput = $StreamSession.PostAndStreamResponse($CompletionURI, ($Body | Convertto-Json), "$File")}
     catch {throw $_.Exception.Message}
 
+    
+    <#
+    #Check for our file to change
+    $CheckCycles = 0
+    $FileChanged = $False
+
     do {
-        try {$FileText = Get-Content $File -ErrorAction Stop}
-        catch {return "HALT: ERROR Unable to open file"}
+        Start-Sleep -Milliseconds 100
+        $LastWriteTime = ([System.IO.File]::GetLastWriteTime($File)).Ticks
+        $FileChanged = [bool](!($CreationTime -eq $LastWriteTime))
+
+    }
+    until ($FileChanged -or $CheckCycles -eq 10)
+    
+
+    If (!$FileChanged){return "HALT: ERROR File does not appear have been written to over 1 seconds"; break}
+    
+    #> #This ain't doing me any favors either
+    try {Get-Content $File -Tail 10 -Wait}
+    catch {return "HALT: ERROR File is not readable"}
+    
 
         <# New, preferable but still locking issue
         [System.IO.FileStream]$FileStreamReader = [System.IO.File]::Open("$File", [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
@@ -165,17 +184,21 @@ namespace LMStudio
 
         #>
 
-        If (($FileText.Count - 1) -ge $LineIndex -and $Reads -gt 0){
+        <#
+        If (($FileText.Count - 1) -ge $LineIndex -and $Reads -gt 5){
             $StopReading = $true
             return "HALT: ERROR no new lines since last iteration, job likely stopped."
             break
         }
+        #>
     
+        <# #This ain't working, I want to revisit this soon:
         #It "should" be the case that the reader is slower than the writer, because of all these conditions:
         :readloop Foreach ($Line in $FileText[$LineIndex..$($FileText.Count - 1)]){
             
             $LineIndex++
             
+
             if ($Line -match "ERROR!?!"){
                 $StopReading = $True    
                 return ([string]($Line -replace 'ERROR!?!',"HALT: ERROR "))
@@ -197,12 +220,18 @@ namespace LMStudio
 
             If ($Line -match "data: {"){return $Line}
 
+            
+
+            return $line
+
         }            
 
     $Reads++
         
     }
     until ($StopReading -eq $True)
+
+    #>
 
     $JobOutput.Close()
     $jobOutput.Dispose()
@@ -254,17 +283,21 @@ process {
 
             If ($Line.Length -eq 0){continue oloop}
 
-            if ($Line -cmatch 'HALT: ERROR|HALT: CANCELED' ){
+            if ($Line -cmatch 'ERROR!?!|"STOP!?! Cancel Detected' ){
             
                 &$KillProcedure
-                throw "Exception: $($Line -replace 'HALT: ERROR' -replace 'HALT: CANCELED')"
+                throw "Exception: $($Line -replace 'ERROR!?!' -replace '"STOP!?! Cancel Detected')"
+                $Complete = $True
 
             }
-            elseif ($Line -match "HALT: COMPLETE"){break oloop}
+            elseif ($Line -match "data: [DONE]"){
+                $Complete = $True
+                break oloop
+            }
             elseif ($Line -notmatch "data: "){continue oloop}
             else {
     
-                $LineAsObj = $Line.TrimStart('data: ') | ConvertFrom-Json
+                $LineAsObj = $Line.TrimStart("data: ") | ConvertFrom-Json
                 
                 If ($LineAsObj.id.Length -eq 0){continue oloop}
     
