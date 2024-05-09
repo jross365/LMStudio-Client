@@ -4,16 +4,14 @@ param (
     [Parameter(Mandatory=$true)][string]$CompletionURI,
     [Parameter(Mandatory=$true)][pscustomobject]$Body,
     [Parameter(Mandatory=$true)][string]$File,
-    [Parameter(Mandatory=$false)][switch]$KeepJobs,
-    [Parameter(Mandatory=$false)][switch]$KeepFiles
+    [Parameter(Mandatory=$false)][switch]$KeepJob,
+    [Parameter(Mandatory=$false)][switch]$KeepFile
     )
 
     begin {
 
         #region Define Jobs
 
-    $PSVersion = "$($PSVersionTable.PSVersion.Major)" + '.' + "$($PSVersionTable.PSVersion.Minor)"
-    
     $StreamJob = { #This job is a ludicrously primitive way to introduce asynchronicity into a stubbornly synchronous language
     
     $CompletionURI = $args[0]
@@ -176,7 +174,7 @@ namespace LMStudio
 
                 }
 
-                If ($Line -match "data: {"){return $Line}
+                If ($Line -match "data: {"){return ([string]($Line.TrimStart('data: ')))}
 
             }            
 
@@ -190,39 +188,10 @@ namespace LMStudio
     until ($StopReading -eq $True)
       
     } #Close $StreamJob
-    
-
-    
-            
-        &$KillProcedure
-        throw "Exception: $($Line -replace 'ERROR!?!')"
-    
-
-    If ($null -eq $null){$null = $null}
-    elseif ($Line -match "data: [DONE]"){break oloop}
-    elseif ($Line -notmatch "data: "){continue oloop}
-    else {
-
-        $LineAsObj = $Line.TrimStart('data: ') | ConvertFrom-Json
-        
-        If ($LineAsObj.id.Length -eq 0){continue oloop}
-
-        $Word = $LineAsObj.choices.delta.content
-        Write-Host "$Word" -NoNewline
-        $MessageBuffer += $Word
-    
-        If ($null -ne $LineAsObj.choices.finish_reason){
-            Write-Host ""
-            #Write-Verbose "Finish reason: $($LineAsObj.choices.finish_reason)" -Verbose
-            $Complete = $True
-            break oloop
-        }
-
-    }
 
     $KillProcedure = {
             
-        if (!($KeepJobs.IsPresent)){
+        if (!($KeepJob.IsPresent)){
 
             Start-Sleep -Milliseconds 500
 
@@ -233,7 +202,7 @@ namespace LMStudio
  
         }
         
-        If (!($KeepFiles.IsPresent)){
+        If (!($KeepFile.IsPresent)){
         Remove-Item "$File.pid" -Force -ErrorAction SilentlyContinue
         Remove-Item $File -Force -ErrorAction SilentlyContinue
         Remove-Item "$File.stop" -Force -ErrorAction SilentlyContinue
