@@ -131,8 +131,9 @@ namespace LMStudio
     catch {}
     # $line has your line
 
-    $LineIndex = -1
+    $LineIndex = 
     $StopReading = $False
+    $Reads = 0
 
     $StreamSession = New-Object LMStudio.WebRequestHandler
 
@@ -140,8 +141,6 @@ namespace LMStudio
     catch {throw $_.Exception.Message}
 
     do {
-
-        start-sleep -Milliseconds 150
         try {$FileText = Get-Content $File -ErrorAction Stop}
         catch {return "HALT: ERROR Unable to open file"}
 
@@ -166,41 +165,41 @@ namespace LMStudio
 
         #>
 
-        If (($FileText.Count - 1) -ge $LineIndex){
+        If (($FileText.Count - 1) -ge $LineIndex -and $Reads -gt 0){
             $StopReading = $true
             return "HALT: ERROR no new lines since last iteration, job likely stopped."
+            break
         }
-
-        else {
+    
         #It "should" be the case that the reader is slower than the writer, because of all these conditions:
-            :readloop Foreach ($Line in $FileText[$LineIndex..$FileText.$($FileText.Count - 1)]){
-                
-                $LineIndex++
+        :readloop Foreach ($Line in $FileText[$LineIndex..$($FileText.Count - 1)]){
+            
+            $LineIndex++
+            
+            if ($Line -match "ERROR!?!"){
+                $StopReading = $True    
+                return ([string]($Line -replace 'ERROR!?!',"HALT: ERROR "))
+                break readloop
+            }
 
-                if ($Line -match "ERROR!?!"){
-                    $StopReading = $True    
-                    return ([string]($Line -replace 'ERROR!?!',"HALT: ERROR "))
-                    break readloop
-                }
+            if ($Line -match "STOP!?! Cancel Detected"){
+                $StopReading = $True    
+                return ([string]($Line -replace 'ERROR!?!',"HALT: CANCELED "))
+                break readloop
+            }
 
-                if ($Line -match "STOP!?! Cancel Detected"){
-                    $StopReading = $True    
-                    return ([string]($Line -replace 'ERROR!?!',"HALT: CANCELED "))
-                    break readloop
-                }
+            If ($Line -match "data: [DONE]"){
+                $StopReading = $true
+                return "HALT: COMPLETE"
+                break readloop
 
-                If ($Line -match "data: [DONE]"){
-                    $StopReading = $true
-                    return "HALT: COMPLETE"
-                    break readloop
+            }
 
-                }
+            If ($Line -match "data: {"){return $Line}
 
-                If ($Line -match "data: {"){return $Line}
+        }            
 
-            }            
-
-        }
+    $Reads++
         
     }
     until ($StopReading -eq $True)
