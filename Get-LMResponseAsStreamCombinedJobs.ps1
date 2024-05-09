@@ -128,33 +128,52 @@ namespace LMStudio
     Remove-Item $File -ErrorAction SilentlyContinue
 
     try {"" | out-file $File -Encoding utf8 -ErrorAction Stop}
-    catch {throw "Unable to write to $File, which is critical for this archaic, cobbled-together computer alchemy"}
+    catch {}
+    # $line has your line
+
+    $LineIndex = -1
+    $StopReading = $False
 
     $StreamSession = New-Object LMStudio.WebRequestHandler
 
     try {$jobOutput = $StreamSession.PostAndStreamResponse($CompletionURI, ($Body | Convertto-Json), "$File")}
     catch {throw $_.Exception.Message}
 
-      # $line has your line
-
-    $LineIndex = -1
-    $StopReading = $False
-
     do {
+
+        start-sleep -Milliseconds 150
+        try {$FileText = Get-Content $File -ErrorAction Stop}
+        catch {return "HALT: ERROR Unable to open file"}
+
+        <# New, preferable but still locking issue
+        [System.IO.FileStream]$FileStreamReader = [System.IO.File]::Open("$File", [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+        $byteArray = New-Object byte[] $fileStream.Length
+        $encoding = New-Object System.Text.UTF8Encoding $true
+    
+        $FileText = New-Object System.Collections.ArrayList
+
+        while ($filestream.Read($byteArray, 0, $byteArray.Length)){$R.Add($encoding.GetString($byteArray))}
+
+        $FileStreamReader.Dispose()
+        
+        #>
+        <# Original, File-locking issue
         $FileStreamReader = [System.IO.StreamReader]::new($File)
 
         $FileText = ($FileStreamReader.ReadToEnd() -split '\r\n')
 
         $FileStreamReader.Close()
 
-        If ($FileText.GetUpperBound(0) -ge $LineIndex){
+        #>
+
+        If (($FileText.Count - 1) -ge $LineIndex){
             $StopReading = $true
             return "HALT: ERROR no new lines since last iteration, job likely stopped."
         }
 
         else {
         #It "should" be the case that the reader is slower than the writer, because of all these conditions:
-            :readloop Foreach ($Line in ($FileStreamReader.ReadToEnd() -split '\r\n')){
+            :readloop Foreach ($Line in $FileText[$LineIndex..$FileText.$($FileText.Count - 1)]){
                 
                 $LineIndex++
 
@@ -182,19 +201,18 @@ namespace LMStudio
             }            
 
         }
-
-    $JobOutput.Close()
-    
-    $JobOutput.Dispose()
         
     }
     until ($StopReading -eq $True)
+
+    $JobOutput.Close()
+    $jobOutput.Dispose()
       
     } #Close $StreamJob
 
     $KillProcedure = {
             
-        if (!($KeepJob.IsPresent)){$EndJobs = Get-Job $StartStreamJob | Foreach-Object {$_ | Stop-Job; $_| Remove-Job}}
+        if (!($KeepJob.IsPresent)){$EndJob = Get-Job $StartStreamJob | Foreach-Object {$_ | Stop-Job; $_| Remove-Job}}
         If (!($KeepFile.IsPresent)){Remove-Item $File -Force -ErrorAction SilentlyContinue}
 
     }
@@ -231,7 +249,7 @@ process {
 
         If ($Interrupted){break}
     
-        $jobOutput = Receive-Job $StartParseJob #| Where-Object {$_ -match 'data:' -or $_ -match '|ERROR!?!'} #Need to move this into :oloop 
+        $jobOutput = Receive-Job $StartStreamJob #| Where-Object {$_ -match 'data:' -or $_ -match '|ERROR!?!'} #Need to move this into :oloop 
     
         :oloop foreach ($Line in $jobOutput){
 
