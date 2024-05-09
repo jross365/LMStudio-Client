@@ -129,110 +129,15 @@ namespace LMStudio
 
     try {"" | out-file $File -Encoding utf8 -ErrorAction Stop}
     catch {throw "Unable to create file $File"}
-
-    $CreationTime = ([System.IO.File]::GetLastWriteTime($File)).Ticks
-
-    $LineIndex = -1
-    $StopReading = $False
-    $Reads = 0
-
+  
     $StreamSession = New-Object LMStudio.WebRequestHandler
 
     try {$jobOutput = $StreamSession.PostAndStreamResponse($CompletionURI, ($Body | Convertto-Json), "$File")}
     catch {throw $_.Exception.Message}
 
-    
-    <#
-    #Check for our file to change
-    $CheckCycles = 0
-    $FileChanged = $False
-
-    do {
-        Start-Sleep -Milliseconds 100
-        $LastWriteTime = ([System.IO.File]::GetLastWriteTime($File)).Ticks
-        $FileChanged = [bool](!($CreationTime -eq $LastWriteTime))
-
-    }
-    until ($FileChanged -or $CheckCycles -eq 10)
-    
-
-    If (!$FileChanged){return "HALT: ERROR File does not appear have been written to over 1 seconds"; break}
-    
-    #> #This ain't doing me any favors either
-    try {Get-Content $File -Tail 10 -Wait}
+     try {Get-Content $File -Tail 10 -Wait}
     catch {return "HALT: ERROR File is not readable"}
-    
-
-        <# New, preferable but still locking issue
-        [System.IO.FileStream]$FileStreamReader = [System.IO.File]::Open("$File", [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
-        $byteArray = New-Object byte[] $fileStream.Length
-        $encoding = New-Object System.Text.UTF8Encoding $true
-    
-        $FileText = New-Object System.Collections.ArrayList
-
-        while ($filestream.Read($byteArray, 0, $byteArray.Length)){$R.Add($encoding.GetString($byteArray))}
-
-        $FileStreamReader.Dispose()
-        
-        #>
-        <# Original, File-locking issue
-        $FileStreamReader = [System.IO.StreamReader]::new($File)
-
-        $FileText = ($FileStreamReader.ReadToEnd() -split '\r\n')
-
-        $FileStreamReader.Close()
-
-        #>
-
-        <#
-        If (($FileText.Count - 1) -ge $LineIndex -and $Reads -gt 5){
-            $StopReading = $true
-            return "HALT: ERROR no new lines since last iteration, job likely stopped."
-            break
-        }
-        #>
-    
-        <# #This ain't working, I want to revisit this soon:
-        #It "should" be the case that the reader is slower than the writer, because of all these conditions:
-        :readloop Foreach ($Line in $FileText[$LineIndex..$($FileText.Count - 1)]){
-            
-            $LineIndex++
-            
-
-            if ($Line -match "ERROR!?!"){
-                $StopReading = $True    
-                return ([string]($Line -replace 'ERROR!?!',"HALT: ERROR "))
-                break readloop
-            }
-
-            if ($Line -match "STOP!?! Cancel Detected"){
-                $StopReading = $True    
-                return ([string]($Line -replace 'ERROR!?!',"HALT: CANCELED "))
-                break readloop
-            }
-
-            If ($Line -match "data: [DONE]"){
-                $StopReading = $true
-                return "HALT: COMPLETE"
-                break readloop
-
-            }
-
-            If ($Line -match "data: {"){return $Line}
-
-            
-
-            return $line
-
-        }            
-
-    $Reads++
-        
-    }
-    until ($StopReading -eq $True)
-
-    #>
-
+ 
     $JobOutput.Close()
     $jobOutput.Dispose()
       
@@ -240,7 +145,7 @@ namespace LMStudio
 
     $KillProcedure = {
             
-        if (!($KeepJob.IsPresent)){$EndJob = Get-Job $StartStreamJob | Foreach-Object {$_ | Stop-Job; $_| Remove-Job}}
+        if (!($KeepJob.IsPresent)){Stop-Job -Id ($RunningJob.id) -ErrorAction SilentlyContinue; Remove-job -Id ($RunningJob.Id) -ErrorAction SilentlyContinue}
         If (!($KeepFile.IsPresent)){Remove-Item $File -Force -ErrorAction SilentlyContinue}
 
     }
@@ -248,12 +153,12 @@ namespace LMStudio
     #Send the right parameters to let the old C# code run:
     $PSVersion = "$($PSVersionTable.PSVersion.Major)" + '.' + "$($PSVersionTable.PSVersion.Minor)"
 
-    if ($PSVersion -match "5.1"){$StartStreamJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File)}
-    elseif ($PSVersion -match "7.") {$StartStreamJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File) -PSVersion 5.1}
+    if ($PSVersion -match "5.1"){$RunningJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File)}
+    elseif ($PSVersion -match "7.") {$RunningJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File) -PSVersion 5.1}
     else {throw "PSVersion $PSVersion doesn't match 5.1 or 7.x"}
 
-#To store our return output
-$MessageBuffer = ""
+    #To store our return output
+    $MessageBuffer = ""
         
 }
 process {
@@ -277,7 +182,7 @@ process {
 
         If ($Interrupted){break}
     
-        $jobOutput = Receive-Job $StartStreamJob #| Where-Object {$_ -match 'data:' -or $_ -match '|ERROR!?!'} #Need to move this into :oloop 
+        $jobOutput = Receive-Job $RunningJob #| Where-Object {$_ -match 'data:' -or $_ -match '|ERROR!?!'} #Need to move this into :oloop 
     
         :oloop foreach ($Line in $jobOutput){
 
