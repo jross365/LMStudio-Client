@@ -139,7 +139,7 @@ namespace LMStudio
 
       # $line has your line
 
-    $LineIndex = 0
+    $LineIndex = -1
     $StopReading = $False
 
     do {
@@ -149,32 +149,42 @@ namespace LMStudio
 
         $FileStreamReader.Close()
 
+        If ($FileText.GetUpperBound(0) -ge $LineIndex){$StopReading = $true}
+
+        else {
         #It "should" be the case that the reader is slower than the writer, because of all these conditions:
-        :readloop Foreach ($line in ($FileStreamReader.ReadToEnd() -split '\r\n')){
+            :readloop Foreach ($line in ($FileStreamReader.ReadToEnd() -split '\r\n')){
+                
+                $LineIndex++
 
-            if ($Line -match "ERROR!?!"){
-                $StopReading = $True    
-                return ([string]($Line -replace 'ERROR!?!',"HALT: ERROR"))
-                break readloop
-            }
-            if ($Line -match "STOP!?! Cancel Detected"){
-                $StopReading = $True    
-                return ([string]($Line -replace 'ERROR!?!',"HALT: CANCELED"))
-                break readloop
-            }
-            If ($Line -match "data: [DONE]"){
-                $StopReading = $true
-                return "HALT: COMPLETE"
-                break readloop
+                if ($Line -match "ERROR!?!"){
+                    $StopReading = $True    
+                    return ([string]($Line -replace 'ERROR!?!',"HALT: ERROR"))
+                    break readloop
+                }
 
-            }
+                if ($Line -match "STOP!?! Cancel Detected"){
+                    $StopReading = $True    
+                    return ([string]($Line -replace 'ERROR!?!',"HALT: CANCELED"))
+                    break readloop
+                }
 
-            
+                If ($Line -match "data: [DONE]"){
+                    $StopReading = $true
+                    return "HALT: COMPLETE"
+                    break readloop
+
+                }
+
+                If ($Line -match "data: {"){return $Line}
+
+            }            
 
         }
 
-       
-
+    $JobOutput.Close()
+    
+    $JobOutput.Dispose()
         
     }
     until ($StopReading -eq $True)
