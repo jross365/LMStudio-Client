@@ -147,7 +147,10 @@ namespace LMStudio
 
         $FileStreamReader.Close()
 
-        If ($FileText.GetUpperBound(0) -ge $LineIndex){$StopReading = $true}
+        If ($FileText.GetUpperBound(0) -ge $LineIndex){
+            $StopReading = $true
+            return "HALT: ERROR no new lines since last iteration, job likely stopped."
+        }
 
         else {
         #It "should" be the case that the reader is slower than the writer, because of all these conditions:
@@ -157,13 +160,13 @@ namespace LMStudio
 
                 if ($Line -match "ERROR!?!"){
                     $StopReading = $True    
-                    return ([string]($Line -replace 'ERROR!?!',"HALT: ERROR"))
+                    return ([string]($Line -replace 'ERROR!?!',"HALT: ERROR "))
                     break readloop
                 }
 
                 if ($Line -match "STOP!?! Cancel Detected"){
                     $StopReading = $True    
-                    return ([string]($Line -replace 'ERROR!?!',"HALT: CANCELED"))
+                    return ([string]($Line -replace 'ERROR!?!',"HALT: CANCELED "))
                     break readloop
                 }
 
