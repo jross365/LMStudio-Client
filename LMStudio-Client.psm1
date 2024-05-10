@@ -1,29 +1,80 @@
+#This function prompts for server name and port;
+# it prompts to create a new history file, or to load an existing one. 
+# If loading an existing one, it needs to verify it.
+function Create-LMConfigFile {
+}
 
+#This function reads the local LMConfigFile.json, verifies it (unless skipped), and then writes the values to the $Global:LMStudioVars
+function Import-LMConfigFile {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)][string]$ConfigFile = "$($Env:USERPROFILE)\Documents\WindowsPowerShell\Modules\LMStudio-Client",
+        [Parameter(Mandatory=$false)][switch]$SkipVerification
+    )
+begin {}
+process {}
+end {}
+}
+
+
+#This function builds the hierarchy of hash tables at $Global:LMstudiovars to store configuration information (server, port, history file)
 function Initialize-LMVarStore {
-    $Global:LMStudioServer = @{}
-    $Global:LMStudioServer.Add("ServerInfo",@{})
-    $Global:LMStudioServer.ServerInfo.Add("Server","")
-    $Global:LMStudioServer.ServerInfo.Add("Port","")
-    $Global:LMStudioServer.Add("HistoryFilepath","")
+    $Global:LMStudioVars = @{}
+    $Global:LMStudioVars.Add("ServerInfo",@{})
+    $Global:LMStudioVars.ServerInfo.Add("Server","")
+    $Global:LMStudioVars.ServerInfo.Add("Port","")
+    $Global:LMStudioVars.Add("HistoryFilePath","")
 
 }
+
+#This function sets the Global variables for Server and Port
 function Set-LMStudioServer ([string]$Server,[int]$Port, [switch]$Show){
     If ($Port.Length -eq 0 -or ($Port -lt 0 -or $Port -gt 65535)){throw "$Port must be in a range of 0-65535"}
     If (($Server.Length -eq 0 -or $null -eq $Server) -and $Port.Length -gt 0){throw "Please provide a name or IP address for parameter -Server"}
 
     If ($Server.Length -ne 0 -and $Port.Length -ne 0){
 
-        try {$Global:LMStudioServer.ServerInfo.Server = $Server}
+        try {$Global:LMStudioVars.ServerInfo.Server = $Server}
         catch {throw "Unable to set Global variable LMStudioServer for value Server: $Server"}
         
-        try {$Global:LMStudioServer.ServerInfo.Port = $Port}
+        try {$Global:LMStudioVars.ServerInfo.Port = $Port}
         catch {throw "Unable to set Global variable LMStudioServer for value Port: $Port"}
 
     }
 
-    If ($Show.IsPresent){$Global:LMStudioServer}
+    If ($Show.IsPresent){$Global:LMStudioVars}
 
 }
+
+#This function validates $Global:LMStudioVars is fully populated
+function Confirm-LMHistoryVariables {
+
+    If ($null -eq $Global:LMStudioVars){throw "Please run Set-LMStudioServer first."}
+    
+    If ($Global:LMStudioVars.Server.Length -eq 0 -or $null -eq $Global:LMStudioVars.Server){
+
+        If ($Global:LMStudioVars.Port.Length -eq 0 -or $null -eq $Global:LMStudioVars.Port){
+
+            throw "Server and Port are not valid, please run Set-LMStudioServer again"
+
+        }
+
+    }
+    
+    If ($Global:LMStudioVars.Port.Length -eq 0 -or $null -eq $Global:LMStudioVars.Port){
+
+        throw "Port is not valid, please run Set-LMStudioServer again"
+
+    }
+
+    return $True    
+
+}
+
+
+# This function "Carves The Way" to the path where the history file should be saved. 
+# It verifies the path validity and tries to create the path, if specified
+# Used by the Create-HistoryFile (I think)
 
 function Set-LMHistoryPath ([string]$HistoryFile,[switch]$CreatePath){
     If ($HistoryFile.Length -eq 0 -or $null -eq $HistoryFile){throw "Please enter a valid path to the history file"}
@@ -71,37 +122,15 @@ function Set-LMHistoryPath ([string]$HistoryFile,[switch]$CreatePath){
 
     $FolderPath = (0..($HistFileDirs.GetUpperBound(0))) -join '\'
 
-    try {$Global:LMStudioServer.HistoryFilepath = $FolderPath}
-    catch {throw "Unable to set HistoryFilepath. Run Initialize-LMVarStore to create it."}
+    try {$Global:LMStudioVars.HistoryFilePath = $FolderPath}
+    catch {throw "Unable to set HistoryFilePath. Run Initialize-LMVarStore to create it."}
 
-    if ($null -eq $Global:LMStudioServer.HistoryFilepath -or $Global:LMStudioServer.HistoryFilepath.Length -eq 0){throw "HistoryFilepath is empty. Please Run Initialize-LMVarStore to fix it."}
+    if ($null -eq $Global:LMStudioVars.HistoryFilePath -or $Global:LMStudioVars.HistoryFilePath.Length -eq 0){throw "HistoryFilePath is empty. Please Run Initialize-LMVarStore to fix it."}
 }
 
- function New-GreetingPrompt {
-    
-    $TodayIsADay = "It is $((Get-Date).DayOfWeek)"
-    
-    $TokenSet = @{U = [Char[]]'ABCDEFGHIJKLMNOPQRSTUVWXYZ'}
-        
-    $ThreeLetters = (Get-Random -Count 3 -InputObject $TokenSet.U -SetSeed ([System.Environment]::TickCount)) -join ', '
 
-    $Greetings = @(
-        "$TodayIsADay. Chose an adjective that contains these three letters: $ThreeLetters. Then use it to insult me in a short way without hurting my feelings too much.",
-        "$TodayIsADay. Please greet me in a unique and fun way!",
-        "$TodayIsADay. Choose a proper noun that contains these three letters: $ThreeLetters. Then provide a fact about the chosen proper noun.",
-        "$TodayIsADay. Please try to baffle me.",
-        "$TodayIsADay. Choose a proper noun that contains these three letters: $ThreeLetters. Then generate a haiku that includes this word.",
-        "$TodayIsADay. Choose a proper noun that contains these three letters: $ThreeLetters. Please generate a short poem about this word."
-        "$TodayisADay. Please wish me well for today."
-    )
-    
-    $ChosenGreeting = $Greetings[$(Get-Random -Minimum 0 -Maximum $($Greetings.GetUpperBound(0)) -SetSeed ([System.Environment]::TickCount))]
-
-    return $ChosenGreeting
-
-} #Close Function
-
-function New-HistoryObject {
+#This function generates and returns an empty history file template with dummy entries (doesn't save)
+function New-HistoryFileTemplate {
     try {
 
         $History = New-Object System.Collections.ArrayList
@@ -128,12 +157,18 @@ return $History
 
 }
 
-function Get-HistoryFile {
+
+#This function imports the content of an existing history file
+function Import-LMHistoryFile {
 
     #Check the Global Variable Store for the value
-    If ($Global:LMStudioServer.HistoryFilepath.Length -eq 0 -or $null -eq $Global:LMStudioServer.HistoryFilepath){throw "Historyfilepath is empty. Run Set-LMHistoryPath to fix it :-)"}
-    $HistoryFile = $Global:LMStudioServer.HistoryFilepath
+    try {$HistoryFileCheck = Confirm-LMHistoryVariables}
+    catch {throw $_.Exception.Message}
 
+    If ($HistoryFileCheck -ne $True){throw "Something went wrong when running Confirm-LMHistoryVariables (didn't return True)"}
+   
+    $HistoryFile = $Global:LMStudioVars.HistoryFilePath
+   
     #Import the original History file
     try {$HistoryContent = Get-Content $HistoryFile -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop}
     catch {throw "Unable to import history file $HistoryFile : $($_.Exception.Message))"}
@@ -143,7 +178,7 @@ function Get-HistoryFile {
     If ($HistoryContent.Models.0 -ne "dummymodel"){throw "History file $HistoryFile is missing the models dummy entry (bad format)"}
 
     #move over content from Fixed-Length arrays to New ArrayLists:
-    $NewHistory = New-HistoryObject
+    $NewHistory = New-HistoryFileTemplate
 
     #.Where({$_.Role -ne "dummy"}) removed:
     $HistoryContent.Greetings | ForEach-Object {$NewHistory.Greetings.Add($_) | Out-Null}
@@ -172,62 +207,67 @@ function Get-HistoryFile {
 
 } #Close Function
 
-function Set-HistoryFile ($History){
-If ($Global:LMStudioServer.HistoryFilepath.Length -eq 0 -or $null -eq $Global:LMStudioServer.HistoryFilepath){throw "Historyfilepath is empty. Run Set-LMHistoryPath to fix it :-)"}
-$HistoryFile = $Global:LMStudioServer.HistoryFilepath
+#This function saves a history stored in a variable to the history file
+function Save-LMHistoryFile ($History){
 
-try {$History | ConvertTo-Json -Depth 10 -ErrorAction Stop | Out-File -FilePath $HistoryFile -ErrorAction Stop}
-catch {throw "Unable to save history to `$HistoryFile; $($_.Exception.Message)"}
+    #Check the Global Variable Store for the value
+    try {$HistoryFileCheck = Confirm-LMHistoryVariables}
+    catch {throw $_.Exception.Message}
 
-return $True
+    If ($HistoryFileCheck -ne $True){throw "Something went wrong when running Confirm-LMHistoryVariables (didn't return True)"}
 
-}
+    $HistoryFile = $Global:LMStudioVars.HistoryFilePath
 
-function Show-Help {
-    Add-Type -AssemblyName PresentationCore,PresentationFramework
-    $ButtonType = [System.Windows.MessageBoxButton]::OK
-    $MessageboxTitle = “LMStudio-Client Help”
-    $Messageboxbody = “!h - Displays this help`r`n!s - Change the system prompt`r`n!t - Change the temperature`r`n!f - Change the history file`r`n!q - Save and Quit”
-    $MessageIcon = [System.Windows.MessageBoxImage]::Question
-    [System.Windows.MessageBox]::Show($Messageboxbody,$MessageboxTitle,$ButtonType,$messageicon)
+    try {$History | ConvertTo-Json -Depth 10 -ErrorAction Stop | Out-File -FilePath $HistoryFile -ErrorAction Stop}
+    catch {throw "Unable to save history to `$HistoryFile; $($_.Exception.Message)"}
+
+    return $True
 
 }
 
-function Get-LMModel {
+#This function retrieves the model information from the server.
+#It can also be used as a connection test with the -AsTest parameter
+function Get-LMModel ([switch]$AsTest) {
     
     #region Check LMStudioServer values
-    If ($null -eq $Global:LMStudioServer){throw "Please run Set-LMStudioServer first."}
-    
-    If ($Global:LMStudioServer.Server.Length -eq 0 -or $null -eq $Global:LMStudioServer.Server){
+    try {$HistoryFileCheck = Confirm-LMHistoryVariables}
+    catch {throw $_.Exception.Message}
 
-        If ($Global:LMStudioServer.Port.Length -eq 0 -or $null -eq $Global:LMStudioServer.Port){
-
-            throw "Server and Port are not valid, please run Set-LMStudioServer again"
-
-        }
-
-    }
-    
-    If ($Global:LMStudioServer.Port.Length -eq 0 -or $null -eq $Global:LMStudioServer.Port){
-
-        throw "Port is not valid, please run Set-LMStudioServer again"
-
-    }
+    If ($HistoryFileCheck -ne $True){throw "Something went wrong when running Confirm-LMHistoryVariables (didn't return True)"}
     #endregion
     
     [string]$EndPoint = $Server + ":" + $Port
     $ModelURI = "http://$EndPoint/v1/models"
     
-    try {$ModelData = Invoke-RestMethod -Uri $ModelURI -ErrorAction Stop}
-    catch {throw "Unable to retrieve model information: $($_.Exception.Message)"}
+    try {
+
+        $ModelData = Invoke-RestMethod -Uri $ModelURI -ErrorAction Stop
+        $TestResult = $True
+
+    }
+    catch {
+        
+        If ($AsTest.IsPresent){$TestResult = $False}
+        Else {throw "Unable to retrieve model information: $($_.Exception.Message)"}
+    
+    }
 
     $Model = $ModelData.data.id
 
     If ($Model.Length -eq 0 -or $null -eq $Model.Length){throw "`$Model.data.id is empty."}
 
-    return $Model
+    switch ($AsTest.IsPresent){
+
+        $True {return $TestResult}
+
+        $False {return $Model}
+
+    }
 
 }
+
+#This function Adds a model to the History stored in memory, and saves the file (if switch is specified)
+#THIS FUNCTION IS PROBABLY NOT NECESSARY, SHOULD SAVE MODEL INFO TO GREETING AND DIALOG FILES, RESPECTIVELY
 function Add-LMModelToHistory ([pscustomobject]$History, [string]$Model, [switch]$Save){
 
     $Model = $ModelData.data.id
@@ -247,7 +287,7 @@ function Add-LMModelToHistory ([pscustomobject]$History, [string]$Model, [switch
         }
         until ($ModelAdded -eq $True)
         
-        Set-HistoryFile -HistoryFile $HistoryFile -History $History
+        Save-LMHistoryFile -LMHistoryFile $HistoryFile -LMHistory $History
 
     } #Close If
     Else {$ModelIndex = ($History.Models.GetEnumerator() | Where-Object {$_.Value -eq "$Model"}).Name}
@@ -256,6 +296,78 @@ function Add-LMModelToHistory ([pscustomobject]$History, [string]$Model, [switch
 
 }
 
+#This function imports the greetings from the greeting file (used for setting greeting context)
+function Import-LMGreetingDialog {
+}
+
+#This function saves a greeting to the greeting file (if the switch is specified)
+function Save-LMGreetingDialog {
+}
+
+#This function imports a chat dialog from a dialog file (used for "continuing a conversation")
+function Import-LMChatDialog (){
+    #Need to figure out a way to index this
+}
+
+#This function saves a chat dialog to a dialog file, and updates the history file
+function Save-LMChatDialog {[switch]$SkipHistoryAddition}
+
+#Searches the HistoryFile for strings and provides multiple ways to output the contents
+function Search-LMFileHistory {
+
+    #Params: 
+     #History File (not mandatory, defaults to Global:LMstudiovars)
+     #Before: Integer, dialogs (line pairs) to capture before each word or phrase-line
+     #After: Integer, dialogs (line pairs) to capture after each word or phrase-line
+     #Potential parameter: "MarkWord" - console (and textual symbol) indicators to show the word's use
+     #ResultSetSize: Integer, how many results to show in each "set" (press enter to continue)
+     #SaveTo: File location to save the output
+     #ReturnResults - return the results (as an array?)
+    #
+
+
+}
+
+#Provides a graphical help interface for the LM-Client
+function Show-LMHelp {
+    Add-Type -AssemblyName PresentationCore,PresentationFramework
+    $ButtonType = [System.Windows.MessageBoxButton]::OK
+    $MessageboxTitle = “LMStudio-Client Help”
+    $Messageboxbody = “!h - Displays this help`r`n!s - Change the system prompt`r`n!t - Change the temperature`r`n!f - Change the history file`r`n!q - Save and Quit”
+    $MessageIcon = [System.Windows.MessageBoxImage]::Question
+    [System.Windows.MessageBox]::Show($Messageboxbody,$MessageboxTitle,$ButtonType,$messageicon)
+
+}
+
+#This function generates a greeting prompt for an LLM, for load in the LMChatClient
+function New-GreetingPrompt {
+    
+    ###FEATURE TO INCLUDE HERE: RETURN A SYSTEM PROMPT
+
+    $TodayIsADay = "It is $((Get-Date).DayOfWeek)"
+    
+    $TokenSet = @{U = [Char[]]'ABCDEFGHIJKLMNOPQRSTUVWXYZ'}
+        
+    $ThreeLetters = (Get-Random -Count 3 -InputObject $TokenSet.U -SetSeed ([System.Environment]::TickCount)) -join ', '
+
+    $Greetings = @(
+        "$TodayIsADay. Chose an adjective that contains these three letters: $ThreeLetters. Then use it to insult me in a short way without hurting my feelings too much.",
+        "$TodayIsADay. Please greet me in a unique and fun way!",
+        "$TodayIsADay. Choose a proper noun that contains these three letters: $ThreeLetters. Then provide a fact about the chosen proper noun.",
+        "$TodayIsADay. Please try to baffle me.",
+        "$TodayIsADay. Choose a proper noun that contains these three letters: $ThreeLetters. Then generate a haiku that includes this word.",
+        "$TodayIsADay. Choose a proper noun that contains these three letters: $ThreeLetters. Please generate a short poem about this word."
+        "$TodayisADay. Please wish me well for today."
+    )
+    
+    $ChosenGreeting = $Greetings[$(Get-Random -Minimum 0 -Maximum $($Greetings.GetUpperBound(0)) -SetSeed ([System.Environment]::TickCount))]
+
+    return $ChosenGreeting
+
+} #Close Function
+
+
+#This function establishes an asynchronous connection to "stream" the chat output to the console
 function Invoke-LMStream{
     [CmdletBinding()]
 param (
@@ -496,3 +608,222 @@ end {
 } #Close End
 
 } #Close function
+
+#This function is the LM Studio Client
+function Start-LMStudioClient {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)][string]$Server,
+        [Parameter(Mandatory=$false)][ValidateRange(0, 65535)][int]$Port = 1234,
+        [Parameter(Mandatory=$false)][string]$HistoryFile = $Global:LMStudioVars.Historyfilepath,
+        [Parameter(Mandatory=$false)][double]$Temperature = 0.7,
+        [Parameter(Mandatory=$false)][switch]$SkipGreeting,
+        [Parameter(Mandatory=$false)][switch]$StreamResponses
+        #[Parameter(Mandatory=$false)][switch]$NoTimestamps, #Not sure what to do with this, or where to hide the timestamps
+        )
+    
+    begin {
+    
+        
+        #region Prerequisite Variables
+        $OrigProgPref = $ProgressPreference
+        $ProgressPreference = 'SilentlyContinue'
+        $ReplayLimit = 10 #Sets the max number of assistant/user content context entries    
+    
+        $Version = "0.5"
+    
+        
+        $CompletionURI = "http://$EndPoint/v1/chat/completions"
+    
+        $host.UI.RawUI.WindowTitle = "LM Studio Client v$Version ### Show Help: !h "
+    
+        $SystemPrompt = "Please be polite, concise and informative."
+        #endregion
+    
+        #region Define the BODY Template
+        $BodyTemplate = '{ 
+            "model": "MODELHERE",
+            "messages": [ 
+              { "role": "system", "content": "SYSPROMPTHERE" },
+              { "role": "user", "content": "USERPROMPTHERE" }
+            ], 
+            "temperature": 0.7, 
+            "max_tokens": -1,
+            "stream": false
+        }'
+    
+        #endregion
+    
+        #region Try to Load or Create a history
+    #Need to check if this is still valid:
+        If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$HistoryFile = "$env:USERPROFILE\Documents\ai_history.json"}
+    
+        If (!(Test-Path $HistoryFile)){ #Build a dummy history file
+    
+            try {
+    
+                $History = New-HistoryObject
+                Set-HistoryFile -HistoryFile $HistoryFile -History $History
+    
+            }
+            catch{throw "Unable to create history file $HistoryFile : $($_.Exception.Message))"}
+    
+        }
+        Else {
+    
+            try {$History = Get-HistoryFile -HistoryFile $HistoryFile}
+            catch {throw "Unable to import history file $HistoryFile : $($_.Exception.Message)"}
+    
+        }
+        #endregion
+    
+        #region Connection Test, and Model Name Retrieval, Add model to History
+        try {$Model = Get-LMModel -Server $Server -Port $Port}
+        catch {throw "Unable to retrieve model information. Check to see if the server is up."}
+    
+        $Model = $ModelData.data.id
+    
+        If (($History.Models.GetEnumerator() | ForEach-Object {$_.Value}) -notcontains "$Model"){
+    
+            $ModelAdded = $False
+            $ModelIndex = 2
+    
+            do {
+                try {
+                    $History.Models.Add("$ModelIndex",$Model)
+                    $ModelAdded = $True
+                }
+               catch {$ModelIndex++; $ModelAdded = $False}
+    
+            }
+            until ($ModelAdded -eq $True)
+            
+            Set-HistoryFile -HistoryFile $HistoryFile -History $History
+    
+        } #Close If
+        Else {$ModelIndex = ($History.Models.GetEnumerator() | Where-Object {$_.Value -eq "$Model"}).Name}
+    
+        #endregion
+        
+        If (!$SkipGreeting){
+            $NewGreeting = New-GreetingPrompt
+            
+            #region Walk backwards through the $History.Greetings index to create a correct context replay:
+            $ContextReplays = New-Object System.Collections.ArrayList
+            
+            $x = 1
+            $LastGreetingIndex = $History.Greetings.Count - 1
+            $SysPromptChainBroken = $False
+            
+            :iloop Foreach ($Index in $LastGreetingIndex..2){
+    
+                If ($Index -eq $LastGreetingIndex -and (($History.Greetings[$Index].role -eq "system") -or ($History.Greetings[$Index].role -eq "user"))){continue iloop}
+    
+                If ($History.Greetings[$Index].role -eq "system" -and $SysPromptChainBroken -eq $False){
+                    
+                    If ($History.Greetings[$Index].content -ieq "$SystemPrompt"){continue iloop}
+                    Else {
+                            $ContextReplays.Add(($History.Greetings[$Index])) | Out-Null
+                            $SysPromptChainBroken = $True
+                            $x++
+                        }
+                }
+    
+                If ($History.Greetings[$Index].role -eq "assistant" -or $History.Greetings[$Index].role -eq "user"){
+                    $ContextReplays.Add(($History.Greetings[$Index])) | Out-Null
+                    $x++
+                }
+    
+                If ($x -eq ($ReplayLimit)){break iloop}
+    
+            }
+            #endregion
+    
+            #region Fill in the Model, System Prompt and User Prompt of the $Body:
+            $Body = $BodyTemplate | ConvertFrom-Json
+            $Body.model = $Model
+            #$Body.stream = $True #For testing
+    
+            $Body.messages = @()
+            $SystemPromptObj = ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})
+            $UserPromptObj = ([pscustomobject]@{"role" = "user"; "content" = $NewGreeting})
+    
+            # Add a "system" role to the top to set the interpretation:
+            If ($ContextReplays.role -notcontains "system"){$body.messages += ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})}
+            # Replay the relevant/captured interactions back into $Body.messages:
+            $ContextReplays[($ContextReplays.Count - 1)..0].ForEach({$Body.messages += $_})
+            # If we detected a broken system prompt chain, add the current system prompt back in:
+            If ($SysPromptChainBroken){$body.messages += ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})}
+            # Finally, add our new greeting prompt back in:
+            $body.messages += $UserPromptObj
+                
+            #Add the messages to the history, and save the history:
+            $History.Greetings.Add($SystemPromptObj) | Out-Null
+            $History.Greetings.Add($UserPromptObj) | Out-Null
+            $SaveHistory = Set-HistoryFile -HistoryFile $HistoryFile -History $History
+            #endregion
+    
+            #region Write the generated greeting to the console
+            Write-Host "You: " -ForegroundColor Green -NoNewline; Write-Host "$NewGreeting"
+            Write-Host " "
+            #endregion
+    
+            #region Prompt for and receiving greeting
+            $GreetingParams = @{
+                "Uri" = "$CompletionURI"
+                "Method" = "POST"
+                "Body" = ($Body | ConvertTo-Json -Depth 3)
+                "ContentType" = "application/json"
+            }
+    
+            try {$Response = Invoke-RestMethod @GreetingParams -UseBasicParsing -ErrorAction Stop}
+            catch {$_.Exception.Message}
+    
+            $ResponseText = $Response.choices.message.content
+            #endregion
+    
+            #region Response and file management
+            Write-Host "AI: " -ForegroundColor DarkMagenta -NoNewline; Write-Host "$ResponseText"
+    
+            $History.Greetings += ([pscustomobject]@{"role" = "assistant"; "content" = "$ResponseText"})
+            $SaveHistory = Set-HistoryFile -HistoryFile $HistoryFile -History $History
+            #endregion
+    
+        } #Close If $SkipGreeting isn't Present
+    
+        #endregion
+    
+    }
+    
+    process {
+    
+        $Quit = $false
+    
+        do {
+    
+            write-host "You: " -ForegroundColor Green -NoNewline; $UserPrompt = Read-Host
+    
+            $Body = $BodyTemplate
+            $Body = $Body -replace 'MODELHERE',"$Model"
+            $Body = $Body -replace 'SYSPROMPTHERE',"$SystemPrompt"
+            $Body = $Body -replace 'USERPROMPTHERE',"$UserPrompt"
+    
+            
+            $Response = Invoke-RestMethod -Uri $CompletionURI -Method POST -Body $Body -WebSession $R2D2 -ContentType "Application/json"
+    
+            $Response.choices.message.content
+    
+        }
+        until ($Quit -eq $true)
+    
+    
+    }
+    
+    end {
+        $ProgressPreference = $OrigProgPref
+    
+    
+    }
+    
+    }
+    
