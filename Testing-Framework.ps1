@@ -1,4 +1,6 @@
-#region Setup to make testing easier
+# Testing pre-load to make testing easier
+set-location D:\Git\LMStudio-AI-Client
+
 $Server = "localhost"
 $Port = 1234
 [string]$EndPoint = $Server + ":" + $Port
@@ -15,12 +17,3 @@ Set-Location D:\Git\LMStudio-AI-Client | Out-Null
 Initialize-LMVarStore
 
 Set-LMStudioServer -Server "localhost" -Port 1234
-
-do {
-
-Write-Host "You: " -ForegroundColor Green -NoNewline
-
-
-
-
-}

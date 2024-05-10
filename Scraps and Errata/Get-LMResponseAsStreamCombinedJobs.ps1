@@ -1,3 +1,4 @@
+#This is the "pristine", working version of the function
 function Invoke-LMStream{
     [CmdletBinding()]
 param (
