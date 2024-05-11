@@ -331,21 +331,62 @@ function Import-LMHistoryFile { #Complete
 
 } #Close Function
 
+#This function creates a new history file entry: not sure if I need this function
+function New-LMHistoryEntry {}
+
 #This function saves a history stored in a variable to the history file
-function Export-LMHistoryFile ($History){
+function Update-LMHistoryFile { #Complete
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)][pscustomobject]$Entry,
+        [Parameter(Mandatory=$False)][string]$FilePath
+        )
 
-    #Check the Global Variable Store for the value
-    try {$HistoryFileCheck = Confirm-LMGlobalVariables}
-    catch {throw $_.Exception.Message}
+    begin {
 
-    If ($HistoryFileCheck -ne $True){throw "Something went wrong when running Confirm-LMGlobalVariables (didn't return True)"}
+        #region Validate $Entry:
+        $StandardFields = @("Created","Modified","Model","Opener","FilePath")
 
-    $FilePath = $Global:LMStudioVars.HistoryFilePath
+        $EntryFields = $Entry.PSObject.Properties.Name
 
-    try {$History | ConvertTo-Json -Depth 10 -ErrorAction Stop | Out-File -FilePath $FilePath -ErrorAction Stop}
-    catch {throw "Unable to save history to `$FilePath; $($_.Exception.Message)"}
+        $FieldsCheck = Compare-Object -ReferenceObject $StandardFields -DifferenceObject $EntryFields
 
-    return $True
+        If ($FieldsCheck.Count -ne 0){throw "The provided Entry does contain the required fields ($($StandardFields -join ', '))"}
+
+        #endregion
+
+        #region Check history file location in global variables, or use provided FilePath
+        If ($null -eq $FilePath -or $FilePath.Length -eq 0){
+
+            try {$HistoryFileCheck = Confirm-LMGlobalVariables}
+            catch {throw "Error validating Global variables: $($_.Exception.Message)"}
+        
+            If ($HistoryFileCheck -ne $True){throw "Something went wrong when running Confirm-LMGlobalVariables (didn't return True)"}
+        
+            $FilePath = $Global:LMStudioVars.HistoryFilePath
+    
+        }
+        
+        If (!(Test-Path $FilePath)){throw "Provided history file path is not valid or accessible ($FilePath)"}
+
+    }
+
+    process {
+
+        try {$History = Import-LMHistoryFile -FilePath $FilePath}
+        catch {throw "History File import (for write) failed: $($_.Exception.Message)"}
+
+        try {$AppendEntry = $History.Histories.Add($Entry)}
+        catch {throw "Unable to append Entry to history file (is file malformed?)"}
+    }
+
+    end {
+        try {$History | ConvertTo-Json -Depth 10 -ErrorAction Stop | Out-File -FilePath $FilePath -ErrorAction Stop}
+        catch {throw "Unable to save history to File Path; $($_.Exception.Message)"}
+    
+        return $True
+
+    }
 
 }
 
@@ -422,7 +463,7 @@ function Add-LMModelToHistory ([pscustomobject]$History, [string]$Model, [switch
         }
         until ($ModelAdded -eq $True)
         
-        Export-LMHistoryFile -FilePath $HistoryFile -LMHistory $History
+        Update-LMHistoryFile -FilePath $HistoryFile -LMHistory $History
 
     } #Close If
     Else {$ModelIndex = ($History.Models.GetEnumerator() | Where-Object {$_.Value -eq "$Model"}).Name}
