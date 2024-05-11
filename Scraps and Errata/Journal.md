@@ -32,3 +32,20 @@ A lot has gotten done. There is still a lot to do. I think the first thing I'll 
 05/09 - Started building out Import-LMConfigFile; this required parameterizing Get-LMModel. I need to parameterize Import-LMHistoryFile so I can test it during the Import-LMConfigFile process.
 
 I'll keep working from top to bottom to build out the functions this module needs. NOTE: I also should build a "Start-LMStudioLiteClient" to get a working to play with
+
+05/10 - Finished Import-LMConfigFile, which required parameterizing a whole bunch of functions and fixing various checks/validations. New-LMConfigFile comes next.
+    * Create-LMConfigFile will have the following parameters:
+        * Server
+        * Port
+        * HistoryFile
+            * Defaults to $Env:UserProfile\Documents\LMStudio-Client\
+        * SkipServerValidation (Doesn't check Server/Port)
+        * NewHistory 
+            * If History file is detected:
+                * moves File and its folder to a ".bkp" folder
+                * creates a new file/Folder
+                * Notifies user
+    * Create-LMConfigFile will not have mandatory parameters
+        * If any parameters are missing, they'll be prompted for
+
+

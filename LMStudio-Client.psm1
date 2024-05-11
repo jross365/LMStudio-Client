@@ -1,12 +1,22 @@
 #This function prompts for server name and port:
     # it prompts to create a new history file, or to load an existing one. 
     # If loading an existing one, it needs to verify it.
-function Create-LMConfigFile {
-    #Structure: 
-    $T = [pscustomobject]@{"Server" = "localhost"; "Port" = 1234; "HistoryFile" = "C:\Users\jason\Documents\WindowsPowershell\LMStudio-Client\LMHistory.index"}
+function New-LMConfigFile {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$false)][string]$Server,
+        [Parameter(Mandatory=$false)][int]$Port,
+        [Parameter(Mandatory=$false)][switch]$SkipValidation,
+        [Parameter(Mandatory=$false)][string]$HistoryFile
+        
+
+    )#Structure: 
+    #$T = [pscustomobject]@{"Server" = "localhost"; "Port" = 1234; "HistoryFile" = "C:\Users\jason\Documents\WindowsPowershell\LMStudio-Client\LMHistory.index"}
+
+    
 }
 
-#This function reads the local LMConfigFile.json, verifies it (unless skipped), and then writes the values to the $Global:LMStudioVars
+#This function reads the local LMConfigFile.cfg, verifies it (unless skipped), and then writes the values to the $Global:LMStudioVars
 function Import-LMConfigFile { #Complete
     [CmdletBinding()]
     param (
@@ -167,7 +177,6 @@ function Confirm-LMGlobalVariables { #Complete
 
 }
 
-
 # This function "Carves The Way" to the path where the history file should be saved. 
 # It verifies the path validity and tries to create the path, if specified
 # Used by the Create-HistoryFile (I think)
@@ -249,6 +258,10 @@ function New-HistoryFileTemplate ([switch]$NoDummyEntries){ #Complete
 
 }
 
+#This function Creates a new (empty) history file: NOT SURE IF NECESSARY (new-historyfiletemplate | out-file :-)
+function New-HistoryFile{
+
+}
 
 #This function imports the content of an existing history file, for either use or to verify the format is correct
 function Import-LMHistoryFile { #Complete
