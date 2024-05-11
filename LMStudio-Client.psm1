@@ -7,18 +7,20 @@ function Create-LMConfigFile {
 }
 
 #This function reads the local LMConfigFile.json, verifies it (unless skipped), and then writes the values to the $Global:LMStudioVars
-function Import-LMConfigFile {
+function Import-LMConfigFile { #Complete
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$true)][string]$ConfigFile = "$($Env:USERPROFILE)\Documents\WindowsPowerShell\Modules\LMStudio-Client\lmcfg.json",
+        [Parameter(Mandatory=$true)][string]$ConfigFile,
         [Parameter(Mandatory=$false)][switch]$SkipVerification
     )
 begin {
     
+    #region Import config file
     try {$ConfigData = Get-Content $ConfigFile -ErrorAction Stop | ConvertFrom-Json -Depth 2 -ErrorAction Stop}
     catch {throw $_.Exception.Message}
+    #endregion
 
-    #region Verify config file properties
+    #region Verify config file properties exist:
     [System.Collections.ArrayList]$Properties = "Server", "Port", "HistoryFilePath"
 
     $ConfigData.psobject.Properties.Name | Foreach-Object {
@@ -61,30 +63,47 @@ begin {
     If ($PropertyErrors -gt 0){throw 'Errors with the Config File were encountered. Please run the Create-ConfigFile cmdlet'}
     #endregion
 
-}
+}#Close Begin
 process {
 
     if (!$SkipVerification){
 
+        #region Test Model retrieval (webserver connection)
         try {$ModelRetrieval = Get-LMModel -Server $ConfigData.Server -Port $ConfigData.Port -AsTest}
-        catch {throw $_.Exception.Message}
+        catch {throw $($_.Exception.Message)}
 
-        If ($ModelRetrieval -eq $False){throw "Unable to connect to server $($ConfigData.Server) on port $($ConfigData.Port). This could be a server issue (Web server started?)"}
+        If ($ModelRetrieval -ne $True){throw "Unable to connect to server $($ConfigData.Server) on port $($ConfigData.Port). This could be a server issue (Web server started?)"}
+        #endregion
 
-        If (Test-Path $ConfigFile.HistoryFilePath){throw $_.Exception.Message}
+        #region Test History File path, format
+        If (Test-Path $ConfigFile.HistoryFilePath){throw "History file path $($ConfigData.HistoryFilePath) is not valid or accessible. Please check the path."}
 
-        try {$CheckHistoryFile = Get-LMHistoryFile -FilePath} ###LEFT OFF HERE, NEED TO GIVE GET-LMHISTORYFILE PARAMETERS
-        catch {}
+        try {$CheckHistoryFile = Import-LMHistoryFile -FilePath $ConfigData.HistoryFilePath -AsTest}
+        catch {throw "History file format validation failed: $($_.Exception.Message)"}
 
+        If ($CheckHistoryFile -ne $true){throw "History file format validation failed for $($ConfigData.HistoryFilePath)"}
+        #endregion        
+        }
+
+    } #Close Process
+end {
+
+    Initialize-LMVarStore
+
+    $LMVars = @{
+        "Server" = ($ConfigData.Server);
+        "Port" = ($ConfigData.Port);
+        "FilePath" = ($ConfigData.HistoryFilePath)
     }
 
-}
-end {}
-}
+    try {Set-LMGlobalVariables @LMVars}
+    catch {throw "Unable to set Global variables"}
 
+    } #Close End
+}
 
 #This function builds the hierarchy of hash tables at $Global:LMstudiovars to store configuration information (server, port, history file)
-function Initialize-LMVarStore {
+function Initialize-LMVarStore { #Complete
     $Global:LMStudioVars = @{}
     $Global:LMStudioVars.Add("ServerInfo",@{})
     $Global:LMStudioVars.ServerInfo.Add("Server","")
@@ -93,29 +112,40 @@ function Initialize-LMVarStore {
 
 }
 
-#This function sets the Global variables for Server and Port
-function Set-LMGlobalVariables ([string]$Server,[int]$Port, [string]$HistoryFile, [switch]$Show){
-    If ($Port.Length -eq 0 -or ($Port -lt 0 -or $Port -gt 65535)){throw "$Port must be in a range of 0-65535"}
-    If (($Server.Length -eq 0 -or $null -eq $Server) -and $Port.Length -gt 0){throw "Please provide a name or IP address for parameter -Server"}
+#This function sets the Global variables for Server, Port and HistoryFile; it ASSUMES validation has been completed
+function Set-LMGlobalVariables { #Complete
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)][string]$Server,
+        [Parameter(Mandatory=$true)][int]$Port,
+        [Parameter(Mandatory=$true)][string]$FilePath,
+        [Parameter(Mandatory=$false)][switch]$Show       
 
-    If ($Server.Length -ne 0 -and $Port.Length -ne 0){
+    )
 
-        try {$Global:LMStudioVars.ServerInfo.Server = $Server}
-        catch {throw "Unable to set Global variable LMStudioServer for value Server: $Server"}
-        
-        try {$Global:LMStudioVars.ServerInfo.Port = $Port}
-        catch {throw "Unable to set Global variable LMStudioServer for value Port: $Port"}
+    try {$VarStoreCheck = $Global:LMStudioVars.GetType().Name}
+    catch {Initialize-LMVarStore}
 
-    }
+    If ($VarStoreCheck -ne "Hashtable"){Initialize-LMVarStore}
+
+    try {$Global:LMStudioVars.ServerInfo.Server = $Server}
+    catch {throw "Unable to set Global variable LMStudioServer for value Server: $Server"}
+    
+    try {$Global:LMStudioVars.ServerInfo.Port = $Port}
+    catch {throw "Unable to set Global variable LMStudioServer for value Port: $Port"}
+
+    try {$Global:LMStudioVars.HistoryFilePath = $FilePath}
+    catch {throw "Unable to set Global variable LMStudioServer for value History File Path: $FilePath"}
 
     If ($Show.IsPresent){$Global:LMStudioVars}
 
 }
 
 #This function validates $Global:LMStudioVars is fully populated
-function Confirm-LMGlobalVariables {
+#CAN PROBABLY REMOVE THIS FUNCTION, error checking is part of all of the import/export processes
+function Confirm-LMGlobalVariables { #Complete
 
-    If ($null -eq $Global:LMStudioVars){throw "Please run Set-LMStudioServer first."}
+    If ($null -eq $Global:LMStudioVars){throw "Please run Set-LMSGlobalVariables first."}
     
     If ($Global:LMStudioVars.Server.Length -eq 0 -or $null -eq $Global:LMStudioVars.Server){
 
@@ -196,98 +226,124 @@ function Set-LMHistoryPath ([string]$HistoryFile,[switch]$CreatePath){
 
 
 #This function generates and returns an empty history file template with dummy entries (doesn't save)
-function New-HistoryFileTemplate {
-    try {
+function New-HistoryFileTemplate ([switch]$NoDummyEntries){ #Complete
 
-        $History = New-Object System.Collections.ArrayList
+    $Histories = New-Object System.Collections.ArrayList
 
-        $Greetings = New-Object System.Collections.ArrayList
-        (0..1).ForEach({$Greetings.Add(([pscustomobject]@{"role" = "dummy"; "content" = "This is a dummy entry."})) | Out-Null})
+    If ($NoDummyEntries.IsPresent){$DummyValue = ""}
+    Else {$DummyValue = "dummyvalue"}
+    
+    $Entry = [pscustomobject]@{
+        "Created" = "$DummyValue";
+        "Modified" = "$DummyValue";
+        "Model" = "$DummyValue";
+        "Opener" = "$DummyValue";
+        "FilePath" = "$DummyValue"
+        }
 
-        $DummyContent = New-Object System.Collections.ArrayList
-        (0..1).ForEach({$DummyContent.Add(([pscustomobject]@{"timestamp" = $((Get-Date).ToString()); "role" = "dummy"; "content" = "This is a dummy entry."})) | Out-Null})
+    $Histories.Add($Entry) | out-null
+    
+    $History = [pscustomobject]@{"Histories" = $Histories}
 
-        $DummyEntry = [pscustomobject]@{"StartDate" = "$((Get-Date).ToString())"; "Opener" = "This is a dummy entry."; "Content" = $DummyContent}
-
-        $Histories = New-Object System.Collections.ArrayList
-        $Histories.Add($DummyEntry) | Out-Null
-
-        $Models = @{}
-        (0..1).ForEach({$Models.Add("$_","dummymodel")})
-
-        $History.Add([pscustomobject]@{"Models" = $Models; "Greetings" = $Greetings; "Histories" = $Histories}) | Out-Null
-    }
-    catch{throw "Unable to create history file $HistoryFile : $($_.Exception.Message))"}
-
-return $History       
+    return $History       
 
 }
 
 
-#This function imports the content of an existing history file
-function Import-LMHistoryFile {
-    ##NEED TO PUT PARAMETERS IN HERE
+#This function imports the content of an existing history file, for either use or to verify the format is correct
+function Import-LMHistoryFile { #Complete
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$false)][string]$FilePath,
+        [Parameter(Mandatory=$false)][switch]$AsTest
+        )
 
+    begin {
 
-    #Check the Global Variable Store for the value
-    try {$HistoryFileCheck = Confirm-LMHistoryVariables}
-    catch {throw $_.Exception.Message}
+        #region Validate FilePath
+        If ($null -eq $FilePath -or $FilePath.Length -eq 0){
 
-    If ($HistoryFileCheck -ne $True){throw "Something went wrong when running Confirm-LMHistoryVariables (didn't return True)"}
-   
-    $HistoryFile = $Global:LMStudioVars.HistoryFilePath
-   
-    #Import the original History file
-    try {$HistoryContent = Get-Content $HistoryFile -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop}
-    catch {throw "Unable to import history file $HistoryFile : $($_.Exception.Message))"}
-
-    If ($HistoryContent.Histories[0].Opener -ne "This is a dummy entry."){throw "History file $HistoryFile is missing the history dummy entry (bad format)"}
-    If ($HistoryContent.Greetings[0].role -ne "dummy"){throw "History file $HistoryFile is missing the greeting dummy entry (bad format)"}
-    If ($HistoryContent.Models.0 -ne "dummymodel"){throw "History file $HistoryFile is missing the models dummy entry (bad format)"}
-
-    #move over content from Fixed-Length arrays to New ArrayLists:
-    $NewHistory = New-HistoryFileTemplate
-
-    #.Where({$_.Role -ne "dummy"}) removed:
-    $HistoryContent.Greetings | ForEach-Object {$NewHistory.Greetings.Add($_) | Out-Null}
-
-    $NewHistory.Histories.Remove($NewHistory.Histories[0]) | Out-Null
-
-    $HistoryContent.Histories.Foreach({
-    
-        $Entry = $_
-        $Content = New-Object System.Collections.ArrayList
-        $Entry.Content | ForEach-Object {$Content.Add($_) | out-null}
+             try {$HistoryFileCheck = Confirm-LMGlobalVariables}
+            catch {throw "Required variables (Server, Port) are missing, and `$Global:LMStudioVars is not populated. Please run Set-LMGlobalVariables or Import-LMConfigFile"}
+           
+            $FilePath = $Global:LMStudioVars.HistoryFilePath
         
-        $EntryCopy = [pscustomobject]@{"Date" = $Entry.Date; "Opener" = $Entry.Opener; "Content" = $Content}
+            }
+        #endregion
 
-        $NewHistory.Histories.Add($EntryCopy) | Out-Null
+        #region Import the History file
+        try {$HistoryContent = Get-Content $FilePath -ErrorAction Stop | ConvertFrom-Json -Depth 3 -ErrorAction Stop}
+        catch {throw "Unable to import history file $FilePath : $($_.Exception.Message))"}
+        #endregion
 
-    })
+        #region Validate columns and first entry of the history file (for "dummy" content):
+        $HistoryColumns = @("FilePath","Created","Modified","Model","Opener")
 
-    #move over models from PSCustomObject to HashTable
-    $NewHistory.Models = @{}
-    $History.Models.psobject.Properties.Name.ForEach({$NewHistory.Models.Add("$_","$($H.Models.$_)")})
+        $FileErrors = -1
 
-    Remove-Variable HistoryContent -ErrorAction SilentlyContinue
+        $FirstEntry = $HistoryContent.Histories[0]
 
-    return $NewHistory
+        Foreach ($Column in $HistoryColumns){
+
+            If (($FirstEntry.$Column.Length -eq 0 -or $null -eq $FirstEntry.$Column) -and $FirstEntry.$Column -inotmatch "dummy"){
+                Write-Error "Column $Column of history file $FilePath does not contain the expected 'dummy' value"
+                $FileErrors++
+            }
+
+        }
+        #endregion
+
+        #region Report back errors, and throw:
+        If ($FileErrors -ne -1){
+            if ($ErrorActionPreference -eq 'SilentlyContinue' -and !(($AsTest.IsPresent))){
+                
+                Write-Host "Errors encountered:" -ForegroundColor Red
+                $Error[0..$FileErrors] | Foreach-Object {Write-Host "$($_.Exception.Message)"}
+
+            }
+
+            throw "Errors encountered when validating history file $FilePath columns ($($HistoryColumns -join ', '))"
+
+        } #Close FileErrors -ne -1
+        #endregion
+
+    }
+
+    process {
+    
+    #region If not a test, move over content from Fixed-Length arrays to New ArrayLists:
+    If (!($AsTest.IsPresent)){
+    
+        $NewHistory = New-HistoryFileTemplate -NoDummyEntries
+
+        $HistoryContent.Histories | ForEach-Object {$NewHistory.Histories.Add($_) | Out-Null}
+    }
+    #endregion
+
+    } #Close Process
+
+    end {
+    
+        If ($AsTest.IsPresent){return $True}
+        else {return $NewHistory}
+    
+    }
 
 } #Close Function
 
 #This function saves a history stored in a variable to the history file
-function Save-LMHistoryFile ($History){
+function Export-LMHistoryFile ($History){
 
     #Check the Global Variable Store for the value
-    try {$HistoryFileCheck = Confirm-LMHistoryVariables}
+    try {$HistoryFileCheck = Confirm-LMGlobalVariables}
     catch {throw $_.Exception.Message}
 
-    If ($HistoryFileCheck -ne $True){throw "Something went wrong when running Confirm-LMHistoryVariables (didn't return True)"}
+    If ($HistoryFileCheck -ne $True){throw "Something went wrong when running Confirm-LMGlobalVariables (didn't return True)"}
 
-    $HistoryFile = $Global:LMStudioVars.HistoryFilePath
+    $FilePath = $Global:LMStudioVars.HistoryFilePath
 
-    try {$History | ConvertTo-Json -Depth 10 -ErrorAction Stop | Out-File -FilePath $HistoryFile -ErrorAction Stop}
-    catch {throw "Unable to save history to `$HistoryFile; $($_.Exception.Message)"}
+    try {$History | ConvertTo-Json -Depth 10 -ErrorAction Stop | Out-File -FilePath $FilePath -ErrorAction Stop}
+    catch {throw "Unable to save history to `$FilePath; $($_.Exception.Message)"}
 
     return $True
 
@@ -306,12 +362,11 @@ function Get-LMModel {
 
     If (($null -eq $Server -or $Server.Length -eq 0) -or ($null -eq $Port -or $Port.Length -eq 0)){
 
-        try {$HistoryFileCheck = Confirm-LMHistoryVariables}
+        try {$HistoryFileCheck = Confirm-LMGlobalVariables}
         catch {
                 throw "Required variables (Server, Port) are missing, and `$Global:LMStudioVars is not populated. Please run Set-LMGlobalVariables or Import-LMConfigFile"
     
             }
-
 
     }
     #region Check LMStudioServer values
@@ -367,7 +422,7 @@ function Add-LMModelToHistory ([pscustomobject]$History, [string]$Model, [switch
         }
         until ($ModelAdded -eq $True)
         
-        Save-LMHistoryFile -LMHistoryFile $HistoryFile -LMHistory $History
+        Export-LMHistoryFile -FilePath $HistoryFile -LMHistory $History
 
     } #Close If
     Else {$ModelIndex = ($History.Models.GetEnumerator() | Where-Object {$_.Value -eq "$Model"}).Name}
@@ -378,6 +433,29 @@ function Add-LMModelToHistory ([pscustomobject]$History, [string]$Model, [switch
 
 #This function imports the greetings from the greeting file (used for setting greeting context)
 function Import-LMGreetingDialog {
+}
+
+#This function creates an empty object for creating a Chat dialog
+function New-LMChatDialogTemplate {
+
+    #region This was taken from New-HistoryFileTemplate:
+    try {
+    $DummyContent = New-Object System.Collections.ArrayList
+    (0..1).ForEach({$DummyContent.Add(([pscustomobject]@{"timestamp" = $((Get-Date).ToString()); "role" = "dummy"; "content" = "This is a dummy entry."})) | Out-Null})
+
+    $DummyEntry = [pscustomobject]@{"StartDate" = "$((Get-Date).ToString())"; "Opener" = "This is a dummy entry."; "Content" = $DummyContent}
+
+    $Histories = New-Object System.Collections.ArrayList
+    $Histories.Add($DummyEntry) | Out-Null
+
+    $Models = @{}
+    (0..1).ForEach({$Models.Add("$_","dummymodel")})
+
+    $History.Add([pscustomobject]@{"Models" = $Models; "Greetings" = $Greetings; "Histories" = $Histories}) | Out-Null
+    }
+    catch{throw "Unable to create history file $HistoryFile : $($_.Exception.Message))"}
+    #endregion
+
 }
 
 #This function saves a greeting to the greeting file (if the switch is specified)
