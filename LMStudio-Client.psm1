@@ -1,18 +1,84 @@
-#This function prompts for server name and port;
-# it prompts to create a new history file, or to load an existing one. 
-# If loading an existing one, it needs to verify it.
+#This function prompts for server name and port:
+    # it prompts to create a new history file, or to load an existing one. 
+    # If loading an existing one, it needs to verify it.
 function Create-LMConfigFile {
+    #Structure: 
+    $T = [pscustomobject]@{"Server" = "localhost"; "Port" = 1234; "HistoryFile" = "C:\Users\jason\Documents\WindowsPowershell\LMStudio-Client\LMHistory.index"}
 }
 
 #This function reads the local LMConfigFile.json, verifies it (unless skipped), and then writes the values to the $Global:LMStudioVars
 function Import-LMConfigFile {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$true)][string]$ConfigFile = "$($Env:USERPROFILE)\Documents\WindowsPowerShell\Modules\LMStudio-Client",
+        [Parameter(Mandatory=$true)][string]$ConfigFile = "$($Env:USERPROFILE)\Documents\WindowsPowerShell\Modules\LMStudio-Client\lmcfg.json",
         [Parameter(Mandatory=$false)][switch]$SkipVerification
     )
-begin {}
-process {}
+begin {
+    
+    try {$ConfigData = Get-Content $ConfigFile -ErrorAction Stop | ConvertFrom-Json -Depth 2 -ErrorAction Stop}
+    catch {throw $_.Exception.Message}
+
+    #region Verify config file properties
+    [System.Collections.ArrayList]$Properties = "Server", "Port", "HistoryFilePath"
+
+    $ConfigData.psobject.Properties.Name | Foreach-Object {
+
+        If ($_ -ieq "Server" -or $_ -ieq "Port" -or $_ -ieq "HistoryFile"){$Properties.Remove($_) | Out-Null}
+    }
+
+    If ($Properties.Count -ne 0){throw "Config file missing property $($Propoerties -join ',') ($ConfigFile)"}
+    #endregion
+
+    #region Verify property values are valid
+    $PropertyErrors = 0
+
+    If ($ConfigData.Server.Length -eq 0 -or $null -eq $ConfigData.Server){Write-Error "'Server' property is empty."; $PropertyErrors++}
+    If ($ConfigData.Port.Length -eq 0 -or $null -eq $ConfigData.Port){Write-Error "'Port' property is empty."; $PropertyErrors++}
+
+    try {$PortAsInt = [int]$ConfigData.Port}
+    catch {Write-Error "Property 'Port' is not an integer '($($ConfigData.Port))'"$PropertyErrors++}
+
+    If ($PortAsInt -lt 0 -or $PortAsInt -gt 65535){Write-Error "Property 'Port' is not a value between 0 and 65535 ($PortAsInt)"}
+
+    If ($ErrorActionPreference -eq 'SilentlyContinue'){Write-Host "Errors:" -ForegroundColor red; $Error[0..$PropertyErrors].Exception.Message}
+
+    If ($PropertyErrors -gt 0){throw 'Errors with the Config File were encountered. Please run the Create-ConfigFile cmdlet'}
+    #endregion
+
+    #region Confirm parameters are acceptable types:
+    $PropertyErrors = 0
+
+    If ($ConfigData.Server.Length -eq 0 -or $null -eq $ConfigData.Server){Write-Error "'Server' property is empty."; $PropertyErrors++}
+    If ($ConfigData.Port.Length -eq 0 -or $null -eq $ConfigData.Port){Write-Error "'Port' property is empty."; $PropertyErrors++}
+
+    try {$PortAsInt = [int]$ConfigData.Port}
+    catch {Write-Error "Property 'Port' is not an integer '($($ConfigData.Port))'"$PropertyErrors++}
+
+    If ($PortAsInt -lt 0 -or $PortAsInt -gt 65535){Write-Error "Property 'Port' is not a value between 0 and 65535 ($PortAsInt)"}
+
+    If ($ErrorActionPreference -eq 'SilentlyContinue'){Write-Host "Errors:" -ForegroundColor red; $Error[0..$PropertyErrors].Exception.Message}
+
+    If ($PropertyErrors -gt 0){throw 'Errors with the Config File were encountered. Please run the Create-ConfigFile cmdlet'}
+    #endregion
+
+}
+process {
+
+    if (!$SkipVerification){
+
+        try {$ModelRetrieval = Get-LMModel -Server $ConfigData.Server -Port $ConfigData.Port -AsTest}
+        catch {throw $_.Exception.Message}
+
+        If ($ModelRetrieval -eq $False){throw "Unable to connect to server $($ConfigData.Server) on port $($ConfigData.Port). This could be a server issue (Web server started?)"}
+
+        If (Test-Path $ConfigFile.HistoryFilePath){throw $_.Exception.Message}
+
+        try {$CheckHistoryFile = Get-LMHistoryFile -FilePath} ###LEFT OFF HERE, NEED TO GIVE GET-LMHISTORYFILE PARAMETERS
+        catch {}
+
+    }
+
+}
 end {}
 }
 
@@ -28,7 +94,7 @@ function Initialize-LMVarStore {
 }
 
 #This function sets the Global variables for Server and Port
-function Set-LMStudioServer ([string]$Server,[int]$Port, [switch]$Show){
+function Set-LMGlobalVariables ([string]$Server,[int]$Port, [string]$HistoryFile, [switch]$Show){
     If ($Port.Length -eq 0 -or ($Port -lt 0 -or $Port -gt 65535)){throw "$Port must be in a range of 0-65535"}
     If (($Server.Length -eq 0 -or $null -eq $Server) -and $Port.Length -gt 0){throw "Please provide a name or IP address for parameter -Server"}
 
@@ -47,7 +113,7 @@ function Set-LMStudioServer ([string]$Server,[int]$Port, [switch]$Show){
 }
 
 #This function validates $Global:LMStudioVars is fully populated
-function Confirm-LMHistoryVariables {
+function Confirm-LMGlobalVariables {
 
     If ($null -eq $Global:LMStudioVars){throw "Please run Set-LMStudioServer first."}
     
@@ -55,7 +121,7 @@ function Confirm-LMHistoryVariables {
 
         If ($Global:LMStudioVars.Port.Length -eq 0 -or $null -eq $Global:LMStudioVars.Port){
 
-            throw "Server and Port are not valid, please run Set-LMStudioServer again"
+            throw "Server and Port are not valid, please run Set-LMSGlobalVariables"
 
         }
 
@@ -63,7 +129,7 @@ function Confirm-LMHistoryVariables {
     
     If ($Global:LMStudioVars.Port.Length -eq 0 -or $null -eq $Global:LMStudioVars.Port){
 
-        throw "Port is not valid, please run Set-LMStudioServer again"
+        throw "Port is not valid, please run Set-LMSGlobalVariables again"
 
     }
 
@@ -160,6 +226,8 @@ return $History
 
 #This function imports the content of an existing history file
 function Import-LMHistoryFile {
+    ##NEED TO PUT PARAMETERS IN HERE
+
 
     #Check the Global Variable Store for the value
     try {$HistoryFileCheck = Confirm-LMHistoryVariables}
@@ -227,15 +295,27 @@ function Save-LMHistoryFile ($History){
 
 #This function retrieves the model information from the server.
 #It can also be used as a connection test with the -AsTest parameter
-function Get-LMModel ([switch]$AsTest) {
-    
-    #region Check LMStudioServer values
-    try {$HistoryFileCheck = Confirm-LMHistoryVariables}
-    catch {throw $_.Exception.Message}
+function Get-LMModel {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$false)][string]$Server = "localhost",
+        [Parameter(Mandatory=$false)][int]$Port,
+        [Parameter(Mandatory=$false)][switch]$AsTest
 
-    If ($HistoryFileCheck -ne $True){throw "Something went wrong when running Confirm-LMHistoryVariables (didn't return True)"}
-    #endregion
+    )
+
+    If (($null -eq $Server -or $Server.Length -eq 0) -or ($null -eq $Port -or $Port.Length -eq 0)){
+
+        try {$HistoryFileCheck = Confirm-LMHistoryVariables}
+        catch {
+                throw "Required variables (Server, Port) are missing, and `$Global:LMStudioVars is not populated. Please run Set-LMGlobalVariables or Import-LMConfigFile"
     
+            }
+
+
+    }
+    #region Check LMStudioServer values
+       
     [string]$EndPoint = $Server + ":" + $Port
     $ModelURI = "http://$EndPoint/v1/models"
     
@@ -615,7 +695,7 @@ function Start-LMStudioClient {
     param (
         [Parameter(Mandatory=$true)][string]$Server,
         [Parameter(Mandatory=$false)][ValidateRange(0, 65535)][int]$Port = 1234,
-        [Parameter(Mandatory=$false)][string]$HistoryFile = $Global:LMStudioVars.Historyfilepath,
+        [Parameter(Mandatory=$false)][string]$HistoryFile = $Global:LMStudioVars.HistoryFilePath,
         [Parameter(Mandatory=$false)][double]$Temperature = 0.7,
         [Parameter(Mandatory=$false)][switch]$SkipGreeting,
         [Parameter(Mandatory=$false)][switch]$StreamResponses

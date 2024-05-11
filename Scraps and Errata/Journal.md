@@ -28,3 +28,7 @@ I have also built some of the functionality for a "master" configuration file, w
         * When module is imported, everything that was predefined will be used to provision the required information (server, port, history file)
 
 A lot has gotten done. There is still a lot to do. I think the first thing I'll do is create a "Lite" client to use in the meantime. Perhaps build in the "SaveAs" for use
+
+05/09 - Started building out Import-LMConfigFile; this required parameterizing Get-LMModel. I need to parameterize Import-LMHistoryFile so I can test it during the Import-LMConfigFile process.
+
+I'll keep working from top to bottom to build out the functions this module needs. NOTE: I also should build a "Start-LMStudioLiteClient" to get a working to play with
