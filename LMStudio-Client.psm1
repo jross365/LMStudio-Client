@@ -383,7 +383,7 @@ function Confirm-LMGlobalVariables { #Complete
 # It verifies the path validity and tries to create the path, if specified
 
 
-function Set-LMHistoryPath ([string]$HistoryFile,[switch]$CreatePath){
+function Set-LMHistoryPath ([string]$HistoryFile,[switch]$CreatePath){ #Complete
     If ($HistoryFile.Length -eq 0 -or $null -eq $HistoryFile){throw "Please enter a valid path to the history file"}
 
     $HistFileDirs = $HistoryFile -split '\\'
@@ -427,12 +427,6 @@ function Set-LMHistoryPath ([string]$HistoryFile,[switch]$CreatePath){
 
     }
 
-    $FolderPath = (0..($HistFileDirs.GetUpperBound(0))) -join '\'
-
-    try {$Global:LMStudioVars.HistoryFilePath = $FolderPath}
-    catch {throw "Unable to set HistoryFilePath. Run Initialize-LMVarStore to create it."}
-
-    if ($null -eq $Global:LMStudioVars.HistoryFilePath -or $Global:LMStudioVars.HistoryFilePath.Length -eq 0){throw "HistoryFilePath is empty. Please Run Initialize-LMVarStore to fix it."}
 }
 
 
@@ -463,7 +457,7 @@ function New-HistoryFileTemplate ([switch]$NoDummyEntries){ #Complete
 }
 
 #This function Creates a new (empty) history file
-function New-HistoryFile ([string]$FilePath){
+function New-HistoryFile ([string]$FilePath){ #Complete
     
     $HistoryTemplate = New-HistoryFileTemplate
 
@@ -499,7 +493,7 @@ function Import-LMHistoryFile { #Complete
         #endregion
 
         #region Validate columns and first entry of the history file (for "dummy" content):
-        $HistoryColumns = @("FilePath","Created","Modified","Model","Opener")
+        $HistoryColumns = @("FilePath","Created","Title","Tags","Modified","Model","Opener")
 
         $FileErrors = -1
 
@@ -788,7 +782,7 @@ function New-GreetingPrompt {
 
 
 #This function establishes an asynchronous connection to "stream" the chat output to the console
-function Invoke-LMStream{
+function Invoke-LMStream{ #Complete
     [CmdletBinding()]
 param (
     [Parameter(Mandatory=$true)][string]$CompletionURI,
@@ -1050,8 +1044,7 @@ function Start-LMStudioClient {
         $ProgressPreference = 'SilentlyContinue'
         $ReplayLimit = 10 #Sets the max number of assistant/user content context entries    
     
-        $Version = "0.5"
-    
+        $Version = "0.5" #Could pull this information from the Module version information    
         
         $CompletionURI = "http://$EndPoint/v1/chat/completions"
     
@@ -1076,7 +1069,7 @@ function Start-LMStudioClient {
     
         #region Try to Load or Create a history
     #Need to check if this is still valid:
-        If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$HistoryFile = "$env:USERPROFILE\Documents\ai_history.json"}
+        If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$HistoryFile = $Global:LMStudioVars.HistoryFilePath}
     
         If (!(Test-Path $HistoryFile)){ #Build a dummy history file
     

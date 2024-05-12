@@ -48,4 +48,23 @@ I'll keep working from top to bottom to build out the functions this module need
     * Create-LMConfigFile will not have mandatory parameters
         * If any parameters are missing, they'll be prompted for
 
+05/11 - Finished Import-LMConfigFile, which wasn't an easy step: input validation and caution is important here, because cleaning up mistakes is a hassle when files and folders are created all over the place.
+
+Also touched up a few other functions. I added two new fields to the history file: "Title", and "Tags". It'll make human consumption easier, and make the data easier to search.
+
+I have many of the important pieces together now. I REALLY want to build a functioning client, but it's very important I have the data and file structures right from the start. It's much easier to do right the first time than to have to fix.
+
+[FileInfo] is a really neat class. It's very useful for getting name and paath information from a hypothetical file or folder.
+
+Next up:
+
+* Update Show-LMHelp to include changing the Title/Tags, Change the context message count, Save (without qutting)
+* Make an official list of functions, and their purpose
+* Update the Client to use the complete functions I have (should shorten the code substantially)
+* Review this, and likely simplify/replace it (Client):
+
+#Need to check if this is still valid:
+        If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$Hist...
+
+
 
