@@ -66,7 +66,22 @@ Next up:
 #Need to check if this is still valid:
         If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$Hist...
 
-05/12 - HAD A GOOD IDEA: I can separate out Public and Private functions, and provide a Module Parameter to expose all functions (for an advanced user):
-    * https://stackoverflow.com/questions/36897511/powershell-module-pass-a-parameter-while-importing-module
+05/12 - Doing documentation, clean-up and identifying missing functions today. Might break the functions out into Public/Private.
+
+Some Ideas:
+
+    * I can separate out Public and Private functions, and provide a Module Parameter to expose all functions (for an advanced user):
+        * https://stackoverflow.com/questions/36897511/powershell-module-pass-a-parameter-while-importing-module
+
+    * I can combine all of my object (template) creations into a single function (simplification)
+    * I can add parameters to Show-LMHelp to give details for each parameter
+    * I can build out the "Greeting" functionality as a standalone function
+        * Would move a lot of the Start-LMStudioClient code out of the main body
+        * Create a standalone "greeting" client
+    * Need to incorporate other values into the $Global:LMStudioVars and Config File:
+        * Subtree "Settings" (To be changed manually):
+            * Temperature = 0.7 (default)
+            * Context = 10 (default)
+            * StreamCacheFile = $env:userprofile\Documents\lmstream.cache (default)
 
 

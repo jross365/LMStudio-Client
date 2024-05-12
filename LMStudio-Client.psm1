@@ -546,6 +546,11 @@ function Import-LMHistoryFile { #Complete
 
 } #Close Function
 
+#This function reads the contents of a dialog folder, and rebuilds a history file from the contents
+function Repair-LMHistoryFile {
+
+}
+
 #This function creates a new history file entry: not sure if I need this function
 function New-LMHistoryEntryTemplate {}
 
@@ -692,14 +697,13 @@ function New-LMChatDialogTemplate {
 
 #This function imports a chat dialog from a dialog file (used for "continuing a conversation")
 function Import-LMChatDialog (){
-    #Need to figure out a way to index this
 }
 
 #This function saves a chat dialog to a dialog file, and updates the history file
-function Save-LMChatDialog {[switch]$SkipHistoryAddition}
+function Update-LMChatDialog {[switch]$SkipHistoryAddition}
 
 #Searches the HistoryFile for strings and provides multiple ways to output the contents
-function Search-LMFileHistory {
+function Search-LMChatDialog {
 
     #Params: 
      #History File (not mandatory, defaults to Global:LMstudiovars)
@@ -715,7 +719,7 @@ function Search-LMFileHistory {
 }
 
 #Provides a graphical help interface for the LM-Client
-function Show-LMHelp {
+function Show-LMHelp { #INCOMPLETE
     Add-Type -AssemblyName PresentationCore,PresentationFramework
     $ButtonType = [System.Windows.MessageBoxButton]::OK
     $MessageboxTitle = “LMStudio-Client Help”
@@ -726,7 +730,7 @@ function Show-LMHelp {
 }
 
 #This function generates a greeting prompt for an LLM, for load in the LMChatClient
-function New-GreetingPrompt {
+function New-LMGreetingPrompt { #INCOMPLETE
     
     ###FEATURE TO INCLUDE HERE: RETURN A SYSTEM PROMPT
 
@@ -1091,7 +1095,7 @@ function Start-LMStudioClient {
         #endregion
         
         If (!$SkipGreeting){
-            $NewGreeting = New-GreetingPrompt
+            $NewGreeting = New-LMGreetingPrompt
             
             #region Walk backwards through the $History.Greetings index to create a correct context replay:
             $ContextReplays = New-Object System.Collections.ArrayList
@@ -1309,7 +1313,7 @@ function Start-LMStudioClientLite {
         #endregion
         
         If (!$SkipGreeting){
-            $NewGreeting = New-GreetingPrompt
+            $NewGreeting = New-LMGreetingPrompt
             
             #region Walk backwards through the $History.Greetings index to create a correct context replay:
             $ContextReplays = New-Object System.Collections.ArrayList

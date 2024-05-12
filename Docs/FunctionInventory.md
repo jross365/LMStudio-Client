@@ -44,7 +44,14 @@
     * COMPLETE
     * Invokes [Confirm-LMGlobalVariables] if no filepath is provided
 
-**New-HistoryEntryTemplate** - Returns an empty, correct history file object
+**Repair-LMHistoryFile** - Reads .dialog files in history folder to rebuild history file.
+    * PUBLIC
+    * NOT STARTED
+    * Invokes [New-LMHistoryFile] to create an empty template
+    * Invokes [Import-LMChatDialog] to read contents of each file
+    * Invokes [Update-LMHistoryFile] to write the parsed values into the history file
+
+**New-LMHistoryEntryTemplate** - Returns an empty, correct history file object
     * PRIVATE
     * NOT STARTED
 
@@ -86,6 +93,36 @@
         * Searching chat dialog files for keywords [Search-LMChatDialogs]
         * Rebuilding history file from a given directory [Repair-LMHistoryFile]
 
+**Update-LMChatDialog** - Appends an LM chat to a dialog file, and saves it.
+    * PRIVATE
+    * NOT STARTED
+    * Used by LMClient (To save dialog information)
 
+**Search-LMChatDialog** - Reads, validates and searches a dialog file.
+    * PUBLIC
+    * NOT STARTED
+    * Invokes [Import-LMChatDialog] to import/validate
+    * Searches dialog contents
+    * Can search Titles and Tags
 
+**Show-LMHelp** - Displays a message box with a list of command line options
+    * PRIVATE
+    * (IN)COMPLETE
+    * Used by LMClient (:h)
+    * Intend to update with parameters that display specifics for each option
 
+**New-LMGreetingPrompt** - Generates a novel greeting prompt to get a unique, new greeting from LLM
+    * PRIVATE
+    * (IN)COMPLETE
+    * Intend to update with random system prompt selections:
+        * "Talk like a pirate"
+        * "Talk like a valley girl"
+        * "Be irreverent and sarcastic"
+        * etc.
+
+**Invoke-LMStream** - Sends and receives LMStudio output as "streaming" (asynchrnous)
+    * PRIVATE
+    * COMPLETE
+    * Function is strictly utilitarian (Strict inputs, no assistance)
+
+**Start-LMStudioClient** - Initiates a new chat dialog
