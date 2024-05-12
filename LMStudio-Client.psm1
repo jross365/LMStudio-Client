@@ -200,7 +200,7 @@ function New-LMConfigFile { #Complete
             try {mkdir $DialogFolder -ErrorAction Stop}
             catch {throw "Dialog folder creation failed ($DialogFolder)"}
 
-            try {New-HistoryFile -FilePath $HistoryFilePath -ErrorAction Stop}
+            try {New-LMHistoryFile -FilePath $HistoryFilePath -ErrorAction Stop}
             catch {throw "History file creation failed: $($_.Exception.Message)"}
 
             try {$ConfigFileObj | ConvertTo-Json -Depth 2 -ErrorAction Stop | Out-File $ConfigFilePath -ErrorAction Stop}
@@ -382,7 +382,6 @@ function Confirm-LMGlobalVariables { #Complete
 # This function "Carves The Way" to the path where the history file should be saved. 
 # It verifies the path validity and tries to create the path, if specified
 
-
 function Set-LMHistoryPath ([string]$HistoryFile,[switch]$CreatePath){ #Complete
     If ($HistoryFile.Length -eq 0 -or $null -eq $HistoryFile){throw "Please enter a valid path to the history file"}
 
@@ -431,7 +430,7 @@ function Set-LMHistoryPath ([string]$HistoryFile,[switch]$CreatePath){ #Complete
 
 
 #This function generates and returns an empty history file template with dummy entries (doesn't save)
-function New-HistoryFileTemplate ([switch]$NoDummyEntries){ #Complete
+function New-LMHistoryFileTemplate ([switch]$NoDummyEntries){ #Complete
 
     $Histories = New-Object System.Collections.ArrayList
 
@@ -457,9 +456,9 @@ function New-HistoryFileTemplate ([switch]$NoDummyEntries){ #Complete
 }
 
 #This function Creates a new (empty) history file
-function New-HistoryFile ([string]$FilePath){ #Complete
+function New-LMHistoryFile ([string]$FilePath){ #Complete
     
-    $HistoryTemplate = New-HistoryFileTemplate
+    $HistoryTemplate = New-LMHistoryFileTemplate
 
     try {$HistoryTemplate | ConvertTo-Json -Depth 3 -ErrorAction Stop | Out-File $FilePath -ErrorAction Stop}
     catch {Throw "Unable to create new history file: $($_.Exception.Message)"}
@@ -530,7 +529,7 @@ function Import-LMHistoryFile { #Complete
     #region If not a test, move over content from Fixed-Length arrays to New ArrayLists:
     If (!($AsTest.IsPresent)){
     
-        $NewHistory = New-HistoryFileTemplate -NoDummyEntries
+        $NewHistory = New-LMHistoryFileTemplate -NoDummyEntries
 
         $HistoryContent.Histories | ForEach-Object {$NewHistory.Histories.Add($_) | Out-Null}
     }
@@ -548,7 +547,7 @@ function Import-LMHistoryFile { #Complete
 } #Close Function
 
 #This function creates a new history file entry: not sure if I need this function
-function New-LMHistoryEntry {}
+function New-LMHistoryEntryTemplate {}
 
 #This function saves a history entry to the history file
 function Update-LMHistoryFile { #Complete
@@ -610,7 +609,7 @@ function Update-LMHistoryFile { #Complete
 function Get-LMModel {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$false)][string]$Server = "localhost",
+        [Parameter(Mandatory=$false)][string]$Server,
         [Parameter(Mandatory=$false)][int]$Port,
         [Parameter(Mandatory=$false)][switch]$AsTest
 
@@ -618,7 +617,7 @@ function Get-LMModel {
 
     If (($null -eq $Server -or $Server.Length -eq 0) -or ($null -eq $Port -or $Port.Length -eq 0)){
 
-        try {$HistoryFileCheck = Confirm-LMGlobalVariables}
+        try {$VariablesCheck = Confirm-LMGlobalVariables}
         catch {
                 throw "Required variables (Server, Port) are missing, and `$Global:LMStudioVars is not populated. Please run Set-LMGlobalVariables or Import-LMConfigFile"
     
@@ -657,44 +656,21 @@ function Get-LMModel {
 
 }
 
-#This function Adds a model to the History stored in memory, and saves the file (if switch is specified)
-#THIS FUNCTION IS PROBABLY NOT NECESSARY, SHOULD SAVE MODEL INFO TO GREETING AND DIALOG FILES, RESPECTIVELY
-function Add-LMModelToHistory ([pscustomobject]$History, [string]$Model, [switch]$Save){
-
-    $Model = $ModelData.data.id
-
-    If (($History.Models.GetEnumerator() | ForEach-Object {$_.Value}) -notcontains "$Model"){
-
-        $ModelAdded = $False
-        $ModelIndex = 2
-
-        do {
-            try {
-                $History.Models.Add("$ModelIndex",$Model)
-                $ModelAdded = $True
-            }
-           catch {$ModelIndex++; $ModelAdded = $False}
-
-        }
-        until ($ModelAdded -eq $True)
-        
-        Update-LMHistoryFile -FilePath $HistoryFile -LMHistory $History
-
-    } #Close If
-    Else {$ModelIndex = ($History.Models.GetEnumerator() | Where-Object {$_.Value -eq "$Model"}).Name}
-
-
-
-}
+#This function creates an empty object for creating a greeting file
+function New-LMGreetingTemplate {}
 
 #This function imports the greetings from the greeting file (used for setting greeting context)
 function Import-LMGreetingDialog {
 }
 
+#This function saves a greeting to the greeting file (if the switch is specified)
+function Update-LMGreetingDialog {
+}
+
 #This function creates an empty object for creating a Chat dialog
 function New-LMChatDialogTemplate {
 
-    #region This was taken from New-HistoryFileTemplate:
+    #region This was taken from New-LMHistoryFileTemplate:
     try {
     $DummyContent = New-Object System.Collections.ArrayList
     (0..1).ForEach({$DummyContent.Add(([pscustomobject]@{"timestamp" = $((Get-Date).ToString()); "role" = "dummy"; "content" = "This is a dummy entry."})) | Out-Null})
@@ -712,10 +688,6 @@ function New-LMChatDialogTemplate {
     catch{throw "Unable to create history file $HistoryFile : $($_.Exception.Message))"}
     #endregion
 
-}
-
-#This function saves a greeting to the greeting file (if the switch is specified)
-function Save-LMGreetingDialog {
 }
 
 #This function imports a chat dialog from a dialog file (used for "continuing a conversation")

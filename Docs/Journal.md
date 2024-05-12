@@ -61,10 +61,12 @@ Next up:
 * Update Show-LMHelp to include changing the Title/Tags, Change the context message count, Save (without qutting)
 * Make an official list of functions, and their purpose
 * Update the Client to use the complete functions I have (should shorten the code substantially)
-* Review this, and likely simplify/replace it (Client):
+* Review this, and likely simplify/replace it (Client):`
 
 #Need to check if this is still valid:
         If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$Hist...
 
+05/12 - HAD A GOOD IDEA: I can separate out Public and Private functions, and provide a Module Parameter to expose all functions (for an advanced user):
+    * https://stackoverflow.com/questions/36897511/powershell-module-pass-a-parameter-while-importing-module
 
 
