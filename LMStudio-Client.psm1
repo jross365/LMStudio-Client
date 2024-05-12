@@ -1,12 +1,12 @@
 #This function prompts for server name and port:
     # it prompts to create a new history file, or to load an existing one. 
     # If loading an existing one, it needs to verify it.
-function New-LMConfigFile {
+function New-LMConfigFile { #Complete
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$false)][string]$Server,
         [Parameter(Mandatory=$false)][int]$Port,
-        [Parameter(Mandatory=$false)][string]$HistoryFile,
+        [Parameter(Mandatory=$false)][string]$HistoryFilePath,
         [Parameter(Mandatory=$false)][switch]$SkipValidation,
         [Parameter(Mandatory=$false)][switch]$Import
     )#Structure: 
@@ -60,9 +60,9 @@ function New-LMConfigFile {
         #endregion
 
         #Region Validate History file input
-        If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){
+        If ($null -eq $HistoryFilePath -or $HistoryFilePath.Length -eq 0){
             
-            $HistoryFileValid = $False
+            $HistoryFilePathValid = $False
 
             $DefaultHistoryFilePath = "$($Env:USERPROFILE)\Documents\WindowsPowershell\Modules\LMStudio-Client\$($ENV:USERNAME)-HF.cfg"
 
@@ -91,8 +91,8 @@ function New-LMConfigFile {
 
                 do {
 
-                    $HistoryFile = Read-host "Please provide a complete file path, including name ($($Env:USERNAME)-HF.cfg recommended)"
-                    $PathProvided = (![bool](($null -eq $HistoryFile -or $HistoryFile.Length -eq 0)))
+                    $HistoryFilePath = Read-host "Please provide a complete file path, including name ($($Env:USERNAME)-HF.cfg recommended)"
+                    $PathProvided = (![bool](($null -eq $HistoryFilePath -or $HistoryFilePath.Length -eq 0)))
                 
                 }
                 until ($PathProvided -eq $True)
@@ -102,9 +102,7 @@ function New-LMConfigFile {
         }
 
         #Validate History File path
-        $HistFileDirs = $HistoryFile -split '\\'
-
-        $HistFileDirPath = $HistFileDirs[0..($HistFileDirs.GetUpperBound(0) -1)] -join '\' 
+        $HistFileDirPath  = ([System.IO.FileInfo]::new("$HistoryFilePath")).Directory.FullName
 
         If (!(Test-Path $HistFileDirPath)){
 
@@ -141,30 +139,84 @@ function New-LMConfigFile {
 
     process {
 
+        if (!$SkipVerification){
+
+            If ($HistoryFile.Substring(($HistoryFile.Length - 6),6) -ine ".index"){$HistoryFile = $HistoryFile + ".index"}
+
+            $Warnings = 0
+
+            #region Test Model retrieval (webserver connection)
+            try {$ModelRetrieval = Get-LMModel -Server $Server -Port $Port -AsTest}
+            catch {
+                Write-Warning "Unable to connect to server $Server on port $Port. This could be a server issue (Web server started?)"
+                $Warnings++
+            }
+            #endregion
+    
+            #region Test History File path, format
+            try {Set-LMHistoryPath -HistoryFile $HistoryFilePath -CreatePath}
+            catch {Write-Warning "Unable to create the history file path."}
+            #endregion
+
+        }
+
     }
 
     end {
 
-        if (!$SkipVerification){
+        If ($Warnings -gt 0){
+            Write-Host "Attention: " -ForegroundColor Yellow -NoNewline
+            Write-Host "$Warning settings could not be verified." -ForegroundColor Green
+            Write-Host "If these settings are incorrect, please exit and re-run New-LMConfigFile." -ForegroundColor Green
+        }
 
-            #region Test Model retrieval (webserver connection)
-            try {$ModelRetrieval = Get-LMModel -Server $Server -Port $Port -AsTest}
-            catch {throw $($_.Exception.Message)}
-    
-            If ($ModelRetrieval -ne $True){throw "Unable to connect to server $Server on port $Port. This could be a server issue (Web server started?)"}
-            #endregion
-    
-            #region Test History File path, format
-            If (Test-Path $ConfigFile.HistoryFilePath){throw "History file path $($ConfigData.HistoryFilePath) is not valid or accessible. Please check the path."}
-    
-            try {$CheckHistoryFile = Import-LMHistoryFile -FilePath $ConfigData.HistoryFilePath -AsTest}
-            catch {throw "History file format validation failed: $($_.Exception.Message)"}
-    
-            If ($CheckHistoryFile -ne $true){throw "History file format validation failed for $($ConfigData.HistoryFilePath)"}
-            #endregion        
-            }
+        #region Set creation variables
+        $HistoryFileObj = New-HistoryFileTemplate
+
+        $ConfigFilePath = "$($Env:USERPROFILE)\Documents\WindowsPowerShell\Modules\LMStudio-Client\lmsc.cfg"
+        
+        $DialogFolder = $HistoryFilePath.TrimEnd('.index') + '\' + "$(([System.IO.FileInfo]::new("$HistoryFilePath")).Name.TrimEnd('.index'))"
+
+        $ConfigFileObj = [pscustomobject]@{"Server"=$Server; "Port"=$Port; "HistoryFilePath"=$HistoryFilePath}
+        #endregion
+
+        #region Display information and prompt for creation
+        Write-Host "Config File Settings:" -ForegroundColor Yellow
+
+        $ConfigFileObj | Format-List
+
+        Write-Host ""; Write-Host "History File location:" -ForegroundColor Yellow
+
+        Write-Host "Directory: $HistoryFilePath"
+
+        Write-Host "The following subdirectory will also be created:"
+
+        Write-Host "Directory: $DialogFolder"
+
+        $Proceed = Read-Host -Prompt "Proceed? (y/N)"
+        #endregion
+
+        If ($Proceed -ine "y"){throw "Input other than 'y' provided, halting creation."}
+        Else {
+
+            try {mkdir $DialogFolder -ErrorAction Stop}
+            catch {throw "Dialog folder creation failed ($DialogFolder)"}
+
+            try {$HistoryFileObj | ConvertTo-Json -Depth 3 -ErrorAction Stop | Out-File $HistoryFilePath -ErrorAction Stop}
+            catch {throw "History file creation failed: $($_.Exception.Message)"}
+
+            try {$ConfigFileObj | ConvertTo-Json -Depth 2 -ErrorAction Stop | Out-File $ConfigFilePath -ErrorAction Stop}
+            catch {throw "Config file creation failed: $($_.Exception.Message)"}
+        }
+
+    If ($Import.IsPresent){
+
+        try {$Imported = Import-LMConfigFile -ConfigFile $ConfigFilePath -SkipVerification}
+        catch {throw "Unable to import configuration: $($_.Exception.Message)"}
 
     }
+
+    } #Close End
 
 }
 
