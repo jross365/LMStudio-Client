@@ -6,14 +6,166 @@ function New-LMConfigFile {
     param (
         [Parameter(Mandatory=$false)][string]$Server,
         [Parameter(Mandatory=$false)][int]$Port,
+        [Parameter(Mandatory=$false)][string]$HistoryFile,
         [Parameter(Mandatory=$false)][switch]$SkipValidation,
-        [Parameter(Mandatory=$false)][string]$HistoryFile
-        
-
+        [Parameter(Mandatory=$false)][switch]$Import
     )#Structure: 
-    #$T = [pscustomobject]@{"Server" = "localhost"; "Port" = 1234; "HistoryFile" = "C:\Users\jason\Documents\WindowsPowershell\LMStudio-Client\LMHistory.index"}
 
+    begin {
+
+        #region Validate Server input
+        If ($null -eq $Server -or $Server.Length -eq 0){
+
+            $InputAccepted = $false
+
+            do {
+                $Server = Read-Host "Please provide a valid server hostname or IP address"
+                $InputAccepted = (!([boolean]($null -eq $Server -or $Server.Count -eq 0)))
+            }
+            until ($InputAccepted -eq $true)
+
+        }
+        #endregion
+
+        #region Validate Port input
+        $PortValid = $False
+
+        try {
+            $PortAsInt = [int]$Port
+            $PortValid = $True
+            If ($PortAsInt -lt 0 -or $PortAsInt -gt 65535){$PortValid = $False}
+        }
+        catch {$PortValid = $False}
+
+        If (($null -eq $Port -or $Port.Length -eq 0) -or (!$PortValid)){
+
+            $InputAccepted = $false
+
+            do {
+                $Port = Read-Host "Please provide a port (0-65535)"
+
+                $InputValid = $False
+
+                try {
+                    $PortAsInt = [int]$Port
+                    $InputValid = $True
+                    If ($PortAsInt -lt 0 -or $PortAsInt -gt 65535){$InputValid = $False}
+                }
+                catch {$InputValid = $False}
+                
+            }
+            until ($InputAccepted -eq $true)
+
+        }
+        #endregion
+
+        #Region Validate History file input
+        If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){
+            
+            $HistoryFileValid = $False
+
+            $DefaultHistoryFilePath = "$($Env:USERPROFILE)\Documents\WindowsPowershell\Modules\LMStudio-Client\$($ENV:USERNAME)-HF.cfg"
+
+            Write-Verbose: "Default path for history file is $DefaultHistoryFilePath"
+
+            $HFPathAnswered = $False
+
+            do {
+
+                $DefaultAnswer = Read-Host "Accept the default? (y/N)"
+
+                If ($DefaultAnswer -ine 'y' -and $DefaultAnswer -ine 'n'){
+                    
+                    $HFPathAnswered = $False
+                    Write-Verbose "Please enter 'Y' or 'N' (no quotes, but not case sensitive)" -Verbose
+
+                }
+                Else {$HFPathAnswered = $False}
+
+            }
+            until ($HFPathAnswered -eq $True)
+
+            If ($DefaultAnswer -ieq "n"){
+
+                $PathProvided = $False
+
+                do {
+
+                    $HistoryFile = Read-host "Please provide a complete file path, including name ($($Env:USERNAME)-HF.cfg recommended)"
+                    $PathProvided = (![bool](($null -eq $HistoryFile -or $HistoryFile.Length -eq 0)))
+                
+                }
+                until ($PathProvided -eq $True)
+
+            }
+
+        }
+
+        #Validate History File path
+        $HistFileDirs = $HistoryFile -split '\\'
+
+        $HistFileDirPath = $HistFileDirs[0..($HistFileDirs.GetUpperBound(0) -1)] -join '\' 
+
+        If (!(Test-Path $HistFileDirPath)){
+
+            $CreatePath = $True
+
+            Write-Verbose "Chosen: $HistFileDirPath)" -Verbose
+
+            $CreatePathAnswered = $False
+
+            do {
+
+                $DefaultAnswer = Read-Host "Path doesn't exist. Create it? (y/N)"
+
+                If ($DefaultAnswer -ine 'y' -and $DefaultAnswer -ine 'n'){
+                    
+                    $CreatePathAnswered = $False
+                    Write-Verbose "Please enter 'Y' or 'N' (no quotes, but not case sensitive)" -Verbose
+
+                }
+                Else {$CreatePathAnswered = $False}
+
+            }
+            until ($CreatePathAnswered -eq $True)
+
+            If ($DefaultAnswer -ine 'n'){throw "Provided directory path must be created. Please rerun New-LMConfigFile."}
+
+        }
+
+        Else {$CreatePath = $False}
+
+        #endregion
+
+    } #End Begin
+
+    process {
+
+    }
+
+    end {
+
+        if (!$SkipVerification){
+
+            #region Test Model retrieval (webserver connection)
+            try {$ModelRetrieval = Get-LMModel -Server $Server -Port $Port -AsTest}
+            catch {throw $($_.Exception.Message)}
     
+            If ($ModelRetrieval -ne $True){throw "Unable to connect to server $Server on port $Port. This could be a server issue (Web server started?)"}
+            #endregion
+    
+            #region Test History File path, format
+            If (Test-Path $ConfigFile.HistoryFilePath){throw "History file path $($ConfigData.HistoryFilePath) is not valid or accessible. Please check the path."}
+    
+            try {$CheckHistoryFile = Import-LMHistoryFile -FilePath $ConfigData.HistoryFilePath -AsTest}
+            catch {throw "History file format validation failed: $($_.Exception.Message)"}
+    
+            If ($CheckHistoryFile -ne $true){throw "History file format validation failed for $($ConfigData.HistoryFilePath)"}
+            #endregion        
+            }
+
+    }
+
 }
 
 #This function reads the local LMConfigFile.cfg, verifies it (unless skipped), and then writes the values to the $Global:LMStudioVars
@@ -245,9 +397,11 @@ function New-HistoryFileTemplate ([switch]$NoDummyEntries){ #Complete
     $Entry = [pscustomobject]@{
         "Created" = "$DummyValue";
         "Modified" = "$DummyValue";
-        "Model" = "$DummyValue";
+        "Title" = "$DummyValue;"
         "Opener" = "$DummyValue";
+        "Model" = "$DummyValue";
         "FilePath" = "$DummyValue"
+        "Tags" = @("$DummyValue","$DummyValue")
         }
 
     $Histories.Add($Entry) | out-null
@@ -258,8 +412,13 @@ function New-HistoryFileTemplate ([switch]$NoDummyEntries){ #Complete
 
 }
 
-#This function Creates a new (empty) history file: NOT SURE IF NECESSARY (new-historyfiletemplate | out-file :-)
-function New-HistoryFile{
+#This function Creates a new (empty) history file
+function New-HistoryFile ([string]$FilePath){
+    
+    $HistoryTemplate = New-HistoryFileTemplate
+
+    try {$HistoryTemplate | ConvertTo-Json -Depth 3 -ErrorAction Stop | Out-File $FilePath -ErrorAction Stop}
+    catch {Throw "Unable to create new history file: $($_.Exception.Message)"}
 
 }
 
@@ -347,7 +506,7 @@ function Import-LMHistoryFile { #Complete
 #This function creates a new history file entry: not sure if I need this function
 function New-LMHistoryEntry {}
 
-#This function saves a history stored in a variable to the history file
+#This function saves a history entry to the history file
 function Update-LMHistoryFile { #Complete
     [CmdletBinding()]
     param (
@@ -358,14 +517,13 @@ function Update-LMHistoryFile { #Complete
     begin {
 
         #region Validate $Entry:
-        $StandardFields = @("Created","Modified","Model","Opener","FilePath")
+        $StandardFields = @("Created","Modified","Title""Model","Opener","FilePath","Tags")
 
         $EntryFields = $Entry.PSObject.Properties.Name
 
         $FieldsCheck = Compare-Object -ReferenceObject $StandardFields -DifferenceObject $EntryFields
 
         If ($FieldsCheck.Count -ne 0){throw "The provided Entry does contain the required fields ($($StandardFields -join ', '))"}
-
         #endregion
 
         #region Check history file location in global variables, or use provided FilePath
@@ -906,6 +1064,224 @@ function Start-LMStudioClient {
                     $ModelAdded = $True
                 }
                catch {$ModelIndex++; $ModelAdded = $False}
+    
+            }
+            until ($ModelAdded -eq $True)
+            
+            Set-HistoryFile -HistoryFile $HistoryFile -History $History
+    
+        } #Close If
+        Else {$ModelIndex = ($History.Models.GetEnumerator() | Where-Object {$_.Value -eq "$Model"}).Name}
+    
+        #endregion
+        
+        If (!$SkipGreeting){
+            $NewGreeting = New-GreetingPrompt
+            
+            #region Walk backwards through the $History.Greetings index to create a correct context replay:
+            $ContextReplays = New-Object System.Collections.ArrayList
+            
+            $x = 1
+            $LastGreetingIndex = $History.Greetings.Count - 1
+            $SysPromptChainBroken = $False
+            
+            :iloop Foreach ($Index in $LastGreetingIndex..2){
+    
+                If ($Index -eq $LastGreetingIndex -and (($History.Greetings[$Index].role -eq "system") -or ($History.Greetings[$Index].role -eq "user"))){continue iloop}
+    
+                If ($History.Greetings[$Index].role -eq "system" -and $SysPromptChainBroken -eq $False){
+                    
+                    If ($History.Greetings[$Index].content -ieq "$SystemPrompt"){continue iloop}
+                    Else {
+                            $ContextReplays.Add(($History.Greetings[$Index])) | Out-Null
+                            $SysPromptChainBroken = $True
+                            $x++
+                        }
+                }
+    
+                If ($History.Greetings[$Index].role -eq "assistant" -or $History.Greetings[$Index].role -eq "user"){
+                    $ContextReplays.Add(($History.Greetings[$Index])) | Out-Null
+                    $x++
+                }
+    
+                If ($x -eq ($ReplayLimit)){break iloop}
+    
+            }
+            #endregion
+    
+            #region Fill in the Model, System Prompt and User Prompt of the $Body:
+            $Body = $BodyTemplate | ConvertFrom-Json
+            $Body.model = $Model
+            #$Body.stream = $True #For testing
+    
+            $Body.messages = @()
+            $SystemPromptObj = ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})
+            $UserPromptObj = ([pscustomobject]@{"role" = "user"; "content" = $NewGreeting})
+    
+            # Add a "system" role to the top to set the interpretation:
+            If ($ContextReplays.role -notcontains "system"){$body.messages += ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})}
+            # Replay the relevant/captured interactions back into $Body.messages:
+            $ContextReplays[($ContextReplays.Count - 1)..0].ForEach({$Body.messages += $_})
+            # If we detected a broken system prompt chain, add the current system prompt back in:
+            If ($SysPromptChainBroken){$body.messages += ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})}
+            # Finally, add our new greeting prompt back in:
+            $body.messages += $UserPromptObj
+                
+            #Add the messages to the history, and save the history:
+            $History.Greetings.Add($SystemPromptObj) | Out-Null
+            $History.Greetings.Add($UserPromptObj) | Out-Null
+            $SaveHistory = Set-HistoryFile -HistoryFile $HistoryFile -History $History
+            #endregion
+    
+            #region Write the generated greeting to the console
+            Write-Host "You: " -ForegroundColor Green -NoNewline; Write-Host "$NewGreeting"
+            Write-Host " "
+            #endregion
+    
+            #region Prompt for and receiving greeting
+            $GreetingParams = @{
+                "Uri" = "$CompletionURI"
+                "Method" = "POST"
+                "Body" = ($Body | ConvertTo-Json -Depth 3)
+                "ContentType" = "application/json"
+            }
+    
+            try {$Response = Invoke-RestMethod @GreetingParams -UseBasicParsing -ErrorAction Stop}
+            catch {$_.Exception.Message}
+    
+            $ResponseText = $Response.choices.message.content
+            #endregion
+    
+            #region Response and file management
+            Write-Host "AI: " -ForegroundColor DarkMagenta -NoNewline; Write-Host "$ResponseText"
+    
+            $History.Greetings += ([pscustomobject]@{"role" = "assistant"; "content" = "$ResponseText"})
+            $SaveHistory = Set-HistoryFile -HistoryFile $HistoryFile -History $History
+            #endregion
+    
+        } #Close If $SkipGreeting isn't Present
+    
+        #endregion
+    
+    }
+    
+    process {
+    
+        $Quit = $false
+    
+        do {
+    
+            write-host "You: " -ForegroundColor Green -NoNewline; $UserPrompt = Read-Host
+    
+            $Body = $BodyTemplate
+            $Body = $Body -replace 'MODELHERE',"$Model"
+            $Body = $Body -replace 'SYSPROMPTHERE',"$SystemPrompt"
+            $Body = $Body -replace 'USERPROMPTHERE',"$UserPrompt"
+    
+            
+            $Response = Invoke-RestMethod -Uri $CompletionURI -Method POST -Body $Body -WebSession $R2D2 -ContentType "Application/json"
+    
+            $Response.choices.message.content
+    
+        }
+        until ($Quit -eq $true)
+    
+    
+    }
+    
+    end {
+        $ProgressPreference = $OrigProgPref
+    
+    
+    }
+    
+    }
+    
+
+function Start-LMStudioClientLite {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)][string]$Server,
+        [Parameter(Mandatory=$false)][ValidateRange(0, 65535)][int]$Port = 1234,
+        [Parameter(Mandatory=$false)][string]$HistoryFile = $Global:LMStudioVars.HistoryFilePath,
+        [Parameter(Mandatory=$false)][double]$Temperature = 0.7,
+        [Parameter(Mandatory=$false)][switch]$SkipGreeting,
+        [Parameter(Mandatory=$false)][switch]$StreamResponses
+        #[Parameter(Mandatory=$false)][switch]$NoTimestamps, #Not sure what to do with this, or where to hide the timestamps
+        )
+    
+    begin {
+    
+        
+        #region Prerequisite Variables
+        $OrigProgPref = $ProgressPreference
+        $ProgressPreference = 'SilentlyContinue'
+        $ReplayLimit = 10 #Sets the max number of assistant/user content context entries    
+    
+        $Version = "0.5"
+    
+        
+        $CompletionURI = "http://$EndPoint/v1/chat/completions"
+    
+        $host.UI.RawUI.WindowTitle = "LM Studio Client v$Version ### Show Help: !h "
+    
+        $SystemPrompt = "Please be polite, concise and informative."
+        #endregion
+    
+        #region Define the BODY Template
+        $BodyTemplate = '{ 
+            "model": "MODELHERE",
+            "messages": [ 
+                { "role": "system", "content": "SYSPROMPTHERE" },
+                { "role": "user", "content": "USERPROMPTHERE" }
+            ], 
+            "temperature": 0.7, 
+            "max_tokens": -1,
+            "stream": false
+        }'
+    
+        #endregion
+    
+        #region Try to Load or Create a history
+    #Need to check if this is still valid:
+        If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$HistoryFile = "$env:USERPROFILE\Documents\ai_history.json"}
+    
+        If (!(Test-Path $HistoryFile)){ #Build a dummy history file
+    
+            try {
+    
+                $History = New-HistoryObject
+                Set-HistoryFile -HistoryFile $HistoryFile -History $History
+    
+            }
+            catch{throw "Unable to create history file $HistoryFile : $($_.Exception.Message))"}
+    
+        }
+        Else {
+    
+            try {$History = Get-HistoryFile -HistoryFile $HistoryFile}
+            catch {throw "Unable to import history file $HistoryFile : $($_.Exception.Message)"}
+    
+        }
+        #endregion
+    
+        #region Connection Test, and Model Name Retrieval, Add model to History
+        try {$Model = Get-LMModel -Server $Server -Port $Port}
+        catch {throw "Unable to retrieve model information. Check to see if the server is up."}
+    
+        $Model = $ModelData.data.id
+    
+        If (($History.Models.GetEnumerator() | ForEach-Object {$_.Value}) -notcontains "$Model"){
+    
+            $ModelAdded = $False
+            $ModelIndex = 2
+    
+            do {
+                try {
+                    $History.Models.Add("$ModelIndex",$Model)
+                    $ModelAdded = $True
+                }
+                catch {$ModelIndex++; $ModelAdded = $False}
     
             }
             until ($ModelAdded -eq $True)
