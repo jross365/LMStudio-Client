@@ -87,4 +87,12 @@ Some Ideas:
             * Stream = $True (default)
             * StreamCacheFile = $env:userprofile\Documents\lmstream.cache (default)
 
+    * Markdown compatibility: If (1) Client is PS7, (2) "Show-Markdown" is an available cmdlet, and (3) a "-Markdown" (or similar) parameter is provided, I can use the Show-Markdown cmdlet to beautify the output
+        * The way this would work with "Stream" mode:
+            * that a copy of the output would would retained (as per usual:
+                 $Output = Invoke-LMStream
+            * the screen will be cleared:
+                 Clear-Screen
+            * The output would be passed:
+                Show-Markdown -InputObject $Output
 
