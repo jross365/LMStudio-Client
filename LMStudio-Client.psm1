@@ -314,6 +314,18 @@ end {
     } #Close End
 }
 
+#This function returns different kinds of objects needed by various functions
+function Get-LMTemplate { #INCOMPLETE
+    [CmdletBinding()]
+    param(
+        # Param1 help description
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('ConfigFile','HistoryFile', 'HistoryEntry', 'ChatGreeting', 'ChatDialog', 'Body')]
+        [string]$Type
+    )
+
+}
+
 #This function builds the hierarchy of hash tables at $Global:LMstudiovars to store configuration information (server, port, history file)
 function Initialize-LMVarStore { #Complete
     $Global:LMStudioVars = @{}
