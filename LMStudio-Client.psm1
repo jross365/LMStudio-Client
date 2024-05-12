@@ -171,8 +171,6 @@ function New-LMConfigFile { #Complete
         }
 
         #region Set creation variables
-        $HistoryFileObj = New-HistoryFileTemplate
-
         $ConfigFilePath = "$($Env:USERPROFILE)\Documents\WindowsPowerShell\Modules\LMStudio-Client\lmsc.cfg"
         
         $DialogFolder = $HistoryFilePath.TrimEnd('.index') + '\' + "$(([System.IO.FileInfo]::new("$HistoryFilePath")).Name.TrimEnd('.index'))"
@@ -202,7 +200,7 @@ function New-LMConfigFile { #Complete
             try {mkdir $DialogFolder -ErrorAction Stop}
             catch {throw "Dialog folder creation failed ($DialogFolder)"}
 
-            try {$HistoryFileObj | ConvertTo-Json -Depth 3 -ErrorAction Stop | Out-File $HistoryFilePath -ErrorAction Stop}
+            try {New-HistoryFile -FilePath $HistoryFilePath -ErrorAction Stop}
             catch {throw "History file creation failed: $($_.Exception.Message)"}
 
             try {$ConfigFileObj | ConvertTo-Json -Depth 2 -ErrorAction Stop | Out-File $ConfigFilePath -ErrorAction Stop}
@@ -383,7 +381,7 @@ function Confirm-LMGlobalVariables { #Complete
 
 # This function "Carves The Way" to the path where the history file should be saved. 
 # It verifies the path validity and tries to create the path, if specified
-# Used by the Create-HistoryFile (I think)
+
 
 function Set-LMHistoryPath ([string]$HistoryFile,[switch]$CreatePath){
     If ($HistoryFile.Length -eq 0 -or $null -eq $HistoryFile){throw "Please enter a valid path to the history file"}
