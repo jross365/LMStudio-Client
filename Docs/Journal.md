@@ -84,6 +84,7 @@ Some Ideas:
         * Subtree "Settings" (To be changed manually):
             * Temperature = 0.7 (default)
             * Context = 10 (default)
+            * Stream = $True (default)
             * StreamCacheFile = $env:userprofile\Documents\lmstream.cache (default)
 
 

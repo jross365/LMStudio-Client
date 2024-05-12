@@ -697,13 +697,21 @@ function New-LMChatDialogTemplate {
 
 #This function imports a chat dialog from a dialog file (used for "continuing a conversation")
 function Import-LMChatDialog (){
+
+    #The general idea:
+$DialogTemplate = New-LMChatDialogTemplate
+
+$DialogContents = Get-Content $DialogFile | ConvertFrom-Json -depth 2
+
+$MessageContents = $DialogContents.Messages | ConvertFrom-Csv
+
 }
 
 #This function saves a chat dialog to a dialog file, and updates the history file
-function Update-LMChatDialog {[switch]$SkipHistoryAddition}
+function Update-LMChatDialog {}
 
 #Searches the HistoryFile for strings and provides multiple ways to output the contents
-function Search-LMChatDialog {
+function Search-LMChatDialog { #NOT STARTED
 
     #Params: 
      #History File (not mandatory, defaults to Global:LMstudiovars)
@@ -757,7 +765,7 @@ function New-LMGreetingPrompt { #INCOMPLETE
 } #Close Function
 
 #This function invokes a synchronous connection to "blob" chat output to the console
-function Invoke-LMBlob {
+function Invoke-LMBlob { #NOT STARTED
 }
 
 #This function establishes an asynchronous connection to "stream" chat output to the console
@@ -1003,11 +1011,11 @@ end {
 } #Close function
 
 #This function initiates a "greeting"
-function Get-LMGreeting {
+function Get-LMGreeting { #NOT STARTED
 }
 
 #This function is the LM Studio Client
-function Start-LMChat {
+function Start-LMChat { #INCMPLETE
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)][string]$Server,
