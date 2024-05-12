@@ -756,8 +756,11 @@ function New-LMGreetingPrompt { #INCOMPLETE
 
 } #Close Function
 
+#This function invokes a synchronous connection to "blob" chat output to the console
+function Invoke-LMBlob {
+}
 
-#This function establishes an asynchronous connection to "stream" the chat output to the console
+#This function establishes an asynchronous connection to "stream" chat output to the console
 function Invoke-LMStream{ #Complete
     [CmdletBinding()]
 param (
@@ -999,8 +1002,12 @@ end {
 
 } #Close function
 
+#This function initiates a "greeting"
+function Get-LMGreeting {
+}
+
 #This function is the LM Studio Client
-function Start-LMStudioClient {
+function Start-LMChat {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)][string]$Server,
@@ -1217,7 +1224,7 @@ function Start-LMStudioClient {
     }
     
 
-function Start-LMStudioClientLite {
+function Start-LMChatLite {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)][string]$Server,

@@ -120,9 +120,29 @@
         * "Be irreverent and sarcastic"
         * etc.
 
+**Invoke-LMBlob** - Sends and receives LMStudio output as "blob" (synchronous)
+    * PRIVATE
+    * NOT STARTED
+    * Function is strictly utilitarian (Strict inputs, no assistance)
+    * Invokes [Invoke-RestMethod]
+
+
 **Invoke-LMStream** - Sends and receives LMStudio output as "streaming" (asynchrnous)
     * PRIVATE
     * COMPLETE
     * Function is strictly utilitarian (Strict inputs, no assistance)
+    * Returns output as a single string after completion
+    * Enables interruption of stream
 
-**Start-LMStudioClient** - Initiates a new chat dialog
+**Get-LMGreeting** - Initiates a greeting
+    * PUBLIC
+    * NOT STARTED
+    * Can be run "configless" (No history/greeting file handling)
+    * Invokes [New-LMGreetingPrompt] to create a random prompt
+    * Invokes [Import-LMGreetingDialog] to set greeting chat context
+    * Invokes [Update-LMGreetingDialog] to save the LLM respojnse
+
+**Start-LMChat** - Initiates a new chat dialog
+    * PUBLIC
+    * (IN)COMPLETE
+    * Invokes more things than I care to list

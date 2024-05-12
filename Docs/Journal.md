@@ -74,10 +74,12 @@ Some Ideas:
         * https://stackoverflow.com/questions/36897511/powershell-module-pass-a-parameter-while-importing-module
 
     * I can combine all of my object (template) creations into a single function (simplification)
+        * Should include the HTTP $Body in this
     * I can add parameters to Show-LMHelp to give details for each parameter
     * I can build out the "Greeting" functionality as a standalone function
         * Would move a lot of the Start-LMStudioClient code out of the main body
         * Create a standalone "greeting" client
+    
     * Need to incorporate other values into the $Global:LMStudioVars and Config File:
         * Subtree "Settings" (To be changed manually):
             * Temperature = 0.7 (default)
