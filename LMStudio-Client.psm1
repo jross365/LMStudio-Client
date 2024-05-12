@@ -1287,7 +1287,7 @@ function Start-LMStudioClientLite {
     
         #region Try to Load or Create a history
     #Need to check if this is still valid:
-        If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$HistoryFile = "$env:USERPROFILE\Documents\ai_history.json"}
+        If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$HistoryFile = $Global:LMStudioVars.HistoryFilePath}
     
         If (!(Test-Path $HistoryFile)){ #Build a dummy history file
     
