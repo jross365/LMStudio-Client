@@ -192,11 +192,8 @@ function New-LMConfigFile { #Complete
         $ConfigFileObj | Format-List
 
         Write-Host ""; Write-Host "History File location:" -ForegroundColor Yellow
-
         Write-Host "Directory: $HistoryFilePath"
-
         Write-Host "The following subdirectory will also be created:"
-
         Write-Host "Directory: $DialogFolder"
 
         $Proceed = Read-Host -Prompt "Proceed? (y/N)"
@@ -376,6 +373,10 @@ function Get-LMTemplate { #INCOMPLETE
                 "ContextDepth" = $Global:LMStudioVars.ChatSettings.ContextDepth
 
             }
+
+            If ($null -eq $Object.Temperature){$Object.Temperature = 0.7}
+            If ($null -eq $Object.Max_Tokens){$Object.Max_Tokens = -1}
+            If ($null -eq $Object.Stream){$Object.Stream = $True}
         }
         {$_ -ieq "ChatDialog"}{
             
@@ -415,11 +416,22 @@ function Get-LMTemplate { #INCOMPLETE
                 "stream": "STREAMHERE"
             }' 
 
-            $Object = $Object -replace '"TEMPHERE"',$($Global:LMStudioVars.ChatSettings.temperature)
-            $Object = $Object -replace '"MAXTOKENSHERE"',$($Global:LMStudioVars.ChatSettings.max_tokens)
-            $Object = $Object -replace 'STREAMHERE',$($Global:LMStudioVars.ChatSettings.stream)
+            If ($null -ne $Global:LMStudioVars.ChatSettings){
+            
+                $Object = $Object -replace '"TEMPHERE"',$($Global:LMStudioVars.ChatSettings.temperature)
+                $Object = $Object -replace '"MAXTOKENSHERE"',$($Global:LMStudioVars.ChatSettings.max_tokens)
+                $Object = $Object -replace 'STREAMHERE',$($Global:LMStudioVars.ChatSettings.stream)
+                }
+            
+            Else {
 
-            $Object = $Object | ConvertFrom-Json -Depth 3
+                $Object = $Object -replace '"TEMPHERE"', 0.7
+                $Object = $Object -replace '"MAXTOKENSHERE"', -1
+                $Object = $Object -replace 'STREAMHERE', $True
+
+            }
+
+                $Object = $Object | ConvertFrom-Json -Depth 3
 
         }
 

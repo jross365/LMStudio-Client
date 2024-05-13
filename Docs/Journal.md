@@ -107,3 +107,11 @@ Some Ideas:
 
     This also simplifies the way History Files are created and appended to.
         (It also suggests that, since the data is flat, I should be using a CSV!)
+
+05/12 - Finished the New-LMTemplate function; added temperature,max_tokens,stream,ContextDepth to Config file and to global settings incorporation.
+
+TO DO TOMORROW:
+    * Move functions over to the New-LMTemplate
+    * Remove the old standalone template functions
+    * Evaluate whether I can remove functions I've labeled as such
+    
