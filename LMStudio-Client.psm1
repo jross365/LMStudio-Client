@@ -175,7 +175,15 @@ function New-LMConfigFile { #Complete
         
         $DialogFolder = $HistoryFilePath.TrimEnd('.index') + '\' + "$(([System.IO.FileInfo]::new("$HistoryFilePath")).Name.TrimEnd('.index'))"
 
-        $ConfigFileObj = [pscustomobject]@{"Server"=$Server; "Port"=$Port; "HistoryFilePath"=$HistoryFilePath}
+        $ConfigFileObj = Get-LMTemplate -Type ConfigFile
+
+        $ConfigFileObj.Server = $Server
+        $ConfigFileObj.Port = $Port
+        $ConfigFileObj.HistoryFilePath = $HistoryFilePath
+        $ConfigFileObj.temperature = 0.7
+        $ConfigFileObj.max_tokens = -1
+        $ConfigFileObj.stream = $True
+        $ConfigFileObj.ContextDepth = 10
         #endregion
 
         #region Display information and prompt for creation
@@ -233,12 +241,9 @@ begin {
     #endregion
 
     #region Verify config file properties exist:
-    [System.Collections.ArrayList]$Properties = "Server", "Port", "HistoryFilePath"
+    [System.Collections.ArrayList]$Properties = "Server", "Port", "HistoryFilePath","temperature", "max_tokens", "stream","ContextDepth"
 
-    $ConfigData.psobject.Properties.Name | Foreach-Object {
-
-        If ($_ -ieq "Server" -or $_ -ieq "Port" -or $_ -ieq "HistoryFile"){$Properties.Remove($_) | Out-Null}
-    }
+    $ConfigData.psobject.Properties.Name | Foreach-Object {$Properties.Remove("$_") | out-null}
 
     If ($Properties.Count -ne 0){throw "Config file missing property $($Propoerties -join ',') ($ConfigFile)"}
     #endregion
@@ -278,6 +283,24 @@ begin {
 }#Close Begin
 process {
 
+    Initialize-LMVarStore
+
+    $LMVars = @{
+        "Server" = ($ConfigData.Server);
+        "Port" = ($ConfigData.Port);
+        "FilePath" = ($ConfigData.HistoryFilePath);
+        "Temperature" = ($ConfigData.temperature);
+        "MaxTokens" = ($ConfigData.max_tokens);
+        "Stream" = ($ConfigData.stream);
+        "ContextDepth" = $ConfigData.ContextDepth
+    }
+
+    try {Set-LMGlobalVariables @LMVars}
+    catch {throw "Unable to set Global variables"}
+
+    } #Close Process
+end {
+
     if (!$SkipVerification){
 
         #region Test Model retrieval (webserver connection)
@@ -297,20 +320,6 @@ process {
         #endregion        
         }
 
-    } #Close Process
-end {
-
-    Initialize-LMVarStore
-
-    $LMVars = @{
-        "Server" = ($ConfigData.Server);
-        "Port" = ($ConfigData.Port);
-        "FilePath" = ($ConfigData.HistoryFilePath)
-    }
-
-    try {Set-LMGlobalVariables @LMVars}
-    catch {throw "Unable to set Global variables"}
-
     } #Close End
 }
 
@@ -320,9 +329,103 @@ function Get-LMTemplate { #INCOMPLETE
     param(
         # Param1 help description
         [Parameter(Mandatory=$true)]
-        [ValidateSet('ConfigFile','HistoryFile', 'HistoryEntry', 'ChatGreeting', 'ChatDialog', 'Body')]
+        [ValidateSet('ConfigFile', 'HistoryEntry', 'ChatGreeting', 'ChatDialog', 'Body')]
         [string]$Type
     )
+
+    $DummyValue = "dummyvalue"
+
+    switch ($Type){
+
+        {$_ -ieq "ConfigFile"}{
+            $Object = [pscustomobject]@{
+                "Server" = "";
+                "Port" = "";
+                "HistoryFilePath" = "";
+                "temperature" = "";
+                "max_tokens" = "";
+                "stream" = "";
+                "ContextDepth" = ""
+            };
+        }
+        {$_ -ieq "HistoryEntry"}{
+            
+            $Object = [pscustomobject]@{
+                "Created" = "$DummyValue";
+                "Modified" = "$DummyValue";
+                "Title" = "$DummyValue;"
+                "Opener" = "$DummyValue";
+                "Model" = "$DummyValue";
+                "FilePath" = "$DummyValue"
+                "Tags" = @("$DummyValue","$DummyValue")
+                }
+        
+        }
+        {$_ -ieq "ChatGreeting"}{
+
+            $Object = [pscustomobject]@{
+
+                "TimeStamp" = "$((Get-Date).ToString())"
+                "System" = "Please be polite, concise and informative."; #System Prompt
+                "User" = $DummyValue;   #User Prompt
+                "Assistant" = $DummyValue;
+                "Model" = $DummyValue;
+                "Temperature" = $Global:LMStudioVars.ChatSettings.temperature
+                "Max_Tokens" = $Global:LMStudioVars.ChatSettings.max_tokens
+                "Stream" = $Global:LMStudioVars.ChatSettings.stream
+                "ContextDepth" = $Global:LMStudioVars.ChatSettings.ContextDepth
+
+            }
+        }
+        {$_ -ieq "ChatDialog"}{
+            
+            #The "Info" portion of the file
+            $Info = @{}
+
+            $InfoFields = @("Model","Title","Tags","Created","Modified","Opener")
+
+            $InfoFields.ForEach({$Info.Add($_,"$DummyValue")})
+            
+            $Info.Created = "$((Get-Date).ToString())"
+            $Info.Modified = "$((Get-Date).ToString())"
+            $Info.Tags = New-Object System.Collections.ArrayList
+
+            (0..1).ForEach({$Info.Tags.Add("$DummyValue") | out-null})
+
+            #The "Messages" portion of the file.
+            $Messages = New-Object System.Collections.ArrayList
+
+            $DummyRow = [pscustomobject]@{"TimeStamp" = ((Get-Date).ToString()); "temperature" = $Global:LMStudioVars.ChatSettings.temperature; "max_tokens" = $Global:LMStudioVars.ChatSettings.max_tokens; "stream" = $Global:LMStudioVars.ChatSettings.stream; "Role" = "system"; "Content" = "Please be polite, concise and informative."}
+
+            $Messages.Add($DummyRow) | Out-Null
+
+            $Object = [pscustomobject]@{"Info" = $Info; "Messages" = $Messages}
+
+        }
+        {$_ -ieq "Body"}{
+
+            $Object = '{ 
+                "model": "MODELHERE",
+                "messages": [ 
+                  { "role": "system", "content": "SYSPROMPTHERE" },
+                  { "role": "user", "content": "USERPROMPTHERE" }
+                ], 
+                "temperature": "TEMPHERE", 
+                "max_tokens": "MAXTOKENSHERE",
+                "stream": "STREAMHERE"
+            }' 
+
+            $Object = $Object -replace '"TEMPHERE"',$($Global:LMStudioVars.ChatSettings.temperature)
+            $Object = $Object -replace '"MAXTOKENSHERE"',$($Global:LMStudioVars.ChatSettings.max_tokens)
+            $Object = $Object -replace 'STREAMHERE',$($Global:LMStudioVars.ChatSettings.stream)
+
+            $Object = $Object | ConvertFrom-Json -Depth 3
+
+        }
+
+    } #Close switch
+
+    return $Object
 
 }
 
@@ -333,7 +436,11 @@ function Initialize-LMVarStore { #Complete
     $Global:LMStudioVars.ServerInfo.Add("Server","")
     $Global:LMStudioVars.ServerInfo.Add("Port","")
     $Global:LMStudioVars.Add("HistoryFilePath","")
-
+    $Global:LMStudioVars.Add("ChatSettings",@{})
+    $Global:LMStudioVars.ChatSettings.Add("temperature",0.7)
+    $Global:LMStudioVars.ChatSettings.Add("max_tokens",-1)
+    $Global:LMStudioVars.ChatSettings.Add("stream",$True)
+    $Global:LMStudioVars.ChatSettings.Add("ContextDepth",10)
 }
 
 #This function sets the Global variables for Server, Port and HistoryFile; it ASSUMES validation has been completed
@@ -343,6 +450,10 @@ function Set-LMGlobalVariables { #Complete
         [Parameter(Mandatory=$true)][string]$Server,
         [Parameter(Mandatory=$true)][int]$Port,
         [Parameter(Mandatory=$true)][string]$FilePath,
+        [Parameter(Mandatory=$true)][double]$Temperature,
+        [Parameter(Mandatory=$true)][double]$MaxTokens,
+        [Parameter(Mandatory=$true)][boolean]$Stream,
+        [Parameter(Mandatory=$true)][int]$ContextDepth,
         [Parameter(Mandatory=$false)][switch]$Show       
 
     )
@@ -361,13 +472,25 @@ function Set-LMGlobalVariables { #Complete
     try {$Global:LMStudioVars.HistoryFilePath = $FilePath}
     catch {throw "Unable to set Global variable LMStudioServer for value History File Path: $FilePath"}
 
+    try {$Global:LMStudioVars.ChatInfo.temperature = $Temperature}
+    catch {throw "Unable to set Global variable LMStudioServer for value Temperature: $Temperature"}
+
+    try {$Global:LMStudioVars.ChatInfo.max_tokens = $MaxTokens}
+    catch {throw "Unable to set Global variable LMStudioServer for value Max_Tokens: $Temperature"}
+
+    try {$Global:LMStudioVars.ChatInfo.stream = $Stream}
+    catch {throw "Unable to set Global variable LMStudioServer for value Stream: $Stream"}
+
+    try {$Global:LMStudioVars.ChatInfo.ContextDepth = $ContextDepth}
+    catch {throw "Unable to set Global variable LMStudioServer for value ContextDepth: $ContextDepth"}
+
     If ($Show.IsPresent){$Global:LMStudioVars}
 
 }
 
 #This function validates $Global:LMStudioVars is fully populated
 #CAN PROBABLY REMOVE THIS FUNCTION, error checking is part of all of the import/export processes
-function Confirm-LMGlobalVariables { #Complete
+function Confirm-LMGlobalVariables { #INComplete, needs temp,maxtokens,stream additions
 
     If ($null -eq $Global:LMStudioVars){throw "Please run Set-LMSGlobalVariables first."}
     

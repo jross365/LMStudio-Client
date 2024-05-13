@@ -96,3 +96,14 @@ Some Ideas:
             * The output would be passed:
                 Show-Markdown -InputObject $Output
 
+05/12 - Had another thought:
+    * I need to convert all "New-LMHistoryFile" calls to the new Template function. 
+    * New-LMHistoryFile does nothing but save an arbitrary file, it's a pointless function. I just have to do 
+        * [Get a new history entry template] | Convertto-Json -Depth 3 | out-file $somefilepath
+    
+    I need to do this URGENTLY, because it's one of those small modifications that can create hassle downstream.
+
+    Also, getting rid of an extra function gets rid of the ability and utility to omit "dummy values". For the history file, when I need a template I'll simply re-fill in the dummy fields.
+
+    This also simplifies the way History Files are created and appended to.
+        (It also suggests that, since the data is flat, I should be using a CSV!)
