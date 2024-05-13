@@ -5,7 +5,7 @@ function New-LMConfigFile { #Complete
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$false)][string]$Server,
-        [Parameter(Mandatory=$false)][int]$Port,
+        [Parameter(Mandatory=$false)][ValidateRange(1, 65535)][int]$Port,
         [Parameter(Mandatory=$false)][string]$HistoryFilePath,
         [Parameter(Mandatory=$false)][switch]$SkipValidation,
         [Parameter(Mandatory=$false)][switch]$Import
@@ -28,35 +28,33 @@ function New-LMConfigFile { #Complete
         #endregion
 
         #region Validate Port input
-        $PortValid = $False
+        If ($null -eq $Port -or $Port.Length -eq 0 -or $Port -eq 0){
 
-        try {
-            $PortAsInt = [int]$Port
-            $PortValid = $True
-            If ($PortAsInt -lt 0 -or $PortAsInt -gt 65535){$PortValid = $False}
-        }
-        catch {$PortValid = $False}
-
-        If (($null -eq $Port -or $Port.Length -eq 0) -or (!$PortValid)){
-
-            $InputAccepted = $false
+            $InputValid = $false
 
             do {
-                $Port = Read-Host "Please provide a port (0-65535)"
+                $Port = Read-Host "Please provide a port (1-65535)"
 
                 $InputValid = $False
 
-                try {
-                    $PortAsInt = [int]$Port
-                    $InputValid = $True
-                    If ($PortAsInt -lt 0 -or $PortAsInt -gt 65535){$InputValid = $False}
+                If ($Null -eq $Port -or $Port.Length -eq 0){$InputValid = $False}
+                Else {
+                
+                    try {$PortAsInt = [int]$Port}
+                    catch {Write-Warning "$Port is not a valid integer"; continue}
+                    
+                    If ($PortAsInt -le 0 -or $PortAsInt -gt 65535){
+                        Write-Warning "Port $Port is not in a range of 1-65535"
+                        $InputValid = $False
+                    }
+                    Else {$InputValid = $True}
                 }
-                catch {$InputValid = $False}
                 
             }
-            until ($InputAccepted -eq $true)
+            until ($InputValid -eq $true)
 
         }
+
         #endregion
 
         #Region Validate History file input
@@ -64,9 +62,9 @@ function New-LMConfigFile { #Complete
             
             $HistoryFilePathValid = $False
 
-            $DefaultHistoryFilePath = "$($Env:USERPROFILE)\Documents\WindowsPowershell\Modules\LMStudio-Client\$($ENV:USERNAME)-HF.cfg"
+            $DefaultHistoryFilePath = "$($Env:USERPROFILE)\Documents\LMStudio-PSClient\$($ENV:USERNAME)-HF.index"
 
-            Write-Verbose: "Default path for history file is $DefaultHistoryFilePath"
+            Write-Verbose "Default path for history file is $DefaultHistoryFilePath" -Verbose
 
             $HFPathAnswered = $False
 
@@ -80,26 +78,33 @@ function New-LMConfigFile { #Complete
                     Write-Verbose "Please enter 'Y' or 'N' (no quotes, but not case sensitive)" -Verbose
 
                 }
-                Else {$HFPathAnswered = $False}
+                Else {$HFPathAnswered = $True}
 
             }
             until ($HFPathAnswered -eq $True)
 
-            If ($DefaultAnswer -ieq "n"){
+            switch ($DefaultAnswer){
 
-                $PathProvided = $False
+                {$_ -ieq "n"}{
 
-                do {
+                    $PathProvided = $False
 
-                    $HistoryFilePath = Read-host "Please provide a complete file path, including name ($($Env:USERNAME)-HF.cfg recommended)"
-                    $PathProvided = (![bool](($null -eq $HistoryFilePath -or $HistoryFilePath.Length -eq 0)))
-                
+                    do {
+    
+                        $HistoryFilePath = Read-host "Please provide a complete file path, including name ($($Env:USERNAME)-HF.cfg recommended)"
+                        $PathProvided = (![bool](($null -eq $HistoryFilePath -or $HistoryFilePath.Length -eq 0)))
+                    
+                    }
+                    until ($PathProvided -eq $True)
+
                 }
-                until ($PathProvided -eq $True)
+
+                {$_ -ieq "y"}{$HistoryFilePath = $DefaultHistoryFilePath}
 
             }
 
-        }
+
+        } #Close If $null -eq HistoryFilePath
 
         #Validate History File path
         $HistFileDirPath  = ([System.IO.FileInfo]::new("$HistoryFilePath")).Directory.FullName
@@ -108,7 +113,7 @@ function New-LMConfigFile { #Complete
 
             $CreatePath = $True
 
-            Write-Verbose "Chosen: $HistFileDirPath)" -Verbose
+            Write-Verbose "Chosen: $HistFileDirPath" -Verbose
 
             $CreatePathAnswered = $False
 
@@ -120,14 +125,14 @@ function New-LMConfigFile { #Complete
                     
                     $CreatePathAnswered = $False
                     Write-Verbose "Please enter 'Y' or 'N' (no quotes, but not case sensitive)" -Verbose
-
                 }
-                Else {$CreatePathAnswered = $False}
+                Else {$CreatePathAnswered = $True}
 
             }
             until ($CreatePathAnswered -eq $True)
 
-            If ($DefaultAnswer -ine 'n'){throw "Provided directory path must be created. Please rerun New-LMConfigFile."}
+            If ($DefaultAnswer -ieq 'n'){throw "Provided directory path must be created. Please rerun New-LMConfigFile."}
+            Else {$CreatePath = $True}
 
         }
 
@@ -141,7 +146,7 @@ function New-LMConfigFile { #Complete
 
         if (!$SkipVerification){
 
-            If ($HistoryFile.Substring(($HistoryFile.Length - 6),6) -ine ".index"){$HistoryFile = $HistoryFile + ".index"}
+            If ($HistoryFilePath.Substring(($HistoryFilePath.Length - 6),6) -ine ".index"){$HistoryFilePath = $HistoryFilePath + ".index"}
 
             $Warnings = 0
 
@@ -171,9 +176,9 @@ function New-LMConfigFile { #Complete
         }
 
         #region Set creation variables
-        $ConfigFilePath = "$($Env:USERPROFILE)\Documents\WindowsPowerShell\Modules\LMStudio-Client\lmsc.cfg"
+        $ConfigFilePath = "$($Env:USERPROFILE)\Documents\WindowsPowerShell\Modules\LMStudio-PSClient\lmsc.cfg"
         
-        $DialogFolder = $HistoryFilePath.TrimEnd('.index') + '\' + "$(([System.IO.FileInfo]::new("$HistoryFilePath")).Name.TrimEnd('.index'))"
+        $DialogFolder = $HistoryFilePath.TrimEnd('.index') + '-DialogFiles'
 
         $ConfigFileObj = Get-LMTemplate -Type ConfigFile
 
@@ -192,9 +197,11 @@ function New-LMConfigFile { #Complete
         $ConfigFileObj | Format-List
 
         Write-Host ""; Write-Host "History File location:" -ForegroundColor Yellow
-        Write-Host "Directory: $HistoryFilePath"
-        Write-Host "The following subdirectory will also be created:"
-        Write-Host "Directory: $DialogFolder"
+        Write-Host "$HistoryFilePath"
+        Write-Host "The following subdirectory will also be created:" -ForegroundColor Yellow
+        Write-Host "$DialogFolder"
+        Write-Host "Config File Path:" -ForegroundColor Yellow
+        Write-Host "$ConfigFilePath"
 
         $Proceed = Read-Host -Prompt "Proceed? (y/N)"
         #endregion
@@ -536,43 +543,43 @@ function Set-LMHistoryPath ([string]$HistoryFile,[switch]$CreatePath){ #Complete
 
     $HistFileDirs = $HistFileDirs[0..($HistFileDirs.GetUpperBound(0) -1)]
 
-    switch (Test-Path "$($HistFileDirs -join '\')"){
+    $HistoryFolder = $HistFileDirs -join '\'
 
-        $True {if ($CreatePath.IsPresent){Write-Verbose "Folder paths exists, path creation not necessary :-) " -Verbose}}
+    
+    If (!(Test-Path $HistoryFolder) -and (!($CreatePath.IsPresent))){throw "Directory path $HistoryFolder does not exist. Please specify -CreatePath parameter."}
+    ElseIf (Test-path $HistoryFolder){Write-Verbose "Folder path $HistoryFolder exists, path creation not necessary"}
+    else {
+        $PresentDir = (Get-Location).Path
 
-        $False {
-
-            if ($CreatePath.IsPresent){
-
-                (0..($HistFileDirs.GetUpperBound(0))).ForEach({
-
-                    $Index = $_
+        $Drive = $HistFileDirs[0]
         
-                    if ($Index -eq 0){
-        
-                        $Drive = $HistFileDirs[$Index]
-        
-                        try {&$Drive}
-                        catch {throw "Drive $Drive is not valid or accessible. Cannot create path :-( "}
-        
-                    }
-                    else {
-                        $ThisFolder = $HistFileDirs[0..$Index] -join '\'
-                        
-                        try {$F = New-Item -Path $ThisFolder -ItemType Directory -Confirm:$false -ErrorAction Stop}
-                        catch {throw "Unable to create $ThisFolder : $($_.Exception.Message)"}
+        try {&$Drive}
+        catch {throw "Drive $Drive is not valid or accessible"}
 
-                    }           
-        
-                })
+        Set-Location -Path $PresentDir | Out-Null
+
+        (1..($HistFileDirs.GetUpperBound(0))) | Foreach-Object {
+
+            $Index = $_
+
+            $SubDir = $HistFileDirs[$Index]
+
+            $FullSubDirPath = $HistFileDirs[0..$Index] -join '\'
+
+            If (!(Test-Path $FullSubDirPath)){
+
+                try {$CreateDirectory = mkdir -Path $FullSubDirPath -ErrorAction Stop}
+                catch {throw "Error creating $SubDir : $($_.Exception.Message)"}
 
             }
-            else {throw "Provided directory path does not exist. Try using the -CreatePath parameter to create it :-) "}
 
-        }
 
-    }
+        }  #Close (1..) | foreachObject
+        
+    } #Close Else
 
+    return $True
+  
 }
 
 
@@ -877,7 +884,7 @@ function Search-LMChatDialog { #NOT STARTED
 function Show-LMHelp { #INCOMPLETE
     Add-Type -AssemblyName PresentationCore,PresentationFramework
     $ButtonType = [System.Windows.MessageBoxButton]::OK
-    $MessageboxTitle = “LMStudio-Client Help”
+    $MessageboxTitle = “LMStudio-PSClient Help”
     $Messageboxbody = “!h - Displays this help`r`n!s - Change the system prompt`r`n!t - Change the temperature`r`n!f - Change the history file`r`n!q - Save and Quit”
     $MessageIcon = [System.Windows.MessageBoxImage]::Question
     [System.Windows.MessageBox]::Show($Messageboxbody,$MessageboxTitle,$ButtonType,$messageicon)
@@ -1166,7 +1173,7 @@ function Start-LMChat { #INCMPLETE
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)][string]$Server,
-        [Parameter(Mandatory=$false)][ValidateRange(0, 65535)][int]$Port = 1234,
+        [Parameter(Mandatory=$false)][ValidateRange(1, 65535)][int]$Port = 1234,
         [Parameter(Mandatory=$false)][string]$HistoryFile = $Global:LMStudioVars.HistoryFilePath,
         [Parameter(Mandatory=$false)][double]$Temperature = 0.7,
         [Parameter(Mandatory=$false)][switch]$SkipGreeting,
