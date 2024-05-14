@@ -115,3 +115,8 @@ TO DO TOMORROW:
     * Remove the old standalone template functions
     * Evaluate whether I can remove functions I've labeled as such
     
+05/13 - In moving over functions to use the New-LMTemplate (Which is not done, HistoryFile template has a LOT of hooks), with a sense of doom I realized I absolutely have to get all of the client settings I need into the config management system. If I don't, it'll be a headache to fix later.
+
+I have much of the Config File (object) formatting done. Confirm-LMGlobalVariables needs to be rewritten.
+
+I need to rewrite Import-LMConfigFile to accommodate the new config JSON structure., specifically Lines 261 - 269.

@@ -158,7 +158,7 @@ function New-LMConfigFile { #Complete
             }
             #endregion
     
-            #region Test History File path, format
+            #region Create History File's directory path, format
             try {Set-LMHistoryPath -HistoryFile $HistoryFilePath -CreatePath}
             catch {Write-Warning "Unable to create the history file path."}
             #endregion
@@ -179,6 +179,8 @@ function New-LMConfigFile { #Complete
         $ConfigFilePath = "$($Env:USERPROFILE)\Documents\WindowsPowerShell\Modules\LMStudio-Client\lmsc.cfg"
         
         $DialogFolder = $HistoryFilePath.TrimEnd('.index') + '-DialogFiles'
+        $GreetingFilePath = $HistoryFilePath.TrimEnd('.index') + '-DialogFiles\hello.greetings'
+        $StreamCachePath = "($env:USERPROFILE)\Documents\LMStudio-PSClient\stream.cache"
 
         $ConfigFileObj = Get-LMTemplate -Type ConfigFile
 
@@ -186,7 +188,7 @@ function New-LMConfigFile { #Complete
         $ConfigFileObj.ServerInfo.Port = $Port
         $ConfigFileObj.FilePaths.HistoryFilePath = $HistoryFilePath
         $ConfigFileObj.FilePaths.GreetingFilePath = $GreetingFilePath
-        $ConfigFileObj.FilePaths.StreamCachePath = $GreetingFilePath
+        $ConfigFileObj.FilePaths.StreamCachePath = $StreamCachePath
         $ConfigFileObj.ChatSettings.temperature = 0.7
         $ConfigFileObj.ChatSettings.max_tokens = -1
         $ConfigFileObj.ChatSettings.stream = $True
@@ -201,6 +203,10 @@ function New-LMConfigFile { #Complete
 
         Write-Host ""; Write-Host "History File location:" -ForegroundColor Yellow
         Write-Host "$HistoryFilePath"
+        Write-Host ""; Write-Host "Greeting File location:" -ForegroundColor Yellow
+        Write-Host "$GreetingFilePath"
+        Write-Host ""; Write-Host "Stream Cachce location:" -ForegroundColor Yellow
+        Write-Host "$StreamCachePath"
         Write-Host "The following subdirectory will also be created:" -ForegroundColor Yellow
         Write-Host "$DialogFolder"
         Write-Host "Config File Path:" -ForegroundColor Yellow
@@ -238,7 +244,7 @@ function Import-LMConfigFile { #Complete
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)][string]$ConfigFile,
-        [Parameter(Mandatory=$false)][switch]$SkipVerification
+        [Parameter(Mandatory=$false)][switch]$Verify
     )
 begin {
     
@@ -247,12 +253,36 @@ begin {
     catch {throw $_.Exception.Message}
     #endregion
 
+}#Close Begin
+process {
+
+    Initialize-LMVarStore
+
+    $LMVars = @{
+        "Server" = ($ConfigData.Server);
+        "Port" = ($ConfigData.Port);
+        "FilePath" = ($ConfigData.HistoryFilePath);
+        "Temperature" = ($ConfigData.temperature);
+        "MaxTokens" = ($ConfigData.max_tokens);
+        "Stream" = ($ConfigData.stream);
+        "ContextDepth" = $ConfigData.ContextDepth;
+        "Greeting" = $ConfigData.Greeting
+    }
+
+    try {Set-LMGlobalVariables @LMVars}
+    catch {throw "Set-LMGlobalVariables: $($_.Exception.Message)"}
+
+    } #Close Process
+end {
+
+    if ($Verify.IsPresent){
+
     #region Verify config file properties exist:
     [System.Collections.ArrayList]$Properties = "Server", "Port", "HistoryFilePath","temperature", "max_tokens", "stream","ContextDepth"
 
     $ConfigData.psobject.Properties.Name | Foreach-Object {$Properties.Remove("$_") | out-null}
 
-    If ($Properties.Count -ne 0){throw "Config file missing property $($Propoerties -join ',') ($ConfigFile)"}
+    If ($Properties.Count -ne 0){Write-Error "Config file missing property $($Propoerties -join ',') ($ConfigFile)"}
     #endregion
 
     #region Verify property values are valid
@@ -287,44 +317,23 @@ begin {
     If ($PropertyErrors -gt 0){throw 'Errors with the Config File were encountered. Please run the Create-ConfigFile cmdlet'}
     #endregion
 
-}#Close Begin
-process {
+    #region Test Model retrieval (webserver connection)
+    try {$ModelRetrieval = Get-LMModel -Server $ConfigData.Server -Port $ConfigData.Port -AsTest}
+    catch {Write-Error "Model retrieval:" $($_.Exception.Message)}
 
-    Initialize-LMVarStore
+    If ($ModelRetrieval -ne $True){Write-Error "Unable to connect to server $($ConfigData.Server) on port $($ConfigData.Port). This could be a server issue (Web server started?)"}
+    #endregion
 
-    $LMVars = @{
-        "Server" = ($ConfigData.Server);
-        "Port" = ($ConfigData.Port);
-        "FilePath" = ($ConfigData.HistoryFilePath);
-        "Temperature" = ($ConfigData.temperature);
-        "MaxTokens" = ($ConfigData.max_tokens);
-        "Stream" = ($ConfigData.stream);
-        "ContextDepth" = $ConfigData.ContextDepth
-    }
+    #region Test History File path, format
+    If (!(Test-Path $ConfigData.HistoryFilePath)){Write-Error "History file path $($ConfigData.HistoryFilePath) is not valid or accessible. Please check the path."}
 
-    try {Set-LMGlobalVariables @LMVars}
-    catch {throw "Set-LMGlobalVariables: $($_.Exception.Message)"}
+    try {$CheckHistoryFile = Import-LMHistoryFile -FilePath $ConfigData.HistoryFilePath -AsTest}
+    catch {Write-Error "History file format validation failed: $($_.Exception.Message)"}
 
-    } #Close Process
-end {
-
-    if (!$SkipVerification){
-
-        #region Test Model retrieval (webserver connection)
-        try {$ModelRetrieval = Get-LMModel -Server $ConfigData.Server -Port $ConfigData.Port -AsTest}
-        catch {throw $($_.Exception.Message)}
-
-        If ($ModelRetrieval -ne $True){throw "Unable to connect to server $($ConfigData.Server) on port $($ConfigData.Port). This could be a server issue (Web server started?)"}
-        #endregion
-
-        #region Test History File path, format
-        If (!(Test-Path $ConfigData.HistoryFilePath)){throw "History file path $($ConfigData.HistoryFilePath) is not valid or accessible. Please check the path."}
-
-        try {$CheckHistoryFile = Import-LMHistoryFile -FilePath $ConfigData.HistoryFilePath -AsTest}
-        catch {throw "History file format validation failed: $($_.Exception.Message)"}
-
-        If ($CheckHistoryFile -ne $true){throw "History file format validation failed for $($ConfigData.HistoryFilePath)"}
-        #endregion        
+    If ($CheckHistoryFile -ne $true){Write-Error "History file format validation failed for $($ConfigData.HistoryFilePath)"}
+    
+    Write-Host "Done." -ForegroundColor Yellow
+    #endregion        
         }
 
     } #Close End
@@ -345,17 +354,6 @@ function Get-LMTemplate { #INCOMPLETE
     switch ($Type){
 
         {$_ -ieq "ConfigFile"}{
-
-        $ConfigFileObj.ServerInfo.Server = $Server
-        $ConfigFileObj.ServerInfo.Port = $Port
-        $ConfigFileObj.FilePaths.HistoryFilePath = $HistoryFilePath
-        $ConfigFileObj.FilePaths.GreetingFilePath = $GreetingFilePath
-        $ConfigFileObj.FilePaths.StreamCachePath = $GreetingFilePath
-        $ConfigFileObj.ChatSettings.temperature = 0.7
-        $ConfigFileObj.ChatSettings.max_tokens = -1
-        $ConfigFileObj.ChatSettings.stream = $True
-        $ConfigFileObj.ChatSettings.ContextDepth = 10
-        $ConfigFileObj.ChatSettings.Greeting = $True #Will be used When launching the "fat client"
 
             $ServerInfoObj = [pscustomobject]@{
                 "Server" = "";
@@ -472,19 +470,22 @@ function Get-LMTemplate { #INCOMPLETE
     return $Object
 
 }
-
 #This function builds the hierarchy of hash tables at $Global:LMstudiovars to store configuration information (server, port, history file)
 function Initialize-LMVarStore { #Complete
     $Global:LMStudioVars = @{}
     $Global:LMStudioVars.Add("ServerInfo",@{})
     $Global:LMStudioVars.ServerInfo.Add("Server","")
     $Global:LMStudioVars.ServerInfo.Add("Port","")
+    $Global:LMStudioVars.Add("FilePaths",@{})
     $Global:LMStudioVars.Add("HistoryFilePath","")
+    $Global:LMStudioVars.Add("GreetingFilePath","")
+    $Global:LMStudioVars.Add("StreamCachePath","")
     $Global:LMStudioVars.Add("ChatSettings",@{})
     $Global:LMStudioVars.ChatSettings.Add("temperature",0.7)
     $Global:LMStudioVars.ChatSettings.Add("max_tokens",-1)
     $Global:LMStudioVars.ChatSettings.Add("stream",$True)
     $Global:LMStudioVars.ChatSettings.Add("ContextDepth",10)
+    $Global:LMStudioVars.ChatSettings.Add("Greeting",$True)
 }
 
 #This function sets the Global variables for Server, Port and HistoryFile; it ASSUMES validation has been completed
@@ -498,6 +499,7 @@ function Set-LMGlobalVariables { #Complete
         [Parameter(Mandatory=$true)][double]$MaxTokens,
         [Parameter(Mandatory=$true)][boolean]$Stream,
         [Parameter(Mandatory=$true)][int]$ContextDepth,
+        [Parameter(Mandatory=$true)][Boolean]$Greeting,
         [Parameter(Mandatory=$false)][switch]$Show       
 
     )
@@ -506,6 +508,9 @@ function Set-LMGlobalVariables { #Complete
     catch {Initialize-LMVarStore}
 
     If ($VarStoreCheck -ne "Hashtable"){Initialize-LMVarStore}
+    
+    $GreetingFilePath = $FilePath.TrimEnd('.index') + '-DialogFiles\hello.greetings'
+    $StreamCachePath = "($env:USERPROFILE)\Documents\LMStudio-PSClient\stream.cache"
 
     try {$Global:LMStudioVars.ServerInfo.Server = $Server}
     catch {throw "Unable to set Global variable LMStudioServer for value Server: $Server"}
@@ -513,7 +518,16 @@ function Set-LMGlobalVariables { #Complete
     try {$Global:LMStudioVars.ServerInfo.Port = $Port}
     catch {throw "Unable to set Global variable LMStudioServer for value Port: $Port"}
 
-    try {$Global:LMStudioVars.HistoryFilePath = $FilePath}
+    try {$Global:LMStudioVars.FilePaths.HistoryFilePath = $FilePath}
+    catch {throw "Unable to set Global variable LMStudioServer for value History File Path: $FilePath"}
+
+    try {$Global:LMStudioVars.FilePaths.GreetingFilePath = $GreetingFilePath}
+    catch {throw "Unable to set Global variable LMStudioServer for value History File Path: $GreetingFilePath"}
+
+    try {$Global:LMStudioVars.FilePaths.StreamCachePath = $StreamCachePath}
+    catch {throw "Unable to set Global variable LMStudioServer for value History File Path: $StreamCachePath"}
+
+    try {$Global:LMStudioVars.FilePaths.HistoryFilePath = $FilePath}
     catch {throw "Unable to set Global variable LMStudioServer for value History File Path: $FilePath"}
 
     try {$Global:LMStudioVars.ChatSettings.temperature = $Temperature}
@@ -528,6 +542,9 @@ function Set-LMGlobalVariables { #Complete
     try {$Global:LMStudioVars.ChatSettings.ContextDepth = $ContextDepth}
     catch {throw "Unable to set Global variable LMStudioServer for value ContextDepth: $ContextDepth"}
 
+    try {$Global:LMStudioVars.ChatSettings.Greeting = ($Greeting.IsPresent)}
+    catch {throw "Unable to set Global variable LMStudioServer for value ContextDepth: $ContextDepth"}
+
     If ($Show.IsPresent){$Global:LMStudioVars}
 
 }
@@ -536,6 +553,9 @@ function Set-LMGlobalVariables { #Complete
 #CAN PROBABLY REMOVE THIS FUNCTION, error checking is part of all of the import/export processes
 function Confirm-LMGlobalVariables { #INComplete, needs temp,maxtokens,stream additions
 
+    If ($null -eq $Global:LMStudioVars){throw "Please run Set-LMSGlobalVariables first."}
+    If ($null -eq $Global:LMStudioVars.ServerInfo){throw "Please run Set-LMSGlobalVariables first."}
+    If ($null -eq $Global:LMStudioVars.ChatSettings){throw "Please run Set-LMSGlobalVariables first."}
     If ($null -eq $Global:LMStudioVars){throw "Please run Set-LMSGlobalVariables first."}
     
     If ($Global:LMStudioVars.Server.Length -eq 0 -or $null -eq $Global:LMStudioVars.Server){
@@ -622,7 +642,7 @@ function Import-LMHistoryFile { #Complete, NEEDS REWORK TO ACCOMMODATE NEW FORMA
         If ($null -eq $FilePath -or $FilePath.Length -eq 0){
 
              try {$HistoryFileCheck = Confirm-LMGlobalVariables}
-            catch {throw "Required variables (Server, Port) are missing, and `$Global:LMStudioVars is not populated. Please run Set-LMGlobalVariables or Import-LMConfigFile"}
+            catch {throw "Required variables (Server, Port) are missing, and `$Global:LMStudioVars is not populated. Please Create or Import a config file"}
            
             $FilePath = $Global:LMStudioVars.HistoryFilePath
         
@@ -695,9 +715,6 @@ function Import-LMHistoryFile { #Complete, NEEDS REWORK TO ACCOMMODATE NEW FORMA
 function Repair-LMHistoryFile {
 
 }
-
-#This function creates a new history file entry: not sure if I need this function
-function New-LMHistoryEntryTemplate {}
 
 #This function saves a history entry to the history file
 function Update-LMHistoryFile { #Complete
