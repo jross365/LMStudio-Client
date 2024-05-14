@@ -182,13 +182,16 @@ function New-LMConfigFile { #Complete
 
         $ConfigFileObj = Get-LMTemplate -Type ConfigFile
 
-        $ConfigFileObj.Server = $Server
-        $ConfigFileObj.Port = $Port
-        $ConfigFileObj.HistoryFilePath = $HistoryFilePath
-        $ConfigFileObj.temperature = 0.7
-        $ConfigFileObj.max_tokens = -1
-        $ConfigFileObj.stream = $True
-        $ConfigFileObj.ContextDepth = 10
+        $ConfigFileObj.ServerInfo.Server = $Server
+        $ConfigFileObj.ServerInfo.Port = $Port
+        $ConfigFileObj.FilePaths.HistoryFilePath = $HistoryFilePath
+        $ConfigFileObj.FilePaths.GreetingFilePath = $GreetingFilePath
+        $ConfigFileObj.FilePaths.StreamCachePath = $GreetingFilePath
+        $ConfigFileObj.ChatSettings.temperature = 0.7
+        $ConfigFileObj.ChatSettings.max_tokens = -1
+        $ConfigFileObj.ChatSettings.stream = $True
+        $ConfigFileObj.ChatSettings.ContextDepth = 10
+        $ConfigFileObj.ChatSettings.Greeting = $True #Will be used When launching the "fat client"
         #endregion
 
         #region Display information and prompt for creation
@@ -212,7 +215,7 @@ function New-LMConfigFile { #Complete
             try {mkdir $DialogFolder -ErrorAction Stop}
             catch {throw "Dialog folder creation failed ($DialogFolder)"}
 
-            try {New-LMHistoryFile -FilePath $HistoryFilePath -ErrorAction Stop}
+            try {@((Get-LMTemplate -Type HistoryEntry)) | ConvertTo-Json | Out-File -FilePath $HistoryFilePath -ErrorAction Stop}
             catch {throw "History file creation failed: $($_.Exception.Message)"}
 
             try {$ConfigFileObj | ConvertTo-Json -Depth 2 -ErrorAction Stop | Out-File $ConfigFilePath -ErrorAction Stop}
@@ -342,15 +345,37 @@ function Get-LMTemplate { #INCOMPLETE
     switch ($Type){
 
         {$_ -ieq "ConfigFile"}{
-            $Object = [pscustomobject]@{
+
+        $ConfigFileObj.ServerInfo.Server = $Server
+        $ConfigFileObj.ServerInfo.Port = $Port
+        $ConfigFileObj.FilePaths.HistoryFilePath = $HistoryFilePath
+        $ConfigFileObj.FilePaths.GreetingFilePath = $GreetingFilePath
+        $ConfigFileObj.FilePaths.StreamCachePath = $GreetingFilePath
+        $ConfigFileObj.ChatSettings.temperature = 0.7
+        $ConfigFileObj.ChatSettings.max_tokens = -1
+        $ConfigFileObj.ChatSettings.stream = $True
+        $ConfigFileObj.ChatSettings.ContextDepth = 10
+        $ConfigFileObj.ChatSettings.Greeting = $True #Will be used When launching the "fat client"
+
+            $ServerInfoObj = [pscustomobject]@{
                 "Server" = "";
                 "Port" = "";
+            }
+
+            $FilePathsObj = [pscustomobject]@{
                 "HistoryFilePath" = "";
-                "temperature" = "";
-                "max_tokens" = "";
-                "stream" = "";
-                "ContextDepth" = ""
-            };
+                "GreetingFilePath" = "";
+                "StreamCachePath" = "";
+            }            
+
+            $ChatSettingsObj = [pscustomobject]@{
+                "temperature" = 0.7;
+                "max_tokens" = -1;
+                "stream" = $True;
+                "ContextDepth" = 10;
+            }            
+
+            $Object = [pscustomobject]@{"ServerInfo" = $ServerInfoObj; "ChatSettings" = $ChatSettingsObj; "FilePaths" = $FilePathsObj}
         }
         {$_ -ieq "HistoryEntry"}{
             
@@ -583,42 +608,6 @@ function Set-LMHistoryPath ([string]$HistoryFile,[switch]$CreatePath){ #Complete
 }
 
 
-#This function generates and returns an empty history file template with dummy entries (doesn't save)
-function New-LMHistoryFileTemplate ([switch]$NoDummyEntries){ #Complete
-
-    $Histories = New-Object System.Collections.ArrayList
-
-    If ($NoDummyEntries.IsPresent){$DummyValue = ""}
-    Else {$DummyValue = "dummyvalue"}
-    
-    $Entry = [pscustomobject]@{
-        "Created" = "$DummyValue";
-        "Modified" = "$DummyValue";
-        "Title" = "$DummyValue;"
-        "Opener" = "$DummyValue";
-        "Model" = "$DummyValue";
-        "FilePath" = "$DummyValue"
-        "Tags" = @("$DummyValue","$DummyValue")
-        }
-
-    $Histories.Add($Entry) | out-null
-    
-    $History = [pscustomobject]@{"Histories" = $Histories}
-
-    return $History       
-
-}
-
-#This function Creates a new (empty) history file
-function New-LMHistoryFile ([string]$FilePath){ #Complete
-    
-    $HistoryTemplate = New-LMHistoryFileTemplate
-
-    try {$HistoryTemplate | ConvertTo-Json -Depth 3 -ErrorAction Stop | Out-File $FilePath -ErrorAction Stop}
-    catch {Throw "Unable to create new history file: $($_.Exception.Message)"}
-
-}
-
 #This function imports the content of an existing history file, for either use or to verify the format is correct
 function Import-LMHistoryFile { #Complete, NEEDS REWORK TO ACCOMMODATE NEW FORMAT
     [CmdletBinding()]
@@ -683,9 +672,11 @@ function Import-LMHistoryFile { #Complete, NEEDS REWORK TO ACCOMMODATE NEW FORMA
     #region If not a test, move over content from Fixed-Length arrays to New ArrayLists:
     If (!($AsTest.IsPresent)){
     
-        $NewHistory = New-LMHistoryFileTemplate -NoDummyEntries
+        $NewHistory = @((Get-LMTemplate -Type HistoryEntry))
+        
+        #New-LMHistoryFileTemplate -NoDummyEntries
 
-        $HistoryContent.Histories | ForEach-Object {$NewHistory.Histories.Add($_) | Out-Null}
+        $HistoryContent.Histories | ForEach-Object {$NewHistory += ($_)}
     }
     #endregion
 
