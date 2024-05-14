@@ -113,7 +113,7 @@ function New-LMConfigFile { #Complete
 
             $CreatePath = $True
 
-            Write-Verbose "Chosen: $HistFileDirPath" -Verbose
+            Write-Verbose "Directory: $HistFileDirPath" -Verbose
 
             $CreatePathAnswered = $False
 
@@ -176,7 +176,7 @@ function New-LMConfigFile { #Complete
         }
 
         #region Set creation variables
-        $ConfigFilePath = "$($Env:USERPROFILE)\Documents\WindowsPowerShell\Modules\LMStudio-PSClient\lmsc.cfg"
+        $ConfigFilePath = "$($Env:USERPROFILE)\Documents\WindowsPowerShell\Modules\LMStudio-Client\lmsc.cfg"
         
         $DialogFolder = $HistoryFilePath.TrimEnd('.index') + '-DialogFiles'
 
@@ -300,7 +300,7 @@ process {
     }
 
     try {Set-LMGlobalVariables @LMVars}
-    catch {throw "Unable to set Global variables"}
+    catch {throw "Set-LMGlobalVariables: $($_.Exception.Message)"}
 
     } #Close Process
 end {
@@ -315,7 +315,7 @@ end {
         #endregion
 
         #region Test History File path, format
-        If (Test-Path $ConfigFile.HistoryFilePath){throw "History file path $($ConfigData.HistoryFilePath) is not valid or accessible. Please check the path."}
+        If (!(Test-Path $ConfigData.HistoryFilePath)){throw "History file path $($ConfigData.HistoryFilePath) is not valid or accessible. Please check the path."}
 
         try {$CheckHistoryFile = Import-LMHistoryFile -FilePath $ConfigData.HistoryFilePath -AsTest}
         catch {throw "History file format validation failed: $($_.Exception.Message)"}
@@ -491,16 +491,16 @@ function Set-LMGlobalVariables { #Complete
     try {$Global:LMStudioVars.HistoryFilePath = $FilePath}
     catch {throw "Unable to set Global variable LMStudioServer for value History File Path: $FilePath"}
 
-    try {$Global:LMStudioVars.ChatInfo.temperature = $Temperature}
+    try {$Global:LMStudioVars.ChatSettings.temperature = $Temperature}
     catch {throw "Unable to set Global variable LMStudioServer for value Temperature: $Temperature"}
 
-    try {$Global:LMStudioVars.ChatInfo.max_tokens = $MaxTokens}
+    try {$Global:LMStudioVars.ChatSettings.max_tokens = $MaxTokens}
     catch {throw "Unable to set Global variable LMStudioServer for value Max_Tokens: $Temperature"}
 
-    try {$Global:LMStudioVars.ChatInfo.stream = $Stream}
+    try {$Global:LMStudioVars.ChatSettings.stream = $Stream}
     catch {throw "Unable to set Global variable LMStudioServer for value Stream: $Stream"}
 
-    try {$Global:LMStudioVars.ChatInfo.ContextDepth = $ContextDepth}
+    try {$Global:LMStudioVars.ChatSettings.ContextDepth = $ContextDepth}
     catch {throw "Unable to set Global variable LMStudioServer for value ContextDepth: $ContextDepth"}
 
     If ($Show.IsPresent){$Global:LMStudioVars}
@@ -620,7 +620,7 @@ function New-LMHistoryFile ([string]$FilePath){ #Complete
 }
 
 #This function imports the content of an existing history file, for either use or to verify the format is correct
-function Import-LMHistoryFile { #Complete
+function Import-LMHistoryFile { #Complete, NEEDS REWORK TO ACCOMMODATE NEW FORMAT
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$false)][string]$FilePath,
@@ -641,7 +641,7 @@ function Import-LMHistoryFile { #Complete
         #endregion
 
         #region Import the History file
-        try {$HistoryContent = Get-Content $FilePath -ErrorAction Stop | ConvertFrom-Json -Depth 3 -ErrorAction Stop}
+        try {$HistoryContent = Get-Content $FilePath -ErrorAction Stop | ConvertFrom-Json -Depth 4 -ErrorAction Stop}
         catch {throw "Unable to import history file $FilePath : $($_.Exception.Message))"}
         #endregion
 
