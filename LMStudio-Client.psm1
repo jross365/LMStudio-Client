@@ -8,7 +8,8 @@ function New-LMConfigFile { #Complete
         [Parameter(Mandatory=$false)][ValidateRange(1, 65535)][int]$Port,
         [Parameter(Mandatory=$false)][string]$HistoryFilePath,
         [Parameter(Mandatory=$false)][switch]$SkipValidation,
-        [Parameter(Mandatory=$false)][switch]$Import
+        [Parameter(Mandatory=$false)][switch]$Import,
+        [Parameter(Mandatory=$false)][switch]$ReuseHistoryFile
     )#Structure: 
 
     begin {
@@ -216,21 +217,47 @@ function New-LMConfigFile { #Complete
         #endregion
 
         If ($Proceed -ine "y"){throw "Input other than 'y' provided, halting creation."}
-        Else {
+        
+        switch ($ReuseHistoryFile.IsPresent){
 
-            try {mkdir $DialogFolder -ErrorAction Stop}
-            catch {throw "Dialog folder creation failed ($DialogFolder)"}
+            $true {
+                If (!(Test-Path $HistoryFilePath)){
+                    
+                    Write-Warning "History File $HistoryFilePath not found, creating."
 
-            try {@((Get-LMTemplate -Type HistoryEntry)) | ConvertTo-Json | Out-File -FilePath $HistoryFilePath -ErrorAction Stop}
-            catch {throw "History file creation failed: $($_.Exception.Message)"}
+                    try {@((Get-LMTemplate -Type HistoryEntry)) | ConvertTo-Json | Out-File -FilePath $HistoryFilePath -ErrorAction Stop}
+                    catch {throw "History file creation failed: $($_.Exception.Message)"}
+                }
 
-            try {$ConfigFileObj | ConvertTo-Json -Depth 2 -ErrorAction Stop | Out-File $ConfigFilePath -ErrorAction Stop}
-            catch {throw "Config file creation failed: $($_.Exception.Message)"}
-        }
+                If (!(Test-Path $DialogFolder)){
+                    
+                    Write-Warning "Dialog Folder $DialogFolder not found, creating."
+
+                    try {mkdir $DialogFolder -ErrorAction Stop}
+                    catch {throw "Dialog folder creation failed ($DialogFolder)"}
+                }
+
+            }
+
+            $false {
+                try {mkdir $DialogFolder -ErrorAction Stop}
+                catch {throw "Dialog folder creation failed ($DialogFolder)"}
+        
+                try {@((Get-LMTemplate -Type HistoryEntry)) | ConvertTo-Json | Out-File -FilePath $HistoryFilePath -ErrorAction Stop}
+                catch {throw "History file creation failed: $($_.Exception.Message)"}
+            }
+
+        } #Close Switch
+
+        If (Test-Path $ConfigFilePath){Remove-Item $ConfigFilePath}
+
+        try {$ConfigFileObj | ConvertTo-Json -Depth 3 -ErrorAction Stop | Out-File $ConfigFilePath -ErrorAction Stop}
+        catch {throw "Config file creation failed: $($_.Exception.Message)"}
+        
 
     If ($Import.IsPresent){
 
-        try {$Imported = Import-LMConfigFile -ConfigFile $ConfigFilePath -SkipVerification}
+        try {$Imported = Import-LMConfigFile -ConfigFile $ConfigFilePath}
         catch {throw "Unable to import configuration: $($_.Exception.Message)"}
 
     }
@@ -244,12 +271,12 @@ function Import-LMConfigFile { #Complete
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)][string]$ConfigFile,
-        [Parameter(Mandatory=$false)][switch]$Verify
+        [Parameter(Mandatory=$false)][switch]$Verify        
     )
 begin {
     
     #region Import config file
-    try {$ConfigData = Get-Content $ConfigFile -ErrorAction Stop | ConvertFrom-Json -Depth 2 -ErrorAction Stop}
+    try {$ConfigData = Get-Content $ConfigFile -ErrorAction Stop | ConvertFrom-Json -Depth 3 -ErrorAction Stop}
     catch {throw $_.Exception.Message}
     #endregion
 
@@ -259,14 +286,14 @@ process {
     Initialize-LMVarStore
 
     $LMVars = @{
-        "Server" = ($ConfigData.Server);
-        "Port" = ($ConfigData.Port);
-        "FilePath" = ($ConfigData.HistoryFilePath);
-        "Temperature" = ($ConfigData.temperature);
-        "MaxTokens" = ($ConfigData.max_tokens);
-        "Stream" = ($ConfigData.stream);
-        "ContextDepth" = $ConfigData.ContextDepth;
-        "Greeting" = $ConfigData.Greeting
+        "Server" = ($ConfigData.ServerInfo.Server);
+        "Port" = ($ConfigData.ServerInfo.Port);
+        "FilePath" = ($ConfigData.FilePaths.HistoryFilePath);
+        "Temperature" = ($ConfigData.ChatSettings.temperature);
+        "MaxTokens" = ($ConfigData.ChatSettings.max_tokens);
+        "Stream" = ([boolean]($ConfigData.ChatSettings.Stream));
+        "ContextDepth" = $ConfigData.ChatSettings.ContextDepth;
+        "Greeting" = ([boolean]($ConfigData.ChatSettings.Greeting))
     }
 
     try {Set-LMGlobalVariables @LMVars}
@@ -278,62 +305,53 @@ end {
     if ($Verify.IsPresent){
 
     #region Verify config file properties exist:
-    [System.Collections.ArrayList]$Properties = "Server", "Port", "HistoryFilePath","temperature", "max_tokens", "stream","ContextDepth"
-
-    $ConfigData.psobject.Properties.Name | Foreach-Object {$Properties.Remove("$_") | out-null}
-
-    If ($Properties.Count -ne 0){Write-Error "Config file missing property $($Propoerties -join ',') ($ConfigFile)"}
-    #endregion
-
-    #region Verify property values are valid
-    $PropertyErrors = 0
-
-    If ($ConfigData.Server.Length -eq 0 -or $null -eq $ConfigData.Server){Write-Error "'Server' property is empty."; $PropertyErrors++}
-    If ($ConfigData.Port.Length -eq 0 -or $null -eq $ConfigData.Port){Write-Error "'Port' property is empty."; $PropertyErrors++}
-
-    try {$PortAsInt = [int]$ConfigData.Port}
-    catch {Write-Error "Property 'Port' is not an integer '($($ConfigData.Port))'"$PropertyErrors++}
-
-    If ($PortAsInt -lt 0 -or $PortAsInt -gt 65535){Write-Error "Property 'Port' is not a value between 0 and 65535 ($PortAsInt)"}
-
-    If ($ErrorActionPreference -eq 'SilentlyContinue'){Write-Host "Errors:" -ForegroundColor red; $Error[0..$PropertyErrors].Exception.Message}
-
-    If ($PropertyErrors -gt 0){throw 'Errors with the Config File were encountered. Please run the Create-ConfigFile cmdlet'}
-    #endregion
-
-    #region Confirm parameters are acceptable types:
-    $PropertyErrors = 0
-
-    If ($ConfigData.Server.Length -eq 0 -or $null -eq $ConfigData.Server){Write-Error "'Server' property is empty."; $PropertyErrors++}
-    If ($ConfigData.Port.Length -eq 0 -or $null -eq $ConfigData.Port){Write-Error "'Port' property is empty."; $PropertyErrors++}
-
-    try {$PortAsInt = [int]$ConfigData.Port}
-    catch {Write-Error "Property 'Port' is not an integer '($($ConfigData.Port))'"$PropertyErrors++}
-
-    If ($PortAsInt -lt 0 -or $PortAsInt -gt 65535){Write-Error "Property 'Port' is not a value between 0 and 65535 ($PortAsInt)"}
-
-    If ($ErrorActionPreference -eq 'SilentlyContinue'){Write-Host "Errors:" -ForegroundColor red; $Error[0..$PropertyErrors].Exception.Message}
-
-    If ($PropertyErrors -gt 0){throw 'Errors with the Config File were encountered. Please run the Create-ConfigFile cmdlet'}
-    #endregion
-
-    #region Test Model retrieval (webserver connection)
-    try {$ModelRetrieval = Get-LMModel -Server $ConfigData.Server -Port $ConfigData.Port -AsTest}
-    catch {Write-Error "Model retrieval:" $($_.Exception.Message)}
-
-    If ($ModelRetrieval -ne $True){Write-Error "Unable to connect to server $($ConfigData.Server) on port $($ConfigData.Port). This could be a server issue (Web server started?)"}
-    #endregion
-
-    #region Test History File path, format
-    If (!(Test-Path $ConfigData.HistoryFilePath)){Write-Error "History file path $($ConfigData.HistoryFilePath) is not valid or accessible. Please check the path."}
-
-    try {$CheckHistoryFile = Import-LMHistoryFile -FilePath $ConfigData.HistoryFilePath -AsTest}
-    catch {Write-Error "History file format validation failed: $($_.Exception.Message)"}
-
-    If ($CheckHistoryFile -ne $true){Write-Error "History file format validation failed for $($ConfigData.HistoryFilePath)"}
+    Write-Host "Checking Global Variables: " -ForegroundColor Green -NoNewline
+    $CheckGlobalVars = Confirm-LMGlobalVariables -ReturnBoolean
     
-    Write-Host "Done." -ForegroundColor Yellow
-    #endregion        
+    switch ($CheckGlobalVars){
+
+        $True {Write-Host "Good" -ForegroundColor Green}
+        $False {Write-Host "Errors in loaded variables" -ForegroundColor Yellow}
+    }
+
+    #endregion
+
+    Write-Host "Checking access to LMStudio Web Server: " -ForegroundColor Green -NoNewline
+    $ModelRetrieval = Get-LMModel -AsTest
+    
+    switch ($ModelRetrieval){
+
+        $True {Write-Host "Good" -ForegroundColor Green}
+        $False {Write-Host "Unable to connect to server (webserver started?)" -ForegroundColor Yellow}
+
+    }
+
+    Write-Host "Checking history file path: " -ForegroundColor Green -NoNewline
+    $CheckHistoryFilePath = Test-Path ($Global:LMStudioVars.FilePaths.HistoryFilePath)
+
+    switch ($CheckHistoryFilePath){
+
+        $True {Write-Host "Good" -ForegroundColor Green}
+        $False {Write-Host "History File path is not valid" -ForegroundColor Yellow}
+
+    }
+    
+    Write-Host "Checking history file format: " -ForegroundColor Green -NoNewline
+    If ($CheckHistoryFilePath -eq $False){Write-Host "Path not found, skipping" -ForegroundColor Yellow}
+    Else {
+
+        $CheckHistoryFileContents = Import-LMHistoryFile -FilePath ($Global:LMStudioVars.FilePaths.HistoryFilePath) -AsTest
+
+        switch ($CheckHistoryFileContents){
+
+            $True {Write-Host "Good" -ForegroundColor Green}
+            $False {Write-Host "History File contents not valid" -ForegroundColor Yellow}
+    
+        }
+    }
+        
+    Write-Host "Done." -ForegroundColor Green
+   
         }
 
     } #Close End
@@ -371,6 +389,7 @@ function Get-LMTemplate { #INCOMPLETE
                 "max_tokens" = -1;
                 "stream" = $True;
                 "ContextDepth" = 10;
+                "Greeting" = $True;
             }            
 
             $Object = [pscustomobject]@{"ServerInfo" = $ServerInfoObj; "ChatSettings" = $ChatSettingsObj; "FilePaths" = $FilePathsObj}
@@ -477,9 +496,9 @@ function Initialize-LMVarStore { #Complete
     $Global:LMStudioVars.ServerInfo.Add("Server","")
     $Global:LMStudioVars.ServerInfo.Add("Port","")
     $Global:LMStudioVars.Add("FilePaths",@{})
-    $Global:LMStudioVars.Add("HistoryFilePath","")
-    $Global:LMStudioVars.Add("GreetingFilePath","")
-    $Global:LMStudioVars.Add("StreamCachePath","")
+    $Global:LMStudioVars.FilePaths.Add("HistoryFilePath","")
+    $Global:LMStudioVars.FilePaths.Add("GreetingFilePath","")
+    $Global:LMStudioVars.FilePaths.Add("StreamCachePath","")
     $Global:LMStudioVars.Add("ChatSettings",@{})
     $Global:LMStudioVars.ChatSettings.Add("temperature",0.7)
     $Global:LMStudioVars.ChatSettings.Add("max_tokens",-1)
@@ -496,10 +515,10 @@ function Set-LMGlobalVariables { #Complete
         [Parameter(Mandatory=$true)][int]$Port,
         [Parameter(Mandatory=$true)][string]$FilePath,
         [Parameter(Mandatory=$true)][double]$Temperature,
-        [Parameter(Mandatory=$true)][double]$MaxTokens,
+        [Parameter(Mandatory=$true)][int]$MaxTokens,
         [Parameter(Mandatory=$true)][boolean]$Stream,
         [Parameter(Mandatory=$true)][int]$ContextDepth,
-        [Parameter(Mandatory=$true)][Boolean]$Greeting,
+        [Parameter(Mandatory=$true)][boolean]$Greeting,
         [Parameter(Mandatory=$false)][switch]$Show       
 
     )
@@ -542,39 +561,57 @@ function Set-LMGlobalVariables { #Complete
     try {$Global:LMStudioVars.ChatSettings.ContextDepth = $ContextDepth}
     catch {throw "Unable to set Global variable LMStudioServer for value ContextDepth: $ContextDepth"}
 
-    try {$Global:LMStudioVars.ChatSettings.Greeting = ($Greeting.IsPresent)}
+    try {$Global:LMStudioVars.ChatSettings.Greeting = $Greeting}
     catch {throw "Unable to set Global variable LMStudioServer for value ContextDepth: $ContextDepth"}
 
     If ($Show.IsPresent){$Global:LMStudioVars}
 
 }
 
+
 #This function validates $Global:LMStudioVars is fully populated
-#CAN PROBABLY REMOVE THIS FUNCTION, error checking is part of all of the import/export processes
-function Confirm-LMGlobalVariables { #INComplete, needs temp,maxtokens,stream additions
+function Confirm-LMGlobalVariables ([switch]$ReturnBoolean) { #INComplete, needs temp,maxtokens,stream additions
 
     If ($null -eq $Global:LMStudioVars){throw "Please run Set-LMSGlobalVariables first."}
-    If ($null -eq $Global:LMStudioVars.ServerInfo){throw "Please run Set-LMSGlobalVariables first."}
-    If ($null -eq $Global:LMStudioVars.ChatSettings){throw "Please run Set-LMSGlobalVariables first."}
-    If ($null -eq $Global:LMStudioVars){throw "Please run Set-LMSGlobalVariables first."}
+    If ($null -eq $Global:LMStudioVars.ServerInfo){throw "ServerInfo tree missing, please run Set-LMSGlobalVariables first."}
+    If ($null -eq $Global:LMStudioVars.ChatSettings){throw "ChatSettings tree missing, Please run Set-LMSGlobalVariables first."}
+    If ($null -eq $Global:LMStudioVars.FilePaths){throw "FilePaths tree missing, please run Set-LMSGlobalVariables first."}
     
-    If ($Global:LMStudioVars.Server.Length -eq 0 -or $null -eq $Global:LMStudioVars.Server){
+    $Errors = New-Object System.Collections.ArrayList
 
-        If ($Global:LMStudioVars.Port.Length -eq 0 -or $null -eq $Global:LMStudioVars.Port){
+    #Check ServerInfo
+    If ($Global:LMStudioVars.ServerInfo.Server.Length -eq 0 -or $null -eq $Global:LMStudioVars.ServerInfo.Server){$Errors.Add("ServerInfo.Server")}
+    If ($Global:LMStudioVars.ServerInfo.Port.Length -eq 0 -or $null -eq $Global:LMStudioVars.ServerInfo.Port){$Errors.Add("ServerInfo.Port")}
 
-            throw "Server and Port are not valid, please run Set-LMSGlobalVariables"
+    #Check ChatSettings
+    If ($Global:LMStudioVars.ChatSettings.temperature.Length -eq 0 -or $null -eq $Global:LMStudioVars.ChatSettings.temperature){$Errors.Add("ChatSettings.temperature")}
+    If ($Global:LMStudioVars.ChatSettings.max_tokens.Length -eq 0 -or $null -eq $Global:LMStudioVars.ChatSettings.max_tokens){$Errors.Add("ChatSettings.max_tokens")}
+    If ($Global:LMStudioVars.ChatSettings.Stream -ne $True -and $Global:LMStudioVars.ChatSettings.Stream -ne $False){$Errors.Add("ChatSettings.Stream")}
+    If ($Global:LMStudioVars.ChatSettings.ContextDepth -eq 0 -or $null -eq $Global:LMStudioVars.ChatSettings.ContextDepth){$Errors.Add("ChatSettings.ContextDepth")}
+    If ($Global:LMStudioVars.ChatSettings.Greeting -ne $True -and $Global:LMStudioVars.ChatSettings.Greeting -ne $False){$Errors.Add("ChatSettings.Greeting")}
+    
+     #Check FilePaths
+     If ($Global:LMStudioVars.FilePaths.HistoryFilePath.Length -eq 0 -or $null -eq $Global:LMStudioVars.FilePaths.HistoryFilePath){$Errors.Add("ServerInfo.HistoryFilePath")}
+     If ($Global:LMStudioVars.FilePaths.GreetingFilePath.Length -eq 0 -or $null -eq $Global:LMStudioVars.FilePaths.GreetingFilePath){$Errors.Add("ServerInfo.GreetingFilePath")}
+     If ($Global:LMStudioVars.FilePaths.StreamCachePath.Length -eq 0 -or $null -eq $Global:LMStudioVars.FilePaths.StreamCachePath){$Errors.Add("ServerInfo.StreamCachePath")}
+ 
+
+    Switch ($ReturnBoolean.IsPresent){
+
+        $True {
+        
+            If ($Errors.Count -gt 0){return $False}
+            Else {return $True}
+        
+        }
+
+        $False {
+
+            If ($Errors.Count -gt 0){throw "Properties missing values: $($Errors -join ', ')"}
 
         }
 
-    }
-    
-    If ($Global:LMStudioVars.Port.Length -eq 0 -or $null -eq $Global:LMStudioVars.Port){
-
-        throw "Port is not valid, please run Set-LMSGlobalVariables again"
-
-    }
-
-    return $True    
+    } #Close Switch
 
 }
 
@@ -644,7 +681,7 @@ function Import-LMHistoryFile { #Complete, NEEDS REWORK TO ACCOMMODATE NEW FORMA
              try {$HistoryFileCheck = Confirm-LMGlobalVariables}
             catch {throw "Required variables (Server, Port) are missing, and `$Global:LMStudioVars is not populated. Please Create or Import a config file"}
            
-            $FilePath = $Global:LMStudioVars.HistoryFilePath
+            $FilePath = $Global:LMStudioVars.FilePaths.HistoryFilePath
         
             }
         #endregion
@@ -655,35 +692,17 @@ function Import-LMHistoryFile { #Complete, NEEDS REWORK TO ACCOMMODATE NEW FORMA
         #endregion
 
         #region Validate columns and first entry of the history file (for "dummy" content):
-        $HistoryColumns = @("FilePath","Created","Title","Tags","Modified","Model","Opener")
+        $HistoryColumns = (Get-LMTemplate -Type HistoryEntry).psobject.Properties.Name
+        $FileColumns = $HistoryContent.psobject.Properties.name
 
-        $FileErrors = -1
+        $ColumnComparison = Compare-Object -ReferenceObject $HistoryColumns -DifferenceObject $FileColumns
 
-        $FirstEntry = $HistoryContent.Histories[0]
+       If ($AsTest.IsPresent){
 
-        Foreach ($Column in $HistoryColumns){
+        If ($ColumnComparison.Count -eq 0){$ValidContents = $True}
+        If ($ColumnComparison.Count -gt 0){$ValidContents = $False}
 
-            If (($FirstEntry.$Column.Length -eq 0 -or $null -eq $FirstEntry.$Column) -and $FirstEntry.$Column -inotmatch "dummy"){
-                Write-Error "Column $Column of history file $FilePath does not contain the expected 'dummy' value"
-                $FileErrors++
-            }
-
-        }
-        #endregion
-
-        #region Report back errors, and throw:
-        If ($FileErrors -ne -1){
-            if ($ErrorActionPreference -eq 'SilentlyContinue' -and !(($AsTest.IsPresent))){
-                
-                Write-Host "Errors encountered:" -ForegroundColor Red
-                $Error[0..$FileErrors] | Foreach-Object {Write-Host "$($_.Exception.Message)"}
-
-            }
-
-            throw "Errors encountered when validating history file $FilePath columns ($($HistoryColumns -join ', '))"
-
-        } #Close FileErrors -ne -1
-        #endregion
+       }
 
     }
 
@@ -693,8 +712,6 @@ function Import-LMHistoryFile { #Complete, NEEDS REWORK TO ACCOMMODATE NEW FORMA
     If (!($AsTest.IsPresent)){
     
         $NewHistory = @((Get-LMTemplate -Type HistoryEntry))
-        
-        #New-LMHistoryFileTemplate -NoDummyEntries
 
         $HistoryContent.Histories | ForEach-Object {$NewHistory += ($_)}
     }
@@ -704,7 +721,7 @@ function Import-LMHistoryFile { #Complete, NEEDS REWORK TO ACCOMMODATE NEW FORMA
 
     end {
     
-        If ($AsTest.IsPresent){return $True}
+        If ($AsTest.IsPresent){return $ValidContents}
         else {return $NewHistory}
     
     }
@@ -790,6 +807,9 @@ function Get-LMModel {
     
             }
 
+        $Server = $Global:LMStudioVars.ServerInfo.Server
+        $Port = $Global:LMStudioVars.ServerInfo.Port
+
     }
     #region Check LMStudioServer values
        
@@ -804,14 +824,15 @@ function Get-LMModel {
     }
     catch {
         
-        If ($AsTest.IsPresent){$TestResult = $False}
-        Else {throw "Unable to retrieve model information: $($_.Exception.Message)"}
+        $TestResult = $False
+        If (!($AsTest.IsPresent)){throw "Unable to retrieve model information: $($_.Exception.Message)"}
     
     }
 
-    $Model = $ModelData.data.id
-
-    If ($Model.Length -eq 0 -or $null -eq $Model.Length){throw "`$Model.data.id is empty."}
+    If ($TestResult){
+        $Model = $ModelData.data.id
+        If ($Model.Length -eq 0 -or $null -eq $Model.Length){throw "`$Model.data.id is empty."}
+    } #Close if TestResult true
 
     switch ($AsTest.IsPresent){
 
