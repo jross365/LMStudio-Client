@@ -357,8 +357,14 @@ end {
     } #Close End
 }
 
+#This function updates values in $GLobal:LMConfigVars. It also offers a -Commit function, that writes the changes to the Config file
+function Set-LMConfigOption {
+
+
+}
+
 #This function returns different kinds of objects needed by various functions
-function Get-LMTemplate { #INCOMPLETE
+function Get-LMTemplate { #Complete
     [CmdletBinding()]
     param(
         # Param1 help description
@@ -1235,8 +1241,9 @@ begin {
 
     }
     Else {$UseGreetingFile = $True}
+    #endregion
 
-    #Initialize Greeting File
+    #region Initialize Greeting File
     If ($UseGreetingFile){
 
         switch ((Test-Path $GreetingFile)){
@@ -1261,14 +1268,31 @@ begin {
                 If ($UseGreetingFile){$GreetingData = Import-csv $GreetingFile}
             }
 
-        } #Close Switch
+        } #Close Switch  
         
+        # Determine if we're using a new file with no real values:
+        If ($UseGreetingFile -and $GreetingData.Count -eq 1 -and $GreetingData[0]."User" -eq "dummyvalue"){$NewFile = $True}
+        Else {$NewFile = $False}
 
     } #If UseGreetingFile
 
     #endregion
     
+    #region Establish Response type (Invoke-LMBlob or Invoke-LMBStream)
+    If (!($PSBoundParameters.ContainsKey('ReponseType'))){
 
+        If ($LMVarsLoaded){
+
+            switch ($Global:LMStudioVars.ChatSettings.stream){
+                $True {$ResponseType = "Stream"}
+                $False {$ResponseType = "Blob"}
+            }
+
+        }
+        Else {$ResponseType = "Stream"} #Default to Stream
+
+    }
+    #endregion
 }
 
 process {}
