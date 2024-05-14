@@ -845,9 +845,6 @@ function Get-LMModel {
 }
 
 #This function creates an empty object for creating a greeting file
-function New-LMGreetingTemplate {}
-
-#This function imports the greetings from the greeting file (used for setting greeting context)
 function Import-LMGreetingDialog {
 }
 
@@ -1194,19 +1191,102 @@ end {
 } #Close function
 
 #This function initiates a "greeting"
-function Get-LMGreeting { #NOT STARTED
+function Start-LMGreeting {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$False)][string]$Server,
+        [Parameter(Mandatory=$false)][ValidateRange(1, 65535)][int]$Port = 1234,
+        [Parameter(Mandatory=$false)][string]$GreetingFile = $Global:LMStudioVars.FIlePaths.GreetingFilePath,
+        [Parameter(Mandatory=$false)][ValidateSet('Stream', 'Blob')][string]$ResponseType
+        )
+
+begin {
+
+    #region Evaluate and set Server/Port Variables
+    $LMVarsLoaded = Confirm-LMGlobalVariables -ReturnBoolean
+
+    $InputParamErrors = ""
+
+    If (!($PSBoundParameters.ContainsKey('Server'))){
+
+        If ($LMVarsLoaded){$Server = $Global:LMStudioVars.ServerInfo.Server}
+        Else {$InputParamErrors += "Server parameter not specified; "}
+
+    }
+
+    If (!($PSBoundParameters.ContainsKey('Port'))){
+
+        If ($LMVarsLoaded){$Port = $Global:LMStudioVars.ServerInfo.Port}
+        Else {$InputParamErrors += "Port parameter not specified."}
+
+    }
+
+    If ($InputParamErrors.Length -gt 0){throw "$InputParamErrors Please provide required parameters, or run [Import-LMConfigFile]"}
+    #endregion
+
+    #region Evaluate and set Greeting File; initialize greeting file if necessary; import greeting file
+    If (!($PSBoundParameters.ContainsKey('GreetingFile'))){
+
+        If ($LMVarsLoaded){
+            $GreetingFile = $global:LMStudioVars.FilePaths.GreetingFilePath
+            $UseGreetingFile = $True
+        }
+        Else {$UseGreetingFile = $False}
+
+    }
+    Else {$UseGreetingFile = $True}
+
+    #Initialize Greeting File
+    If ($UseGreetingFile){
+
+        switch ((Test-Path $GreetingFile)){
+
+            $True {
+
+                    try {$GreetingData = Import-csv $GreetingFile -ErrorAction Stop}
+                    catch {
+                        Write-Warning "Unable to import greeting file $GreetingFile"
+                        $UseGreetingFile = $False
+                    }
+            }
+
+            $False {
+
+                try {(Get-LMTemplate -Type ChatGreeting) | Export-CSV $GreetingFile -NoTypeInformation -ErrorAction Stop}
+                catch {
+                    Write-Warning "Unable to create new greeting file $GreetingFile"
+                    $UseGreetingFile = $False
+                    }
+
+                If ($UseGreetingFile){$GreetingData = Import-csv $GreetingFile}
+            }
+
+        } #Close Switch
+        
+
+    } #If UseGreetingFile
+
+    #endregion
+    
+
+}
+
+process {}
+
+end {}
+
 }
 
 #This function is the LM Studio Client
 function Start-LMChat { #INCMPLETE
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$true)][string]$Server,
+        [Parameter(Mandatory=$False)][string]$Server,
         [Parameter(Mandatory=$false)][ValidateRange(1, 65535)][int]$Port = 1234,
         [Parameter(Mandatory=$false)][string]$HistoryFile = $Global:LMStudioVars.FIlePaths.HistoryFilePath,
         [Parameter(Mandatory=$false)][double]$Temperature = 0.7,
         [Parameter(Mandatory=$false)][switch]$SkipGreeting,
-        [Parameter(Mandatory=$false)][switch]$StreamResponses
+        [Parameter(Mandatory=$false)][ValidateSet('Stream', 'Blob')][string]$ResponseType
         #[Parameter(Mandatory=$false)][switch]$NoTimestamps, #Not sure what to do with this, or where to hide the timestamps
         )
     
