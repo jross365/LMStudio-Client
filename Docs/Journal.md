@@ -120,3 +120,9 @@ TO DO TOMORROW:
 I have much of the Config File (object) formatting done. Confirm-LMGlobalVariables needs to be rewritten.
 
 I need to rewrite Import-LMConfigFile to accommodate the new config JSON structure., specifically Lines 261 - 269.
+
+05/14 - Fixed Import-LMConfigFile, added enhancements to Import-ConfigFile.
+
+Fixed Initialize-LMVarStore, Set-LMGlobalVariables, Confirm-LMGlobalVariables.
+
+Pointed all $Global:LMHistoryVars.HistoryFilePath entries to $Global:LMHistoryVars.FilePaths.HistoryFilePath.

@@ -233,14 +233,14 @@ function New-LMConfigFile { #Complete
                     
                     Write-Warning "Dialog Folder $DialogFolder not found, creating."
 
-                    try {mkdir $DialogFolder -ErrorAction Stop}
+                    try {mkdir $DialogFolder -ErrorAction Stop | out-null}
                     catch {throw "Dialog folder creation failed ($DialogFolder)"}
                 }
 
             }
 
             $false {
-                try {mkdir $DialogFolder -ErrorAction Stop}
+                try {mkdir $DialogFolder -ErrorAction Stop | out-null}
                 catch {throw "Dialog folder creation failed ($DialogFolder)"}
         
                 try {@((Get-LMTemplate -Type HistoryEntry)) | ConvertTo-Json | Out-File -FilePath $HistoryFilePath -ErrorAction Stop}
@@ -305,7 +305,7 @@ end {
     if ($Verify.IsPresent){
 
     #region Verify config file properties exist:
-    Write-Host "Checking Global Variables: " -ForegroundColor Green -NoNewline
+    Write-Host "Checking Global Variables: " -NoNewline
     $CheckGlobalVars = Confirm-LMGlobalVariables -ReturnBoolean
     
     switch ($CheckGlobalVars){
@@ -316,7 +316,7 @@ end {
 
     #endregion
 
-    Write-Host "Checking access to LMStudio Web Server: " -ForegroundColor Green -NoNewline
+    Write-Host "Checking access to LMStudio Web Server: " -NoNewline
     $ModelRetrieval = Get-LMModel -AsTest
     
     switch ($ModelRetrieval){
@@ -326,7 +326,7 @@ end {
 
     }
 
-    Write-Host "Checking history file path: " -ForegroundColor Green -NoNewline
+    Write-Host "Checking history file path: " -NoNewline
     $CheckHistoryFilePath = Test-Path ($Global:LMStudioVars.FilePaths.HistoryFilePath)
 
     switch ($CheckHistoryFilePath){
@@ -336,7 +336,7 @@ end {
 
     }
     
-    Write-Host "Checking history file format: " -ForegroundColor Green -NoNewline
+    Write-Host "Checking history file format: " -NoNewline
     If ($CheckHistoryFilePath -eq $False){Write-Host "Path not found, skipping" -ForegroundColor Yellow}
     Else {
 
@@ -744,7 +744,7 @@ function Update-LMHistoryFile { #Complete
     begin {
 
         #region Validate $Entry:
-        $StandardFields = @("Created","Modified","Title""Model","Opener","FilePath","Tags")
+        $StandardFields = (Get-LMTemplate -Type HistoryEntry).psobject.Properties.Name
 
         $EntryFields = $Entry.PSObject.Properties.Name
 
@@ -761,7 +761,7 @@ function Update-LMHistoryFile { #Complete
         
             If ($HistoryFileCheck -ne $True){throw "Something went wrong when running Confirm-LMGlobalVariables (didn't return True)"}
         
-            $FilePath = $Global:LMStudioVars.HistoryFilePath
+            $FilePath = $Global:LMStudioVars.FIlePaths.HistoryFilePath
     
         }
         
@@ -1203,7 +1203,7 @@ function Start-LMChat { #INCMPLETE
     param (
         [Parameter(Mandatory=$true)][string]$Server,
         [Parameter(Mandatory=$false)][ValidateRange(1, 65535)][int]$Port = 1234,
-        [Parameter(Mandatory=$false)][string]$HistoryFile = $Global:LMStudioVars.HistoryFilePath,
+        [Parameter(Mandatory=$false)][string]$HistoryFile = $Global:LMStudioVars.FIlePaths.HistoryFilePath,
         [Parameter(Mandatory=$false)][double]$Temperature = 0.7,
         [Parameter(Mandatory=$false)][switch]$SkipGreeting,
         [Parameter(Mandatory=$false)][switch]$StreamResponses
@@ -1243,7 +1243,7 @@ function Start-LMChat { #INCMPLETE
     
         #region Try to Load or Create a history
     #Need to check if this is still valid:
-        If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$HistoryFile = $Global:LMStudioVars.HistoryFilePath}
+        If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$HistoryFile = $Global:LMStudioVars.FIlePaths.HistoryFilePath}
     
         If (!(Test-Path $HistoryFile)){ #Build a dummy history file
     
@@ -1420,7 +1420,7 @@ function Start-LMChatLite {
     param (
         [Parameter(Mandatory=$true)][string]$Server,
         [Parameter(Mandatory=$false)][ValidateRange(0, 65535)][int]$Port = 1234,
-        [Parameter(Mandatory=$false)][string]$HistoryFile = $Global:LMStudioVars.HistoryFilePath,
+        [Parameter(Mandatory=$false)][string]$HistoryFile = $Global:LMStudioVars.FIlePaths.HistoryFilePath,
         [Parameter(Mandatory=$false)][double]$Temperature = 0.7,
         [Parameter(Mandatory=$false)][switch]$SkipGreeting,
         [Parameter(Mandatory=$false)][switch]$StreamResponses
@@ -1461,7 +1461,7 @@ function Start-LMChatLite {
     
         #region Try to Load or Create a history
     #Need to check if this is still valid:
-        If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$HistoryFile = $Global:LMStudioVars.HistoryFilePath}
+        If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$HistoryFile = $Global:LMStudioVars.FIlePaths.HistoryFilePath}
     
         If (!(Test-Path $HistoryFile)){ #Build a dummy history file
     
