@@ -4,6 +4,7 @@
 function New-LMConfigFile { #Complete
     [CmdletBinding()]
     param (
+        [Parameter(Mandatory=$false)][string]$ConfigFilePath = "$($Env:USERPROFILE)\Documents\WindowsPowershell\Modules\LMStudio-Client\lmsc.cfg",
         [Parameter(Mandatory=$false)][string]$Server,
         [Parameter(Mandatory=$false)][ValidateRange(1, 65535)][int]$Port,
         [Parameter(Mandatory=$false)][string]$HistoryFilePath,
@@ -177,7 +178,8 @@ function New-LMConfigFile { #Complete
         }
 
         #region Set creation variables
-        $ConfigFilePath = "$($Env:USERPROFILE)\Documents\WindowsPowerShell\Modules\LMStudio-Client\lmsc.cfg"
+        If (!($PSBoundParameters.ContainsKey('ConfigFilePath'))){$ConfigFilePath = "$($Env:USERPROFILE)\Documents\WindowsPowerShell\Modules\LMStudio-Client\lmsc.cfg"}
+    
         
         $DialogFolder = $HistoryFilePath.TrimEnd('.index') + '-DialogFiles'
         $GreetingFilePath = $HistoryFilePath.TrimEnd('.index') + '-DialogFiles\hello.greetings'
@@ -358,10 +360,44 @@ end {
 }
 
 #This function updates values in $GLobal:LMConfigVars. It also offers a -Commit function, that writes the changes to the Config file
-function Set-LMConfigOption {
+function Set-LMConfigOptions {
+    [CmdletBinding()]
+    param(
+        # Param1 help description
+        [Parameter(Mandatory=$true)][ValidateSet('ServerInfo', 'ChatSettings', 'FilePaths')][string]$Branch,
+        [Parameter(Mandatory=$true)][hashtable]$Options,
+        [Parameter(Mandatory=$false, ParameterSetName='SaveChanges')][switch]$Commit,
+        [Parameter(Mandatory=$true, ParameterSetName='SaveChanges')][string]$ConfigFile
+    )
+
+    $GlobalKeys = $Global:LMStudioVars.$Branch.GetEnumerator().Name
+
+    $RequestedKeys = $Options.GetEnumerator().Name
+
+    $DiffDeltas = (Compare-Object -ReferenceObject $GlobalKeys -DifferenceObject $RequestedKeys).Where({$_.SideIndicator -eq '=>'})
+
+    If ($CompareKeys.Count -gt 0){throw "Keys not found in $Branch - $($DiffDeltas.InputObject -join ', ')"}
+
+    Foreach ($Key in $RequestedKeys){$Global:LMStudioVars.$Branch.$Key = ($Options.$Key)}
+
+    If ($Commit.IsPresent){
+
+        If (!(Test-Path $ConfigFile)){
+
+            try {"" | Out-File $ConfigFile -ErrorAction Stop}
+            catch {throw "Settings applied, but unable to create $ConfigFile to save settings [Set-LMConfigOptions]"}
+
+        }
+
+        try {$Global:LMStudioVars | ConvertTo-Json -depth 4 -error Stop | out-file $ConfigFile -ErrorAction Stop}
+        catch {throw "Settings applied, but unable to save settings to $ConfigFile [Set-LMConfigOptions]"}
+    }
+
+    }
 
 
-}
+
+
 
 #This function returns different kinds of objects needed by various functions
 function Get-LMTemplate { #Complete
@@ -1295,7 +1331,11 @@ begin {
     #endregion
 }
 
-process {}
+process {
+
+
+
+}
 
 end {}
 
