@@ -145,4 +145,4 @@ FOLLOW-UP: What I think was happening is degraded server performance from my sys
 
 What I think might have been happening is the LLM was being "slow" due to GPU overclock settings being applied (seen this before). Get-Content -Wait was reading the file in between lagtimes in each line-stream, causing the code to return fragmented lines.
 
-Will resume working on Start-LMGreeting tomorrow
+Will resume working on Start-LMGreeting tomorrow.
