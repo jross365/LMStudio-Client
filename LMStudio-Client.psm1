@@ -708,20 +708,22 @@ function Set-LMHistoryPath ([string]$HistoryFile,[switch]$CreatePath){ #Complete
 
 
 #This function imports the content of an existing history file, for either use or to verify the format is correct
-function Import-LMHistoryFile { #Complete, NEEDS REWORK TO ACCOMMODATE NEW FORMAT
+function Import-LMHistoryFile { #Complete
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$false)][string]$FilePath,
+        [Parameter(Mandatory=$false)]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [string]$FilePath,
         [Parameter(Mandatory=$false)][switch]$AsTest
         )
 
     begin {
 
         #region Validate FilePath
-        If ($null -eq $FilePath -or $FilePath.Length -eq 0){
+        If (!($PSBoundParameters.ContainsKey('FilePath'))){
 
              try {$HistoryFileCheck = Confirm-LMGlobalVariables}
-            catch {throw "Required variables (Server, Port) are missing, and `$Global:LMStudioVars is not populated. Please Create or Import a config file"}
+            catch {throw "Required -FilePath is missing, and `$Global:LMStudioVars is not populated. Please Create or Import a config file"}
            
             $FilePath = $Global:LMStudioVars.FilePaths.HistoryFilePath
         
@@ -733,23 +735,20 @@ function Import-LMHistoryFile { #Complete, NEEDS REWORK TO ACCOMMODATE NEW FORMA
         catch {throw "Unable to import history file $FilePath : $($_.Exception.Message))"}
         #endregion
 
-        #region Validate columns and first entry of the history file (for "dummy" content):
-        $HistoryColumns = (Get-LMTemplate -Type HistoryEntry).psobject.Properties.Name
-        $FileColumns = $HistoryContent.psobject.Properties.name
-
-        $ColumnComparison = Compare-Object -ReferenceObject $HistoryColumns -DifferenceObject $FileColumns
-
-       If ($AsTest.IsPresent){
-
-        If ($ColumnComparison.Count -eq 0){$ValidContents = $True}
-        If ($ColumnComparison.Count -gt 0){$ValidContents = $False}
-
-       }
+        #region Validate columns and first entry of the history file:
 
     }
 
     process {
     
+        $HistoryColumns = (Get-LMTemplate -Type HistoryEntry).psobject.Properties.Name
+        $FileColumns = $HistoryContent.psobject.Properties.name
+
+        $ColumnComparison = Compare-Object -ReferenceObject $HistoryColumns -DifferenceObject $FileColumns
+
+        If ($ColumnComparison.Count -eq 0){$ValidContents = $True}
+        If ($ColumnComparison.Count -gt 0){$ValidContents = $False}
+
     #region If not a test, move over content from Fixed-Length arrays to New ArrayLists:
     If (!($AsTest.IsPresent)){
     

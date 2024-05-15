@@ -126,3 +126,16 @@ I need to rewrite Import-LMConfigFile to accommodate the new config JSON structu
 Fixed Initialize-LMVarStore, Set-LMGlobalVariables, Confirm-LMGlobalVariables.
 
 Pointed all $Global:LMHistoryVars.HistoryFilePath entries to $Global:LMHistoryVars.FilePaths.HistoryFilePath.
+
+05/14 - Wrote Set-LMOptions to create a way to dynamically adjust variables (like max_tokens, temperature, context). Wrote it in a way that it doesn't depend on a fixed list of keys.
+
+Finished updating Import-LMHistoryFile.
+
+A few script-wide improvements to do:
+    * I use "$null -ne $_ -or $_.Length -gt 0" a LOT. It works, but it's not elegant. I will work toward moving to this, instead (where it makes sense):
+    
+        * Parameter ValidateScript: [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        * If statement: If (!($PSBoundParameters.ContainsKey('PARAMETERNAME'))){}
+
+    * "Temperature", "Max_Tokens" and "ContextDepth" should be stored, if not in the History File, then in the dialog file. I haven't gotten to writing dialog handling yet, so it's something to do while building is early.
+
