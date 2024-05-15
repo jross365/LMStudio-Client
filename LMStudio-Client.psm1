@@ -834,13 +834,13 @@ function Update-LMHistoryFile { #Complete
 function Get-LMModel {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$false)][string]$Server,
-        [Parameter(Mandatory=$false)][int]$Port,
+        [Parameter(Mandatory=$false)][ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })][string]$Server,
+        [Parameter(Mandatory=$false)][ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })][int]$Port,
         [Parameter(Mandatory=$false)][switch]$AsTest
 
     )
 
-    If (($null -eq $Server -or $Server.Length -eq 0) -or ($null -eq $Port -or $Port.Length -eq 0)){
+    If (!($PSBoundParameters.ContainsKey('Server')) -or !($PSBoundParameters.ContainsKey('Port'))){
 
         try {$VariablesCheck = Confirm-LMGlobalVariables}
         catch {
@@ -882,37 +882,6 @@ function Get-LMModel {
         $False {return $Model}
 
     }
-
-}
-
-#This function creates an empty object for creating a greeting file
-function Import-LMGreetingDialog {
-}
-
-#This function saves a greeting to the greeting file (if the switch is specified)
-function Update-LMGreetingDialog {
-}
-
-#This function creates an empty object for creating a Chat dialog
-function New-LMChatDialogTemplate {
-
-    #region This was taken from New-LMHistoryFileTemplate:
-    try {
-    $DummyContent = New-Object System.Collections.ArrayList
-    (0..1).ForEach({$DummyContent.Add(([pscustomobject]@{"timestamp" = $((Get-Date).ToString()); "role" = "dummy"; "content" = "This is a dummy entry."})) | Out-Null})
-
-    $DummyEntry = [pscustomobject]@{"StartDate" = "$((Get-Date).ToString())"; "Opener" = "This is a dummy entry."; "Content" = $DummyContent}
-
-    $Histories = New-Object System.Collections.ArrayList
-    $Histories.Add($DummyEntry) | Out-Null
-
-    $Models = @{}
-    (0..1).ForEach({$Models.Add("$_","dummymodel")})
-
-    $History.Add([pscustomobject]@{"Models" = $Models; "Greetings" = $Greetings; "Histories" = $Histories}) | Out-Null
-    }
-    catch{throw "Unable to create history file $HistoryFile : $($_.Exception.Message))"}
-    #endregion
 
 }
 
@@ -959,9 +928,20 @@ function Show-LMHelp { #INCOMPLETE
 }
 
 #This function generates a greeting prompt for an LLM, for load in the LMChatClient
-function New-LMGreetingPrompt { #INCOMPLETE
+function New-LMGreetingPrompt { #Complete
     
     ###FEATURE TO INCLUDE HERE: RETURN A SYSTEM PROMPT
+    $Premises = @(
+        "Talk like a pirate",
+        "Talk like a valley girl",
+        "Talk like Arnold Schwarzenegger",
+        "Talk like you're porky pig",
+        "Talk like you have severe social anxiety",
+        "Talk like you're Goofy",
+        "Talk like you're Jeremy Clarkson"
+    )
+
+    $ChosenPremise = $Premises[$(Get-Random -Minimum 0 -Maximum $($Premises.GetUpperBound(0)) -SetSeed ([System.Environment]::TickCount))]
 
     $TodayIsADay = "It is $((Get-Date).DayOfWeek)"
     
@@ -970,13 +950,13 @@ function New-LMGreetingPrompt { #INCOMPLETE
     $ThreeLetters = (Get-Random -Count 3 -InputObject $TokenSet.U -SetSeed ([System.Environment]::TickCount)) -join ', '
 
     $Greetings = @(
-        "$TodayIsADay. Chose an adjective that contains these three letters: $ThreeLetters. Then use it to insult me in a short way without hurting my feelings too much.",
-        "$TodayIsADay. Please greet me in a unique and fun way!",
-        "$TodayIsADay. Choose a proper noun that contains these three letters: $ThreeLetters. Then provide a fact about the chosen proper noun.",
-        "$TodayIsADay. Please try to baffle me.",
-        "$TodayIsADay. Choose a proper noun that contains these three letters: $ThreeLetters. Then generate a haiku that includes this word.",
-        "$TodayIsADay. Choose a proper noun that contains these three letters: $ThreeLetters. Please generate a short poem about this word."
-        "$TodayisADay. Please wish me well for today."
+        "$ChosenPremise. Chose an adjective that contains these three letters: $ThreeLetters. Then use it to insult me in a short way without hurting my feelings too much.",
+        "$ChosenPremise. Please greet me in a unique and fun way!",
+        "$ChosenPremise. Choose a proper noun that contains these three letters: $ThreeLetters. Then provide a fact about the chosen proper noun.",
+        "$ChosenPremise. Please try to baffle me.",
+        "$ChosenPremise. Choose a proper noun that contains these three letters: $ThreeLetters. Then generate a haiku that includes this word.",
+        "$ChosenPremise. Choose a proper noun that contains these three letters: $ThreeLetters. Please generate a short poem about this word."
+        "$ChosenPremise. Please wish me well for today."
     )
     
     $ChosenGreeting = $Greetings[$(Get-Random -Minimum 0 -Maximum $($Greetings.GetUpperBound(0)) -SetSeed ([System.Environment]::TickCount))]
@@ -1235,7 +1215,7 @@ end {
 function Start-LMGreeting {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$False)][string]$Server,
+        [Parameter(Mandatory=$False)][ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })][string]$Server,
         [Parameter(Mandatory=$false)][ValidateRange(1, 65535)][int]$Port = 1234,
         [Parameter(Mandatory=$false)][string]$GreetingFile = $Global:LMStudioVars.FIlePaths.GreetingFilePath,
         [Parameter(Mandatory=$false)][ValidateSet('Stream', 'Blob')][string]$ResponseType
@@ -1319,22 +1299,116 @@ begin {
         If ($LMVarsLoaded){
 
             switch ($Global:LMStudioVars.ChatSettings.stream){
-                $True {$ResponseType = "Stream"}
-                $False {$ResponseType = "Blob"}
+                $True {
+                    $ResponseType = "Stream"
+                    $Stream = $True
+                }
+                $False {
+                    $ResponseType = "Blob"
+                    $Stream = $False
+                }
             }
 
         }
-        Else {$ResponseType = "Stream"} #Default to Stream
+        Else { #Default to Stream
+            $ResponseType = "Stream"
+            $Stream = $True
+        } 
 
     }
     #endregion
+
+    #region Establish temperature, max tokens and stream
+    If (!$LMVarsLoaded){
+        $Temperature = 0.7
+        $MaxTokens = -1    
+    }
+    Else {
+        $Temperature = $Global:LMStudioVars.ChatSettings.temperature
+        $MaxTokens = $Global:LMStudioVars.ChatSettings.max_tokens
+    }
+
+    If ($ResponseType -eq "Blob"){$Stream = $False}
+
+    #endregion
+
 }
 
 process {
 
+    #region Get the model and prep the body
+    try {$Model = Get-LMModel -Server $Server -Port $Port}
+    catch {throw $_.Exception.Message}
 
+    $GreetingPrompt = New-LMGreetingPrompt
+    
+    $Body = Get-LMTemplate -Type Body
+    $Body.model = "$Model"
+    $Body.temperature = $Temperature
+    $Body.max_tokens = $MaxTokens
+    $Body.Stream = $Stream
+    $Body.messages[0].content = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
+    $Body.messages[1].content = "$GreetingPrompt"
+    #endregion
 
-}
+    #region If using a Greeting File, prep the Body with context    
+    If ($UseGreetingFile){
+
+        If ($NewFile){
+
+            $GreetingData[0].TimeStamp = (Get-Date).ToString()
+            $GreetingData[0].System = $Body.messages[0].content
+            $GreetingData[0].User = $Body.messages[1].content
+            $GreetingData[0].Model = "$Model"        
+            $GreetingData[0].Temperature = $Temperature
+            $GreetingData[0].Max_Tokens = $MaxTokens
+            $GreetingData[0].Stream = $Stream
+            $GreetingData[0].ContextDepth = $global:LMStudioVars.ChatSettings.ContextDepth
+
+        }
+
+        Else { #We have to put the previous requests in Q/A order:
+
+            $ContextEntries = $GreetingData | Select-Object -Last ([int]($ContextDepth / 2))
+
+            $ContextMessages = New-Object System.Collections.ArrayList
+            
+            $ContextMessages.Add([pscustomobject]@{"role" = "system"; "content" = "$($Body.messages[0].content)"})
+
+            Foreach ($Entry in $ContextEntries){
+
+                $ContextMessages.Add([pscustomobject]@{"role" = "user"; "content" = "$($Entry.User)"})
+                $ContextMessages.Add([pscustomobject]@{"role" = "assistent"; "content" = "$($Entry.Assistant)"})
+
+            }
+
+            $ContextMessages.Add([pscustomobject]@{"role" = "user"; "content" = "$($Body.messages[1].content)"})
+
+            $Body.messages = $ContextMessages
+
+        }
+
+    } #Close If UseGreetingFile
+    #endregion
+
+    Write-Host "You: " -ForegroundColor Green -NoNewline; Write-Host "$GreetingPrompt"
+
+    Write-Host "AI: " -ForegroundColor Magenta -NoNewline
+    switch ($ResponseType){
+
+        {$_ -eq "Stream"}{
+
+            "" | out-file $Global:LMStudioVars.FilePaths.StreamCachePath
+
+            $ServerResponse = Invoke-LMStream -CompletionURI "http://$Server`:$Port/v1/chat/completions" -Body ($Body | ConvertTo-Json -Depth 5) -File ($Global:LMStudioVars.FilePaths.StreamCachePath)
+
+        }
+
+        {$_ -eq "Blob"}{}
+
+    }
+
+    }
 
 end {}
 
