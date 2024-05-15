@@ -615,32 +615,32 @@ function Set-LMGlobalVariables { #Complete
 function Confirm-LMGlobalVariables ([switch]$ReturnBoolean) { #INComplete, needs temp,maxtokens,stream additions
     $Errors = New-Object System.Collections.ArrayList
 
-    If ($null -eq $Global:LMStudioVars){$Errors.Add('$Global:LMStudioVars does not exist')}
+    If ($null -eq $Global:LMStudioVars){$Errors.Add('$Global:LMStudioVars does not exist') | out-null}
     Else {
 
     #Check ServerInfo
-        If ($null -eq $Global:LMStudioVars.ServerInfo){$Errors.Add('$Global.LMStudioVars.ServerInfo does not exist')}
+        If ($null -eq $Global:LMStudioVars.ServerInfo){$Errors.Add('$Global.LMStudioVars.ServerInfo does not exist') | out-null}
         Else {
-            If ($Global:LMStudioVars.ServerInfo.Server.Length -eq 0 -or $null -eq $Global:LMStudioVars.ServerInfo.Server){$Errors.Add("ServerInfo.Server")}
-            If ($Global:LMStudioVars.ServerInfo.Port.Length -eq 0 -or $null -eq $Global:LMStudioVars.ServerInfo.Port){$Errors.Add("ServerInfo.Port")}
+            If ($Global:LMStudioVars.ServerInfo.Server.Length -eq 0 -or $null -eq $Global:LMStudioVars.ServerInfo.Server){$Errors.Add("ServerInfo.Server") | out-null}
+            If ($Global:LMStudioVars.ServerInfo.Port.Length -eq 0 -or $null -eq $Global:LMStudioVars.ServerInfo.Port){$Errors.Add("ServerInfo.Port") | out-null}
         }
 
         #Check ChatSettings
         If ($null -eq $Global:LMStudioVars.ChatSettings){$Errors.Add('$Global.LMStudioVars.ChatSettings does not exist')}
         Else {
-            If ($Global:LMStudioVars.ChatSettings.temperature.Length -eq 0 -or $null -eq $Global:LMStudioVars.ChatSettings.temperature){$Errors.Add("ChatSettings.temperature")}
-            If ($Global:LMStudioVars.ChatSettings.max_tokens.Length -eq 0 -or $null -eq $Global:LMStudioVars.ChatSettings.max_tokens){$Errors.Add("ChatSettings.max_tokens")}
-            If ($Global:LMStudioVars.ChatSettings.Stream -ne $True -and $Global:LMStudioVars.ChatSettings.Stream -ne $False){$Errors.Add("ChatSettings.Stream")}
-            If ($Global:LMStudioVars.ChatSettings.ContextDepth -eq 0 -or $null -eq $Global:LMStudioVars.ChatSettings.ContextDepth){$Errors.Add("ChatSettings.ContextDepth")}
-            If ($Global:LMStudioVars.ChatSettings.Greeting -ne $True -and $Global:LMStudioVars.ChatSettings.Greeting -ne $False){$Errors.Add("ChatSettings.Greeting")}
+            If ($Global:LMStudioVars.ChatSettings.temperature.Length -eq 0 -or $null -eq $Global:LMStudioVars.ChatSettings.temperature){$Errors.Add("ChatSettings.temperature") | out-null}
+            If ($Global:LMStudioVars.ChatSettings.max_tokens.Length -eq 0 -or $null -eq $Global:LMStudioVars.ChatSettings.max_tokens){$Errors.Add("ChatSettings.max_tokens") | out-null}
+            If ($Global:LMStudioVars.ChatSettings.Stream -ne $True -and $Global:LMStudioVars.ChatSettings.Stream -ne $False){$Errors.Add("ChatSettings.Stream") | out-null}
+            If ($Global:LMStudioVars.ChatSettings.ContextDepth -eq 0 -or $null -eq $Global:LMStudioVars.ChatSettings.ContextDepth){$Errors.Add("ChatSettings.ContextDepth") | out-null}
+            If ($Global:LMStudioVars.ChatSettings.Greeting -ne $True -and $Global:LMStudioVars.ChatSettings.Greeting -ne $False){$Errors.Add("ChatSettings.Greeting") | out-null}
             }
 
         #Check FilePaths
         If ($null -eq $Global:LMStudioVars.FilePaths){$Errors.Add('$Global.LMStudioVars.FilePaths does not exist')}
         Else {
-            If ($Global:LMStudioVars.FilePaths.HistoryFilePath.Length -eq 0 -or $null -eq $Global:LMStudioVars.FilePaths.HistoryFilePath){$Errors.Add("ServerInfo.HistoryFilePath")}
-            If ($Global:LMStudioVars.FilePaths.GreetingFilePath.Length -eq 0 -or $null -eq $Global:LMStudioVars.FilePaths.GreetingFilePath){$Errors.Add("ServerInfo.GreetingFilePath")}
-            If ($Global:LMStudioVars.FilePaths.StreamCachePath.Length -eq 0 -or $null -eq $Global:LMStudioVars.FilePaths.StreamCachePath){$Errors.Add("ServerInfo.StreamCachePath")}
+            If ($Global:LMStudioVars.FilePaths.HistoryFilePath.Length -eq 0 -or $null -eq $Global:LMStudioVars.FilePaths.HistoryFilePath){$Errors.Add("ServerInfo.HistoryFilePath") | out-null}
+            If ($Global:LMStudioVars.FilePaths.GreetingFilePath.Length -eq 0 -or $null -eq $Global:LMStudioVars.FilePaths.GreetingFilePath){$Errors.Add("ServerInfo.GreetingFilePath") | out-null}
+            If ($Global:LMStudioVars.FilePaths.StreamCachePath.Length -eq 0 -or $null -eq $Global:LMStudioVars.FilePaths.StreamCachePath){$Errors.Add("ServerInfo.StreamCachePath") | out-null}
             }
     }
 
@@ -1281,7 +1281,9 @@ begin {
 
     }
     Else {$UseGreetingFile = $True}
+    #endregion
 
+    #region Set the stream cache
     If ($Null -eq $Global:LMStudioVars.FilePaths.StreamCachePath){$StreamCachePath = (Get-Location).Path + '\stream.cache'}
     Else {$StreamCachePath = $Global:LMStudioVars.FilePaths.StreamCachePath}
     #endregion
@@ -1344,10 +1346,19 @@ begin {
         } 
 
     }
+    Else {
+        switch ($ResponseType){
+
+            {$_ -eq "Stream"}{$Stream = $True}
+            {$_ -eq "Blob"}{$Stream = $False}
+
+        }
+
+    }
     #endregion
 
     #region Establish temperature, max tokens and stream
-    If (!$LMVarsLoaded){
+    If (!($LMVarsLoaded)){
         $Temperature = 0.7
         $MaxTokens = -1    
     }
@@ -1356,14 +1367,17 @@ begin {
         $MaxTokens = $Global:LMStudioVars.ChatSettings.max_tokens
     }
 
-    If ($ResponseType -eq "Blob"){$Stream = $False}
-
     #endregion
 
 }
 
 process {
 
+    #region Set Endpoint information
+    $Endpoint = "$Server" + ":" + "$Port"
+    $CompletionURI = "http://$Endpoint/v1/chat/completions"
+    #endregion
+    
     #region Get the model and prep the body
     try {$Model = Get-LMModel -Server $Server -Port $Port}
     catch {throw $_.Exception.Message}
@@ -1371,12 +1385,12 @@ process {
     $GreetingPrompt = New-LMGreetingPrompt
     
     $Body = Get-LMTemplate -Type Body
-    $Body.model = "$Model"
+    $Body.model = $Model
     $Body.temperature = $Temperature
-    $Body.max_tokens = $MaxTokens
-    $Body.Stream = $True
+    $Body.max_tokens =  $MaxTokens
+    $Body.Stream = $True #$Stream isn't applying
     $Body.messages[0].content = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
-    $Body.messages[1].content = "$GreetingPrompt"
+    $Body.messages[1].content = $GreetingPrompt
     #endregion
 
     #region If using a Greeting File, prep the Body with context    
@@ -1419,23 +1433,18 @@ process {
     } #Close If UseGreetingFile
     #endregion
 
-    $CompletionURI = "http://" + "$Server" + ":" + "$Port" + "/v1/chat/completions"
-
     Write-Host "You: " -ForegroundColor Green -NoNewline; Write-Host "$GreetingPrompt"
     Write-Host ""
     Write-Host "AI: " -ForegroundColor Magenta -NoNewline
 
+
+
+
     switch ($ResponseType){
 
         {$_ -eq "Stream"}{
-
-            #For Testing:
-            $StreamCachePath = "D:\stream.cache"
-            $CompletionURI = 'http://localhost:1234/v1/chat/completions'
-
-            $ServerResponse = Invoke-LMStream -CompletionURI $CompletionURI -Body $Body -File $StreamCachePath -KeepJob
-
-            do {start-sleep -Milliseconds 60} until ((Get-Job).Count -eq 0)
+            
+            $ServerResponse = Invoke-LMStream -CompletionURI $CompletionURI -Body $Body -File $StreamCachePath
 
         }
 
