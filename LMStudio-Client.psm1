@@ -1155,8 +1155,14 @@ process {
         If ($Interrupted){break}
     
         $jobOutput = Receive-Job $RunningJob #| Where-Object {$_ -match 'data:' -or $_ -match '|ERROR!?!'} #Need to move this into :oloop 
-    
+        
         :oloop foreach ($Line in $jobOutput){
+
+            If ($Fragmented){ #Added this to try to reassemble fragments
+                    $Line = "$Fragment" + "$Line"
+                    Remove-Variable Fragment
+                    $Fragmented = $False
+            } 
 
             If ($Line.Length -eq 0){continue oloop}
 
@@ -1173,8 +1179,15 @@ process {
             }
             elseif ($Line -notmatch "data: "){continue oloop}
             else {
+                    
+                $TrimLine = $Line.TrimStart("data: ")
     
-                $LineAsObj = $Line.TrimStart("data: ") | ConvertFrom-Json
+                try {$LineAsObj = $TrimLine | ConvertFrom-Json}
+                catch {
+                        $Fragment = $LineAsObj
+                        $Fragmented = $True
+                        break oloop
+                }
                 
                 If ($LineAsObj.id.Length -eq 0){continue oloop}
     
@@ -1391,6 +1404,8 @@ process {
     } #Close If UseGreetingFile
     #endregion
 
+    $CompletionURI = "http://$Server" + ":$Port/v1/chat/completions"
+
     Write-Host "You: " -ForegroundColor Green -NoNewline; Write-Host "$GreetingPrompt"
 
     Write-Host "AI: " -ForegroundColor Magenta -NoNewline
@@ -1398,9 +1413,7 @@ process {
 
         {$_ -eq "Stream"}{
 
-            "" | out-file $Global:LMStudioVars.FilePaths.StreamCachePath
-
-            $ServerResponse = Invoke-LMStream -CompletionURI "http://$Server`:$Port/v1/chat/completions" -Body ($Body | ConvertTo-Json -Depth 5) -File ($Global:LMStudioVars.FilePaths.StreamCachePath)
+            $ServerResponse = Invoke-LMStream -CompletionURI $CompletionURI -Body $Body -File ($Global:LMStudioVars.FilePaths.StreamCachePath)
 
         }
 

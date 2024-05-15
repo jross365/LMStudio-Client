@@ -139,3 +139,4 @@ A few script-wide improvements to do:
 
     * "Temperature", "Max_Tokens" and "ContextDepth" should be stored, if not in the History File, then in the dialog file. I haven't gotten to writing dialog handling yet, so it's something to do while building is early.
 
+05/14 - New problems with Invoke-LMStream: The job is no longer reliably returning full/whole lines on its own. I need to figure out a way to figure out if the last line in $JobOutput is incomplete, and if so, carry it to the next line.

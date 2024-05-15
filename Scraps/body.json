@@ -1,0 +1,16 @@
+{
+  "model": "lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF/Meta-Llama-3-8B-Instruct-Q8_0.gguf",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
+    },
+    {
+      "role": "user",
+      "content": "Talk like a valley girl. Please greet me in a unique and fun way!"
+    }
+  ],
+  "temperature": 0.7,
+  "max_tokens": -1,
+  "stream": true
+}
