@@ -140,3 +140,9 @@ A few script-wide improvements to do:
     * "Temperature", "Max_Tokens" and "ContextDepth" should be stored, if not in the History File, then in the dialog file. I haven't gotten to writing dialog handling yet, so it's something to do while building is early.
 
 05/14 - New problems with Invoke-LMStream: The job is no longer reliably returning full/whole lines on its own. I need to figure out a way to figure out if the last line in $JobOutput is incomplete, and if so, carry it to the next line.
+
+FOLLOW-UP: What I think was happening is degraded server performance from my system being up so long. Rebooting made the "fragmentation" issue disappear.
+
+What I think might have been happening is the LLM was being "slow" due to GPU overclock settings being applied (seen this before). Get-Content -Wait was reading the file in between lagtimes in each line-stream, causing the code to return fragmented lines.
+
+Will resume working on Start-LMGreeting tomorrow

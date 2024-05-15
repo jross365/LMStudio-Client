@@ -1154,15 +1154,15 @@ process {
 
         If ($Interrupted){break}
     
-        $jobOutput = Receive-Job $RunningJob #| Where-Object {$_ -match 'data:' -or $_ -match '|ERROR!?!'} #Need to move this into :oloop 
+        $jobOutput = Receive-Job $RunningJob
         
         :oloop foreach ($Line in $jobOutput){
 
-            If ($Fragmented){ #Added this to try to reassemble fragments
-                    $Line = "$Fragment" + "$Line"
-                    Remove-Variable Fragment
-                    $Fragmented = $False
-            } 
+            #If ($Fragmented){ #Added this to try to reassemble fragments, troubleshooting 05/14
+            #        $Line = "$Fragment" + "$Line"
+            #        Remove-Variable Fragment
+            #        $Fragmented = $False
+            #} 
 
             If ($Line.Length -eq 0){continue oloop}
 
@@ -1182,12 +1182,14 @@ process {
                     
                 $TrimLine = $Line.TrimStart("data: ")
     
-                try {$LineAsObj = $TrimLine | ConvertFrom-Json}
-                catch {
-                        $Fragment = $LineAsObj
-                        $Fragmented = $True
-                        break oloop
-                }
+               # try { #Added this to try to reassemble fragments, troubleshooting 05/14
+                $LineAsObj = $TrimLine | ConvertFrom-Json
+               # }
+               # catch {
+               #        $Fragment = $LineAsObj
+               #        $Fragmented = $True
+               #         break oloop
+               # }
                 
                 If ($LineAsObj.id.Length -eq 0){continue oloop}
     
