@@ -13,9 +13,13 @@ This client interfaces with the LMStudio Web Server, allowing a user to use LMSt
   - Settings are preserved in a configuration file
   - Settings can be modified and saved easily
 
-This module is being built and improved upon, and features are implemented as they're discovered. Please see my development journal below to follow my progress!
+This module is being built and improved upon, and features are implemented as they're discovered.
 
-# Development Journal
+Please see my **development journal** below to follow my progress!
+
+---
+
+## Development Journal
 
 ### **Key:**
 
@@ -27,7 +31,17 @@ This module is being built and improved upon, and features are implemented as th
 
 ---
 
-## 05/15/2024
+### 05/16/2024
+
+I spent a great deal of time last night implementing parameter validations. This is not yet complete.
+
+**New-LMGreeting** (⬜️ _soon to be **Get-LMGreeting**_) works great:
+
+![](/Docs/images/get-lmgreeting.gif)
+
+---
+
+### 05/15/2024
 
 I worked diligently through the input typing problems I had all throughout **Start-LMGreeting**, and fixed the **temperature, max_depth** and **stream** type validations. (_It's important because Powershell's JSON conversions are particular about type, and meet formatting standards._) I then set to task to implement more advanced parameters, where every non-switch parameter is validated. This allowed me to cut out 150 lines of cluttering code.
 
@@ -47,11 +61,11 @@ I'm on the fence about **$CompletionURI** and **$ModelURI**. I think it would be
 
 ---
 
-## 05/14/2024
+### 05/14/2024
 
 New problems with **Invoke-LMStream**: The job is no longer reliably returning full/whole lines on its own. I need to figure out a way to figure out if the last line in **$JobOutput** is incomplete, and if so, carry it to the next line.
 
-### **Follow-Up:**
+#### **Follow-Up:**
 
 What I think was happening is degraded server performance from my system being up so long. Rebooting made the "fragmentation" issue disappear.
 
@@ -59,7 +73,7 @@ What I think might have been happening is the LLM was being "slow" due to GPU ov
 
 Will resume working on **Start-LMGreeting** tomorrow.
 
-### **Follow-Up:**
+#### **Follow-Up:**
 
 **✅** Wrote **Set-LMOptions** to create a way to dynamically adjust variables (like _max_tokens, temperature, context_). Wrote it in a way that it doesn't depend on a fixed list of keys.
 
@@ -77,7 +91,7 @@ If (!($PSBoundParameters.ContainsKey('PARAMETERNAME'))){}
 
 - **✅** **"Temperature", "Max_Tokens" and "ContextDepth"** should be stored, if not in the History File, then in the dialog file. I haven't gotten to writing dialog handling yet, so it's something to do while building is early.
 
-### **Follow-Up:**
+#### **Follow-Up:**
 
 **✅** Fixed **Import-LMConfigFile**, added enhancements to **Import-ConfigFile**.
 
@@ -87,7 +101,7 @@ If (!($PSBoundParameters.ContainsKey('PARAMETERNAME'))){}
 
 ---
 
-## 05/13/2024
+### 05/13/2024
 
 In moving over functions to use the **New-LMTemplate** (_which is not done, HistoryFile template has a LOT of hooks_), with a sense of doom I realized I absolutely have to get all of the client settings I need into the config management system. If I don't, it'll be a headache to fix later.
 
@@ -97,7 +111,7 @@ I have much of the Config File (object) formatting done. **✅** **Confirm-LMGlo
 
 ---
 
-## 05/12/2024
+### 05/12/2024
 
 **✅** Finished the **New-LMTemplate** function; added **temperature,max_tokens,stream,ContextDepth** to Config file and to global settings incorporation.
 
@@ -106,7 +120,7 @@ I have much of the Config File (object) formatting done. **✅** **Confirm-LMGlo
 **✅** Remove the old standalone template functions  
 **✅** Evaluate whether I can remove functions I've labeled as such
 
-### **Follow-Up:**
+#### **Follow-Up:**
 
 Had another thought:
 
@@ -124,7 +138,7 @@ Also, getting rid of an extra function gets rid of the ability and utility to om
 This also simplifies the way History Files are created and appended to.  
    (It also suggests that, since the data is flat, I should be using a CSV!)
 
-### **Follow-Up:**
+#### **Follow-Up:**
 
 Doing documentation, clean-up and identifying missing functions today. Might break the functions out into Public/Private.
 
@@ -161,7 +175,7 @@ Doing documentation, clean-up and identifying missing functions today. Might bre
 
 ---
 
-## 05/11/2024
+### 05/11/2024
 
 Finished **Import-LMConfigFile**, which wasn't an easy step: input validation and caution is important here, because cleaning up mistakes is a hassle when files and folders are created all over the place.
 
@@ -186,7 +200,7 @@ If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$Hist...
 
 ---
 
-## 05/10/2024
+### 05/10/2024
 
 Finished **Import-LMConfigFile**, which required parameterizing a whole bunch of functions and fixing various checks/validations. New-LMConfigFile comes next.  
 ✅ **Create-LMConfigFile** will have the following parameters:
@@ -208,13 +222,13 @@ Finished **Import-LMConfigFile**, which required parameterizing a whole bunch of
 
 ---
 
-## 05/09/2024
+### 05/09/2024
 
 Started building out **Import-LMConfigFile**; ✅ this required parameterizing **Get-LMModel**. ✅ I need to parameterize **Import-LMHistoryFile** so I can test it during the **Import-LMConfigFile** process.
 
 I'll keep working from top to bottom to build out the functions this module needs. NOTE: I also should build a **Start-LMStudioLiteClient** to get a working prototype to play with.
 
-### **Follow-Up:**
+#### **Follow-Up:**
 
 Re-ordered functions according to the dependencies and processes. Built shells for many (but not all) of the functions I'll need to write and incorporate.
 
@@ -250,13 +264,13 @@ A lot has gotten done. There is still a lot to do. I think the first thing I'll 
 
 ---
 
-## 05/09/2024
+### 05/09/2024
 
 Re-ordered functions according to the dependencies and processes. Built shells for many (but not all) of the functions I'll need to write and incorporate.
 
 ---
 
-## 05/07/2024 - 05/08/2024
+### 05/07/2024 - 05/08/2024
 
 ✅ These two days were spent building and testing the asynchronous, job-based streaming response function (**Invoke-LMStream**). Much trial and error, but it's fully functional.
 
@@ -264,13 +278,13 @@ Re-ordered functions according to the dependencies and processes. Built shells f
 
 ---
 
-## 05/06/2024
+### 05/06/2024
 
 ✅ Found a way to simulate asynchronous HTTP stream, built a working "streaming" response system; converted over to Powershell 7 standards; began functionalizing the code.  
 **✅ Left off:** Moving all inputs for $HistoryFile over to $Global:LMStudioServer.HistoryFilepath, with checks for the path's validity
 
 ---
 
-## 04/27/2024 - 05/05/2024
+### 04/27/2024 - 05/05/2024
 
 Built prototype, built greeting system, built history file system, began functionalizing.
