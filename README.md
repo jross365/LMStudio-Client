@@ -33,11 +33,25 @@ Please see my **development journal** below to follow my progress!
 
 ### 05/16/2024
 
-I spent a great deal of time last night implementing parameter validations. This is not yet complete.
+I spent a great deal of time last night implementing parameter validation. This is not yet complete.
 
-**New-LMGreeting** (⬜️ _soon to be **Get-LMGreeting**_) works great:
+**Start-LMGreeting** (⬜️ _soon to be renamed **Get-LMGreeting**_) works great:
 
 ![](/Docs/images/get-lmgreeting.gif)
+
+⬜️ The only code remaining for **Start-LMGreeting** is to write the received information out to the **hello.greeting** file in the folder.
+
+Some additional things I'd like to accomplish today/tomorrow:
+
+- ⬜️ Incorporate the following fields into the Config File:
+  - $Global:LMStudioVars. Endpoints = @{}
+    - .Endpoints.ModelURI = \[computed from ServerInfo Server, Port information\]
+    - .Endpoints.CompletionURI = \[computed from ServerInfo Server, Port information\]
+  - $Global:LMStudioVars.ChatSettings.Greeting = \[boolean\]
+
+#### **Follow-Up:**
+
+I parameterized a few more functions. It didn't get me back a lot of lines, but ti's cleaner now. ⬜️ **\[Set-LMGlobalVariables\]** and a few others still need parameterizing.
 
 ---
 

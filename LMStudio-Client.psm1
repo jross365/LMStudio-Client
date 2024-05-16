@@ -1,7 +1,7 @@
 #This function prompts for server name and port:
     # it prompts to create a new history file, or to load an existing one. 
     # If loading an existing one, it needs to verify it.
-function New-LMConfigFile { #Complete
+function New-LMConfig { #Complete
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$false)]
@@ -148,7 +148,7 @@ function New-LMConfigFile { #Complete
             }
             until ($CreatePathAnswered -eq $True)
 
-            If ($DefaultAnswer -ieq 'n'){throw "Provided directory path must be created. Please rerun New-LMConfigFile."}
+            If ($DefaultAnswer -ieq 'n'){throw "Provided directory path must be created. Please rerun New-LMConfig."}
             Else {$CreatePath = $True}
 
         }
@@ -188,7 +188,7 @@ function New-LMConfigFile { #Complete
         If ($Warnings -gt 0){
             Write-Host "Attention: " -ForegroundColor White -NoNewline
             Write-Host "$Warning settings could not be verified." -ForegroundColor Yellow
-            Write-Host "If these settings are incorrect, please exit and re-run New-LMConfigFile." -ForegroundColor Green
+            Write-Host "If these settings are incorrect, please exit and re-run New-LMConfig." -ForegroundColor Green
         }
 
         #region Set creation variables
@@ -274,7 +274,7 @@ function New-LMConfigFile { #Complete
 
     If ($Import.IsPresent){
 
-        try {$Imported = Import-LMConfigFile -ConfigFile $ConfigFilePath}
+        try {$Imported = Import-LMConfig -ConfigFile $ConfigFilePath}
         catch {throw "Unable to import configuration: $($_.Exception.Message)"}
 
     }
@@ -284,11 +284,15 @@ function New-LMConfigFile { #Complete
 }
 
 #This function reads the local LMConfigFile.cfg, verifies it (unless skipped), and then writes the values to the $Global:LMStudioVars
-function Import-LMConfigFile { #Complete
+function Import-LMConfig { #Complete
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$true)][string]$ConfigFile,
-        [Parameter(Mandatory=$false)][switch]$Verify        
+        [Parameter(Mandatory=$true)]
+        [ValidateScript({ if (!(Test-Path -Path $_)) { throw "Greeting file path does not exist" } else { $true } })]
+        [string]$ConfigFile,
+
+        [Parameter(Mandatory=$false)]
+        [switch]$Verify        
     )
 begin {
     
@@ -409,9 +413,6 @@ function Set-LMConfigOptions {
     }
 
     }
-
-
-
 
 
 #This function returns different kinds of objects needed by various functions
@@ -626,7 +627,6 @@ function Set-LMGlobalVariables { #Complete
 
 }
 
-
 #This function validates $Global:LMStudioVars is fully populated
 function Confirm-LMGlobalVariables ([switch]$ReturnBoolean) { #INComplete, needs temp,maxtokens,stream additions
     $Errors = New-Object System.Collections.ArrayList
@@ -682,7 +682,16 @@ function Confirm-LMGlobalVariables ([switch]$ReturnBoolean) { #INComplete, needs
 # This function "Carves The Way" to the path where the history file should be saved. 
 # It verifies the path validity and tries to create the path, if specified
 
-function Set-LMHistoryPath ([string]$HistoryFile,[switch]$CreatePath){ #Complete
+function Set-LMHistoryPath { #Complete
+    param (
+        [Parameter(Mandatory=$true)]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [string]$HistoryFile,
+
+        [Parameter(Mandatory=$false)]
+        [switch]$CreatePath
+    )
+
     If (!($PSBoundParameters.ContainsKey('HistoryFile'))){throw "Please enter a valid path to the history file"}
 
     $HistFileDirs = $HistoryFile -split '\\'
@@ -727,7 +736,6 @@ function Set-LMHistoryPath ([string]$HistoryFile,[switch]$CreatePath){ #Complete
     return $True
   
 }
-
 
 #This function imports the content of an existing history file, for either use or to verify the format is correct
 function Import-LMHistoryFile { #Complete
@@ -879,7 +887,7 @@ function Get-LMModel {
 
         try {$VariablesCheck = Confirm-LMGlobalVariables}
         catch {
-                throw "Required variables (Server, Port) are missing, and `$Global:LMStudioVars is not populated. Please run Set-LMGlobalVariables or Import-LMConfigFile"
+                throw "Required variables (Server, Port) are missing, and `$Global:LMStudioVars is not populated. Please run Set-LMGlobalVariables or Import-LMConfig"
     
             }
 
