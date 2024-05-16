@@ -1168,11 +1168,11 @@ process {
         
         :oloop foreach ($Line in $jobOutput){
 
-            #If ($Fragmented){ #Added this to try to reassemble fragments, troubleshooting 05/14
-            #        $Line = "$Fragment" + "$Line"
-            #        Remove-Variable Fragment
-            #        $Fragmented = $False
-            #} 
+            If ($Fragmented){ #Added this to try to reassemble fragments, troubleshooting 05/14
+                    $Line = "$Fragment" + "$Line"
+                    Remove-Variable Fragment
+                    $Fragmented = $False
+            } 
 
             If ($Line.Length -eq 0){continue oloop}
 
@@ -1190,16 +1190,18 @@ process {
             elseif ($Line -notmatch "data: "){continue oloop}
             else {
                     
-                $TrimLine = $Line.TrimStart("data: ")
-    
-               # try { #Added this to try to reassemble fragments, troubleshooting 05/14
-                $LineAsObj = $TrimLine | ConvertFrom-Json
-               # }
-               # catch {
-               #        $Fragment = $LineAsObj
-               #        $Fragmented = $True
-               #         break oloop
-               # }
+                #$TrimLine = $Line.TrimStart("data: ")
+                
+                #Added this to reassemble fragments: 
+
+                try {
+                $LineAsObj = ($Line.TrimStart("data: ")) | ConvertFrom-Json
+                }
+                catch {
+                       $Fragment = $LineAsObj
+                       $Fragmented = $True
+                        break oloop
+                }
                 
                 If ($LineAsObj.id.Length -eq 0){continue oloop}
     
@@ -1240,143 +1242,72 @@ end {
 function Start-LMGreeting {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$False)][ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })][string]$Server,
-        [Parameter(Mandatory=$false)][ValidateRange(1, 65535)][int]$Port = 1234,
-        [Parameter(Mandatory=$false)][string]$GreetingFile,
-        [Parameter(Mandatory=$false)][ValidateSet('Stream', 'Blob')][string]$ResponseType
+        [Parameter(Mandatory=$true, ParameterSetName='Auto')]
+        [switch]$UseLoadedConfig,
+        
+        [Parameter(Mandatory=$true, ParameterSetName='Manual')]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [string]$Server,
+        
+        [Parameter(Mandatory=$true, ParameterSetName='Manual')]
+        [ValidateRange(1, 65535)][int]$Port,
+        
+        [Parameter(Mandatory=$false, ParameterSetName='Manual')]
+        [ValidateScript({ if (!(Test-Path -Path $_)) { throw "Greeting file path does not exist" } else { $true } })]
+        [string]$GreetingFile,
+        
+        [Parameter(Mandatory=$false, ParameterSetName='Manual')]
+        [boolean]$Stream
         )
 
 begin {
 
-    #region Evaluate and set Server/Port Variables
-    $LMVarsLoaded = Confirm-LMGlobalVariables -ReturnBoolean
+    #region Evaluate and set Variables
+    switch ($UseLoadedConfig.IsPresent){
 
-    $InputParamErrors = ""
-
-    If (!($PSBoundParameters.ContainsKey('Server'))){
-
-        If ($LMVarsLoaded){$Server = $Global:LMStudioVars.ServerInfo.Server}
-        Else {$InputParamErrors += "Server parameter not specified; "}
-
-    }
-
-    If (!($PSBoundParameters.ContainsKey('Port'))){
-
-        If ($LMVarsLoaded){$Port = $Global:LMStudioVars.ServerInfo.Port}
-        Else {$InputParamErrors += "Port parameter not specified."}
-
-    }
-
-    If ($InputParamErrors.Length -gt 0){throw "$InputParamErrors Please provide required parameters, or run [Import-LMConfigFile]"}
-    #endregion
-
-    #region Evaluate and set Greeting File; initialize greeting file if necessary; import greeting file
-    If (!($PSBoundParameters.ContainsKey('GreetingFile'))){
-
-        If ($LMVarsLoaded){
+        $True {
+            If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "Config file variables not loaded, run [Import-ConfigFile] to load them"}
+            
+            $Server = $Global:LMStudioVars.ServerInfo.Server
+            $Port = $Global:LMStudioVars.ServerInfo.Port
             $GreetingFile = $global:LMStudioVars.FilePaths.GreetingFilePath
-            $UseGreetingFile = $True
+            $StreamCachePath = $Global:LMStudioVars.FilePaths.StreamCachePath
+            $UseGreetingFile = ([boolean](Test-Path -Path $GreetingFile))
+            $Stream = $Global:LMStudioVars.ChatSettings.stream
+            $Temperature = $Global:LMStudioVars.ChatSettings.temperature
+            $MaxTokens = $Global:LMStudioVars.ChatSettings.max_tokens
         }
-        Else {$UseGreetingFile = $False}
 
+        $False {
+            $UseGreetingFile = $PSBoundParameters.ContainsKey('GreetingFile')
+            $StreamCachePath = (Get-Location).Path + '\lmstream.cache'
+            If (!$PSBoundParameters.ContainsKey('Stream')){$Stream = $True} #Stream by Default
+            $Temperature = 0.7 #Default
+            $MaxTokens = -1 #Default
+        }
+    
     }
-    Else {$UseGreetingFile = $True}
     #endregion
 
-    #region Set the stream cache
-    If ($Null -eq $Global:LMStudioVars.FilePaths.StreamCachePath){$StreamCachePath = (Get-Location).Path + '\stream.cache'}
-    Else {$StreamCachePath = $Global:LMStudioVars.FilePaths.StreamCachePath}
-    #endregion
-
-    #region Initialize Greeting File
+    #region Load greeting file
     If ($UseGreetingFile){
 
-        switch ((Test-Path $GreetingFile)){
-
-            $True {
-
-                    try {$GreetingData = Import-csv $GreetingFile -ErrorAction Stop}
-                    catch {
-                        Write-Warning "Unable to import greeting file $GreetingFile"
-                        $UseGreetingFile = $False
-                    }
+        try {$GreetingData = Import-csv $GreetingFile -ErrorAction Stop}
+        catch {
+            Write-Host "Notice: Unable to import greeting file" -ForegroundColor Blue
+            $UseGreetingFile = $False
             }
-
-            $False {
-
-                try {(Get-LMTemplate -Type ChatGreeting) | Export-CSV $GreetingFile -NoTypeInformation -ErrorAction Stop}
-                catch {
-                    Write-Warning "Unable to create new greeting file $GreetingFile"
-                    $UseGreetingFile = $False
-                    }
-
-                If ($UseGreetingFile){$GreetingData = Import-csv $GreetingFile}
-            }
-
-        } #Close Switch  
-        
-        # Determine if we're using a new file with no real values:
-        If ($UseGreetingFile -and $GreetingData.Count -eq 1 -and $GreetingData[0]."User" -eq "dummyvalue"){$NewFile = $True}
-        Else {$NewFile = $False}
-
-    } #If UseGreetingFile
-
-    #endregion
-    
-    #region Establish Response type (Invoke-LMBlob or Invoke-LMBStream)
-    If (!($PSBoundParameters.ContainsKey('ReponseType'))){
-
-        If ($LMVarsLoaded){
-
-            switch ($Global:LMStudioVars.ChatSettings.stream){
-                $True {
-                    $ResponseType = "Stream"
-                    $Stream = $True
-                }
-                $False {
-                    $ResponseType = "Blob"
-                    $Stream = $False
-                }
-            }
-
-        }
-        Else { #Default to Stream
-            $ResponseType = "Stream"
-            $Stream = $True
-        } 
-
-    }
-    Else {
-        switch ($ResponseType){
-
-            {$_ -eq "Stream"}{$Stream = $True}
-            {$_ -eq "Blob"}{$Stream = $False}
-
-        }
-
     }
     #endregion
-
-    #region Establish temperature, max tokens and stream
-    If (!($LMVarsLoaded)){
-        $Temperature = 0.7
-        $MaxTokens = -1    
-    }
-    Else {
-        $Temperature = $Global:LMStudioVars.ChatSettings.temperature
-        $MaxTokens = $Global:LMStudioVars.ChatSettings.max_tokens
-    }
-
-    #endregion
-
-}
-
-process {
 
     #region Set Endpoint information
     $Endpoint = "$Server" + ":" + "$Port"
     $CompletionURI = "http://$Endpoint/v1/chat/completions"
     #endregion
+ 
+}
+
+process {
     
     #region Get the model and prep the body
     try {$Model = Get-LMModel -Server $Server -Port $Port}
@@ -1388,7 +1319,7 @@ process {
     $Body.model = $Model
     $Body.temperature = $Temperature
     $Body.max_tokens =  $MaxTokens
-    $Body.Stream = $True #$Stream isn't applying
+    $Body.Stream = $Stream
     $Body.messages[0].content = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
     $Body.messages[1].content = $GreetingPrompt
     #endregion
@@ -1437,22 +1368,11 @@ process {
     Write-Host ""
     Write-Host "AI: " -ForegroundColor Magenta -NoNewline
 
+    $ServerResponse = Invoke-LMStream -CompletionURI $CompletionURI -Body $Body -File $StreamCachePath
 
+    return $Body
 
-
-    switch ($ResponseType){
-
-        {$_ -eq "Stream"}{
-            
-            $ServerResponse = Invoke-LMStream -CompletionURI $CompletionURI -Body $Body -File $StreamCachePath
-
-        }
-
-        {$_ -eq "Blob"}{}
-
-    }
-
-    }
+}
 
 end {}
 
