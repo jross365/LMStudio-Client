@@ -4,19 +4,34 @@
 function New-LMConfigFile { #Complete
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$false)][string]$ConfigFilePath = "$($Env:USERPROFILE)\Documents\WindowsPowershell\Modules\LMStudio-Client\lmsc.cfg",
-        [Parameter(Mandatory=$false)][string]$Server,
-        [Parameter(Mandatory=$false)][ValidateRange(1, 65535)][int]$Port,
-        [Parameter(Mandatory=$false)][string]$HistoryFilePath,
+        [Parameter(Mandatory=$false)]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [string]$ConfigFilePath = "$($Env:USERPROFILE)\Documents\LMStudio-PSClient\lmsc.cfg",
+
+        
+        [Parameter(Mandatory=$false)]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [string]$Server,
+        
+        [Parameter(Mandatory=$false)]
+        [ValidateRange(1, 65535)
+        ][int]$Port,
+        
+        [Parameter(Mandatory=$false)]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [string]$HistoryFilePath,
+
         [Parameter(Mandatory=$false)][switch]$SkipValidation,
+
         [Parameter(Mandatory=$false)][switch]$Import,
+
         [Parameter(Mandatory=$false)][switch]$ReuseHistoryFile
     )#Structure: 
-
+    
     begin {
 
-        #region Validate Server input
-        If ($null -eq $Server -or $Server.Length -eq 0){
+        #Request Server parameter
+        If (!($PSBoundParameters.ContainsKey('Server'))){
 
             $InputAccepted = $false
 
@@ -30,7 +45,7 @@ function New-LMConfigFile { #Complete
         #endregion
 
         #region Validate Port input
-        If ($null -eq $Port -or $Port.Length -eq 0 -or $Port -eq 0){
+        If (!($PSBoundParameters.ContainsKey('Port'))){
 
             $InputValid = $false
 
@@ -60,7 +75,7 @@ function New-LMConfigFile { #Complete
         #endregion
 
         #Region Validate History file input
-        If ($null -eq $HistoryFilePath -or $HistoryFilePath.Length -eq 0){
+        If (!($PSBoundParameters.ContainsKey('HistoryFilePath'))){
             
             $HistoryFilePathValid = $False
 
@@ -77,7 +92,7 @@ function New-LMConfigFile { #Complete
                 If ($DefaultAnswer -ine 'y' -and $DefaultAnswer -ine 'n'){
                     
                     $HFPathAnswered = $False
-                    Write-Verbose "Please enter 'Y' or 'N' (no quotes, but not case sensitive)" -Verbose
+                    Write-Host "Please enter 'Y' or 'N' (no quotes, but not case sensitive)" -ForegroundColor Yellow
 
                 }
                 Else {$HFPathAnswered = $True}
@@ -115,7 +130,7 @@ function New-LMConfigFile { #Complete
 
             $CreatePath = $True
 
-            Write-Verbose "Directory: $HistFileDirPath" -Verbose
+            Write-Host "Directory: $HistFileDirPath" -ForegroundColor Yellow
 
             $CreatePathAnswered = $False
 
@@ -126,7 +141,7 @@ function New-LMConfigFile { #Complete
                 If ($DefaultAnswer -ine 'y' -and $DefaultAnswer -ine 'n'){
                     
                     $CreatePathAnswered = $False
-                    Write-Verbose "Please enter 'Y' or 'N' (no quotes, but not case sensitive)" -Verbose
+                    Write-Host "Please enter 'Y' or 'N' (no quotes, but not case sensitive)" -ForegroundColor Yellow
                 }
                 Else {$CreatePathAnswered = $True}
 
@@ -166,19 +181,18 @@ function New-LMConfigFile { #Complete
             #endregion
 
         }
-
     }
 
     end {
 
         If ($Warnings -gt 0){
-            Write-Host "Attention: " -ForegroundColor Yellow -NoNewline
-            Write-Host "$Warning settings could not be verified." -ForegroundColor Green
+            Write-Host "Attention: " -ForegroundColor White -NoNewline
+            Write-Host "$Warning settings could not be verified." -ForegroundColor Yellow
             Write-Host "If these settings are incorrect, please exit and re-run New-LMConfigFile." -ForegroundColor Green
         }
 
         #region Set creation variables
-        If (!($PSBoundParameters.ContainsKey('ConfigFilePath'))){$ConfigFilePath = "$($Env:USERPROFILE)\Documents\WindowsPowerShell\Modules\LMStudio-Client\lmsc.cfg"}
+        If (!($PSBoundParameters.ContainsKey('ConfigFilePath'))){$ConfigFilePath = "$($Env:USERPROFILE)\Documents\LMStudio-PSClient\lmsc.cfg"}
     
         
         $DialogFolder = $HistoryFilePath.TrimEnd('.index') + '-DialogFiles'
@@ -196,23 +210,24 @@ function New-LMConfigFile { #Complete
         $ConfigFileObj.ChatSettings.max_tokens = -1
         $ConfigFileObj.ChatSettings.stream = $True
         $ConfigFileObj.ChatSettings.ContextDepth = 10
-        $ConfigFileObj.ChatSettings.Greeting = $True #Will be used When launching the "fat client"
+        #$ConfigFileObj.URIs.CompletionURI = {} #Maybe
+        #$ConfigFileObj.URIs.ModelURI = {} #Maybe
         #endregion
 
         #region Display information and prompt for creation
-        Write-Host "Config File Settings:" -ForegroundColor Yellow
+        Write-Host "Config File Settings:" -ForegroundColor White
 
         $ConfigFileObj | Format-List
 
-        Write-Host ""; Write-Host "History File location:" -ForegroundColor Yellow
+        Write-Host ""; Write-Host "History File location:" -ForegroundColor Green
         Write-Host "$HistoryFilePath"
-        Write-Host ""; Write-Host "Greeting File location:" -ForegroundColor Yellow
+        Write-Host ""; Write-Host "Greeting File location:" -ForegroundColor Green
         Write-Host "$GreetingFilePath"
-        Write-Host ""; Write-Host "Stream Cachce location:" -ForegroundColor Yellow
+        Write-Host ""; Write-Host "Stream Cachce location:" -ForegroundColor Green
         Write-Host "$StreamCachePath"
-        Write-Host "The following subdirectory will also be created:" -ForegroundColor Yellow
+        Write-Host ""; Write-Host "The following subdirectory will also be created:" -ForegroundColor Green
         Write-Host "$DialogFolder"
-        Write-Host "Config File Path:" -ForegroundColor Yellow
+        Write-Host ""; Write-Host "Config File Path:" -ForegroundColor Green
         Write-Host "$ConfigFilePath"
 
         $Proceed = Read-Host -Prompt "Proceed? (y/N)"
@@ -550,6 +565,7 @@ function Initialize-LMVarStore { #Complete
 }
 
 #This function sets the Global variables for Server, Port and HistoryFile; it ASSUMES validation has been completed
+###I NEED TO IMPLEMENT INPUT VALIDATION ON THIS
 function Set-LMGlobalVariables { #Complete
     [CmdletBinding()]
     param (
@@ -667,7 +683,7 @@ function Confirm-LMGlobalVariables ([switch]$ReturnBoolean) { #INComplete, needs
 # It verifies the path validity and tries to create the path, if specified
 
 function Set-LMHistoryPath ([string]$HistoryFile,[switch]$CreatePath){ #Complete
-    If ($HistoryFile.Length -eq 0 -or $null -eq $HistoryFile){throw "Please enter a valid path to the history file"}
+    If (!($PSBoundParameters.ContainsKey('HistoryFile'))){throw "Please enter a valid path to the history file"}
 
     $HistFileDirs = $HistoryFile -split '\\'
 
@@ -720,6 +736,7 @@ function Import-LMHistoryFile { #Complete
         [Parameter(Mandatory=$false)]
         [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
         [string]$FilePath,
+
         [Parameter(Mandatory=$false)][switch]$AsTest
         )
 
@@ -784,8 +801,13 @@ function Repair-LMHistoryFile {
 function Update-LMHistoryFile { #Complete
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$true)][pscustomobject]$Entry,
-        [Parameter(Mandatory=$False)][string]$FilePath
+        [Parameter(Mandatory=$true)]
+        [ValidateScript({ if ($_.GetType().GetType().Name -ne "PSCustomObject"){throw "Expected object of type [pscustomobject]"} else { $true } })]
+        [pscustomobject]$Entry,
+        
+        [Parameter(Mandatory=$False)]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [string]$FilePath
         )
 
     begin {
@@ -801,7 +823,7 @@ function Update-LMHistoryFile { #Complete
         #endregion
 
         #region Check history file location in global variables, or use provided FilePath
-        If ($null -eq $FilePath -or $FilePath.Length -eq 0){
+        If (!($PSBoundParameters.ContainsKey('FilePath'))){
 
             try {$HistoryFileCheck = Confirm-LMGlobalVariables}
             catch {throw "Error validating Global variables: $($_.Exception.Message)"}
@@ -840,9 +862,16 @@ function Update-LMHistoryFile { #Complete
 function Get-LMModel {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$false)][ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })][string]$Server,
-        [Parameter(Mandatory=$false)][ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })][int]$Port,
-        [Parameter(Mandatory=$false)][switch]$AsTest
+        [Parameter(Mandatory=$false)]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [string]$Server,
+        
+        [Parameter(Mandatory=$false)]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [int]$Port,
+        
+        [Parameter(Mandatory=$false)]
+        [switch]$AsTest
 
     )
 
@@ -1367,11 +1396,10 @@ process {
     Write-Host "You: " -ForegroundColor Green -NoNewline; Write-Host "$GreetingPrompt"
     Write-Host ""
     Write-Host "AI: " -ForegroundColor Magenta -NoNewline
-
+    
     $ServerResponse = Invoke-LMStream -CompletionURI $CompletionURI -Body $Body -File $StreamCachePath
 
-    return $Body
-
+    Write-Host ""
 }
 
 end {}
@@ -1424,7 +1452,7 @@ function Start-LMChat { #INCMPLETE
     
         #region Try to Load or Create a history
     #Need to check if this is still valid:
-        If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$HistoryFile = $Global:LMStudioVars.FIlePaths.HistoryFilePath}
+        If (!($PSBoundParameters.ContainsKey('HistoryFile'))){$HistoryFile = $Global:LMStudioVars.FIlePaths.HistoryFilePath}
     
         If (!(Test-Path $HistoryFile)){ #Build a dummy history file
     
