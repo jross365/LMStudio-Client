@@ -197,21 +197,24 @@ function New-LMConfig { #Complete
         
         $DialogFolder = $HistoryFilePath.TrimEnd('.index') + '-DialogFiles'
         $GreetingFilePath = $HistoryFilePath.TrimEnd('.index') + '-DialogFiles\hello.greetings'
-        $StreamCachePath = "($env:USERPROFILE)\Documents\LMStudio-PSClient\stream.cache"
+        $StreamCachePath = "$env:USERPROFILE\Documents\LMStudio-PSClient\stream.cache"
 
         $ConfigFileObj = Get-LMTemplate -Type ConfigFile
 
         $ConfigFileObj.ServerInfo.Server = $Server
         $ConfigFileObj.ServerInfo.Port = $Port
+        $ConfigFileObj.ServerInfo.Endpoint = "$Server`:$Port"
         $ConfigFileObj.FilePaths.HistoryFilePath = $HistoryFilePath
+        $ConfigFileObj.FilePaths.DialogFolderPath = $DialogFolder
         $ConfigFileObj.FilePaths.GreetingFilePath = $GreetingFilePath
         $ConfigFileObj.FilePaths.StreamCachePath = $StreamCachePath
         $ConfigFileObj.ChatSettings.temperature = 0.7
         $ConfigFileObj.ChatSettings.max_tokens = -1
         $ConfigFileObj.ChatSettings.stream = $True
         $ConfigFileObj.ChatSettings.ContextDepth = 10
-        #$ConfigFileObj.URIs.CompletionURI = {} #Maybe
-        #$ConfigFileObj.URIs.ModelURI = {} #Maybe
+        $ConfigFileObj.ChatSettings.Greeting = $True
+        $ConfigFileObj.URIs.CompletionURI = $ConfigFileObj.URIs.CompletionURI -replace 'X', "$($ConfigFileObj.ServerInfo.Endpoint)" 
+        $ConfigFileObj.URIs.ModelURI = $ConfigFileObj.URIs.ModelURI -replace 'X', "$($ConfigFileObj.ServerInfo.Endpoint)" 
         #endregion
 
         #region Display information and prompt for creation
@@ -251,7 +254,16 @@ function New-LMConfig { #Complete
                     Write-Warning "Dialog Folder $DialogFolder not found, creating."
 
                     try {mkdir $DialogFolder -ErrorAction Stop | out-null}
-                    catch {throw "Dialog folder creation failed ($DialogFolder)"}
+                    catch {throw "Dialog folder creation failed: $($_.Exception.Message)"}
+                }
+
+                If (!(Test-Path $GreetingFilePath)){
+
+                    Write-Warning "Greeting file $GreetingFilePath not found, creating."
+
+                    try {(Get-LMTemplate -Type ChatGreeting | Export-csv $GreetingFilePath -NoTypeInformation)}
+                    catch {throw "Greeting file creation failed: $($_.Exception.Message)"}
+
                 }
 
             }
@@ -259,6 +271,9 @@ function New-LMConfig { #Complete
             $false {
                 try {mkdir $DialogFolder -ErrorAction Stop | out-null}
                 catch {throw "Dialog folder creation failed ($DialogFolder)"}
+
+                try {(Get-LMTemplate -Type ChatGreeting | Export-csv $GreetingFilePath -NoTypeInformation)}
+                catch {throw "Greeting file creation failed: $($_.Exception.Message)"}
         
                 try {@((Get-LMTemplate -Type HistoryEntry)) | ConvertTo-Json | Out-File -FilePath $HistoryFilePath -ErrorAction Stop}
                 catch {throw "History file creation failed: $($_.Exception.Message)"}
@@ -304,21 +319,8 @@ begin {
 }#Close Begin
 process {
 
-    Initialize-LMVarStore
-
-    $LMVars = @{
-        "Server" = ($ConfigData.ServerInfo.Server);
-        "Port" = ($ConfigData.ServerInfo.Port);
-        "FilePath" = ($ConfigData.FilePaths.HistoryFilePath);
-        "Temperature" = ($ConfigData.ChatSettings.temperature);
-        "MaxTokens" = ($ConfigData.ChatSettings.max_tokens);
-        "Stream" = ([boolean]($ConfigData.ChatSettings.Stream));
-        "ContextDepth" = $ConfigData.ChatSettings.ContextDepth;
-        "Greeting" = ([boolean]($ConfigData.ChatSettings.Greeting))
-    }
-
-    try {Set-LMGlobalVariables @LMVars}
-    catch {throw "Set-LMGlobalVariables: $($_.Exception.Message)"}
+    try {$Global:LMStudioVars = $ConfigData}
+    catch {throw $_.Exception.Message}
 
     } #Close Process
 end {
@@ -383,7 +385,7 @@ function Set-LMConfigOptions {
     [CmdletBinding()]
     param(
         # Param1 help description
-        [Parameter(Mandatory=$true)][ValidateSet('ServerInfo', 'ChatSettings', 'FilePaths')][string]$Branch,
+        [Parameter(Mandatory=$true)][ValidateSet('ServerInfo', 'ChatSettings', 'FilePaths',"URIs")][string]$Branch,
         [Parameter(Mandatory=$true)][hashtable]$Options,
         [Parameter(Mandatory=$false, ParameterSetName='SaveChanges')][switch]$Commit,
         [Parameter(Mandatory=$true, ParameterSetName='SaveChanges')][string]$ConfigFile
@@ -434,10 +436,12 @@ function Get-LMTemplate { #Complete
             $ServerInfoObj = [pscustomobject]@{
                 "Server" = "";
                 "Port" = "";
+                "Endpoint" = "";
             }
 
             $FilePathsObj = [pscustomobject]@{
                 "HistoryFilePath" = "";
+                "DialogFolderPath" = "";
                 "GreetingFilePath" = "";
                 "StreamCachePath" = "";
             }            
@@ -448,9 +452,15 @@ function Get-LMTemplate { #Complete
                 "stream" = $True;
                 "ContextDepth" = 10;
                 "Greeting" = $True;
-            }            
+            }
+            
+            $URIsObj = [pscustomobject]@{
+                "ModelURI" = "http://X/v1/models";
+                "CompletionURI" = "http://X/v1/chat/completions";
 
-            $Object = [pscustomobject]@{"ServerInfo" = $ServerInfoObj; "ChatSettings" = $ChatSettingsObj; "FilePaths" = $FilePathsObj}
+            }
+
+            $Object = [pscustomobject]@{"ServerInfo" = $ServerInfoObj; "ChatSettings" = $ChatSettingsObj; "FilePaths" = $FilePathsObj; "URIs" = $URIsObj}
         }
         {$_ -ieq "HistoryEntry"}{
             
@@ -484,6 +494,7 @@ function Get-LMTemplate { #Complete
             If ($null -eq $Object.Temperature){$Object.Temperature = 0.7}
             If ($null -eq $Object.Max_Tokens){$Object.Max_Tokens = -1}
             If ($null -eq $Object.Stream){$Object.Stream = $True}
+            If ($null -eq $Object.ContextDepth){$Object.ContextDepth = 10}
         }
         {$_ -ieq "ChatDialog"}{
             
@@ -503,7 +514,20 @@ function Get-LMTemplate { #Complete
             #The "Messages" portion of the file.
             $Messages = New-Object System.Collections.ArrayList
 
-            $DummyRow = [pscustomobject]@{"TimeStamp" = ((Get-Date).ToString()); "temperature" = $Global:LMStudioVars.ChatSettings.temperature; "max_tokens" = $Global:LMStudioVars.ChatSettings.max_tokens; "stream" = $Global:LMStudioVars.ChatSettings.stream; "Role" = "system"; "Content" = "Please be polite, concise and informative."}
+            $DummyRow = [pscustomobject]@{
+                "TimeStamp" = ((Get-Date).ToString());
+                "temperature" = $Global:LMStudioVars.ChatSettings.temperature;
+                "max_tokens" = $Global:LMStudioVars.ChatSettings.max_tokens;
+                "stream" = $Global:LMStudioVars.ChatSettings.stream;
+                "ContextDepth" = $Global:LMStudioVars.ChatSettings.ContextDepth;
+                "Role" = "system";
+                "Content" = "Please be polite, concise and informative."
+            }
+
+            If ($null -eq $DummyRow.temperature){$DummyRow.temperature = 0.7}
+            If ($null -eq $DummyRow.max_tokens){$DummyRow.max_tokens = -1}
+            If ($null -eq $DummyRow.stream){$DummyRow.stream = $True} #default
+            If ($null -eq $DummyRow.ContextDepth){$DummyRow.ContextDepth = 10} #default
 
             $Messages.Add($DummyRow) | Out-Null
 
@@ -547,119 +571,40 @@ function Get-LMTemplate { #Complete
     return $Object
 
 }
-#This function builds the hierarchy of hash tables at $Global:LMstudiovars to store configuration information (server, port, history file)
-function Initialize-LMVarStore { #Complete
-    $Global:LMStudioVars = @{}
-    $Global:LMStudioVars.Add("ServerInfo",@{})
-    $Global:LMStudioVars.ServerInfo.Add("Server","")
-    $Global:LMStudioVars.ServerInfo.Add("Port","")
-    $Global:LMStudioVars.Add("FilePaths",@{})
-    $Global:LMStudioVars.FilePaths.Add("HistoryFilePath","")
-    $Global:LMStudioVars.FilePaths.Add("GreetingFilePath","")
-    $Global:LMStudioVars.FilePaths.Add("StreamCachePath","")
-    $Global:LMStudioVars.Add("ChatSettings",@{})
-    $Global:LMStudioVars.ChatSettings.Add("temperature",0.7)
-    $Global:LMStudioVars.ChatSettings.Add("max_tokens",-1)
-    $Global:LMStudioVars.ChatSettings.Add("stream",$True)
-    $Global:LMStudioVars.ChatSettings.Add("ContextDepth",10)
-    $Global:LMStudioVars.ChatSettings.Add("Greeting",$True)
-}
-
-#This function sets the Global variables for Server, Port and HistoryFile; it ASSUMES validation has been completed
-###I NEED TO IMPLEMENT INPUT VALIDATION ON THIS
-function Set-LMGlobalVariables { #Complete
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory=$true)][string]$Server,
-        [Parameter(Mandatory=$true)][int]$Port,
-        [Parameter(Mandatory=$true)][string]$FilePath,
-        [Parameter(Mandatory=$true)][double]$Temperature,
-        [Parameter(Mandatory=$true)][int]$MaxTokens,
-        [Parameter(Mandatory=$true)][boolean]$Stream,
-        [Parameter(Mandatory=$true)][int]$ContextDepth,
-        [Parameter(Mandatory=$true)][boolean]$Greeting,
-        [Parameter(Mandatory=$false)][switch]$Show       
-
-    )
-
-    try {$VarStoreCheck = $Global:LMStudioVars.GetType().Name}
-    catch {Initialize-LMVarStore}
-
-    If ($VarStoreCheck -ne "Hashtable"){Initialize-LMVarStore}
-    
-    $GreetingFilePath = $FilePath.TrimEnd('.index') + '-DialogFiles\hello.greetings'
-    $StreamCachePath = "($env:USERPROFILE)\Documents\LMStudio-PSClient\stream.cache"
-
-    try {$Global:LMStudioVars.ServerInfo.Server = $Server}
-    catch {throw "Unable to set Global variable LMStudioServer for value Server: $Server"}
-    
-    try {$Global:LMStudioVars.ServerInfo.Port = $Port}
-    catch {throw "Unable to set Global variable LMStudioServer for value Port: $Port"}
-
-    try {$Global:LMStudioVars.FilePaths.HistoryFilePath = $FilePath}
-    catch {throw "Unable to set Global variable LMStudioServer for value History File Path: $FilePath"}
-
-    try {$Global:LMStudioVars.FilePaths.GreetingFilePath = $GreetingFilePath}
-    catch {throw "Unable to set Global variable LMStudioServer for value History File Path: $GreetingFilePath"}
-
-    try {$Global:LMStudioVars.FilePaths.StreamCachePath = $StreamCachePath}
-    catch {throw "Unable to set Global variable LMStudioServer for value History File Path: $StreamCachePath"}
-
-    try {$Global:LMStudioVars.FilePaths.HistoryFilePath = $FilePath}
-    catch {throw "Unable to set Global variable LMStudioServer for value History File Path: $FilePath"}
-
-    try {$Global:LMStudioVars.ChatSettings.temperature = $Temperature}
-    catch {throw "Unable to set Global variable LMStudioServer for value Temperature: $Temperature"}
-
-    try {$Global:LMStudioVars.ChatSettings.max_tokens = $MaxTokens}
-    catch {throw "Unable to set Global variable LMStudioServer for value Max_Tokens: $Temperature"}
-
-    try {$Global:LMStudioVars.ChatSettings.stream = $Stream}
-    catch {throw "Unable to set Global variable LMStudioServer for value Stream: $Stream"}
-
-    try {$Global:LMStudioVars.ChatSettings.ContextDepth = $ContextDepth}
-    catch {throw "Unable to set Global variable LMStudioServer for value ContextDepth: $ContextDepth"}
-
-    try {$Global:LMStudioVars.ChatSettings.Greeting = $Greeting}
-    catch {throw "Unable to set Global variable LMStudioServer for value ContextDepth: $ContextDepth"}
-
-    If ($Show.IsPresent){$Global:LMStudioVars}
-
-}
 
 #This function validates $Global:LMStudioVars is fully populated
 function Confirm-LMGlobalVariables ([switch]$ReturnBoolean) { #INComplete, needs temp,maxtokens,stream additions
+
     $Errors = New-Object System.Collections.ArrayList
+    
+    $GlobalVarsTemplate = Get-LMTemplate -Type ConfigFile
 
-    If ($null -eq $Global:LMStudioVars){$Errors.Add('$Global:LMStudioVars does not exist') | out-null}
-    Else {
+    If ($null -ne $Global:LMStudioVars){
 
-    #Check ServerInfo
-        If ($null -eq $Global:LMStudioVars.ServerInfo){$Errors.Add('$Global.LMStudioVars.ServerInfo does not exist') | out-null}
-        Else {
-            If ($Global:LMStudioVars.ServerInfo.Server.Length -eq 0 -or $null -eq $Global:LMStudioVars.ServerInfo.Server){$Errors.Add("ServerInfo.Server") | out-null}
-            If ($Global:LMStudioVars.ServerInfo.Port.Length -eq 0 -or $null -eq $Global:LMStudioVars.ServerInfo.Port){$Errors.Add("ServerInfo.Port") | out-null}
+       :bloop Foreach ($Branch in $GlobalVarsTemplate.psobject.Properties.Name){
+
+            If ($null -ne $Global:LMStudioVars.$Branch) {
+
+                $Leafs = $GlobalVarsTemplate.$Branch.psobject.Properties.Name
+
+                Foreach ($Leaf in $Leafs){
+
+                    If ($Global:LMStudioVars.$Branch.$Leaf.Length -eq 0 -or $null -eq $Global:LMStudioVars.$Branch.$Leaf){
+
+                        $Errors.Add($("$Branch.$Leaf"))
+
+                    }
+
+                }
+            }
+
+            Else {$Errors.Add("$Branch") | out-null}
+
         }
-
-        #Check ChatSettings
-        If ($null -eq $Global:LMStudioVars.ChatSettings){$Errors.Add('$Global.LMStudioVars.ChatSettings does not exist')}
-        Else {
-            If ($Global:LMStudioVars.ChatSettings.temperature.Length -eq 0 -or $null -eq $Global:LMStudioVars.ChatSettings.temperature){$Errors.Add("ChatSettings.temperature") | out-null}
-            If ($Global:LMStudioVars.ChatSettings.max_tokens.Length -eq 0 -or $null -eq $Global:LMStudioVars.ChatSettings.max_tokens){$Errors.Add("ChatSettings.max_tokens") | out-null}
-            If ($Global:LMStudioVars.ChatSettings.Stream -ne $True -and $Global:LMStudioVars.ChatSettings.Stream -ne $False){$Errors.Add("ChatSettings.Stream") | out-null}
-            If ($Global:LMStudioVars.ChatSettings.ContextDepth -eq 0 -or $null -eq $Global:LMStudioVars.ChatSettings.ContextDepth){$Errors.Add("ChatSettings.ContextDepth") | out-null}
-            If ($Global:LMStudioVars.ChatSettings.Greeting -ne $True -and $Global:LMStudioVars.ChatSettings.Greeting -ne $False){$Errors.Add("ChatSettings.Greeting") | out-null}
-            }
-
-        #Check FilePaths
-        If ($null -eq $Global:LMStudioVars.FilePaths){$Errors.Add('$Global.LMStudioVars.FilePaths does not exist')}
-        Else {
-            If ($Global:LMStudioVars.FilePaths.HistoryFilePath.Length -eq 0 -or $null -eq $Global:LMStudioVars.FilePaths.HistoryFilePath){$Errors.Add("ServerInfo.HistoryFilePath") | out-null}
-            If ($Global:LMStudioVars.FilePaths.GreetingFilePath.Length -eq 0 -or $null -eq $Global:LMStudioVars.FilePaths.GreetingFilePath){$Errors.Add("ServerInfo.GreetingFilePath") | out-null}
-            If ($Global:LMStudioVars.FilePaths.StreamCachePath.Length -eq 0 -or $null -eq $Global:LMStudioVars.FilePaths.StreamCachePath){$Errors.Add("ServerInfo.StreamCachePath") | out-null}
-            }
     }
 
+    Else {$Errors.Add('$Global:LMStudioVars')}
+        
     Switch ($ReturnBoolean.IsPresent){
 
         $True {
@@ -671,7 +616,7 @@ function Confirm-LMGlobalVariables ([switch]$ReturnBoolean) { #INComplete, needs
 
         $False {
 
-            If ($Errors.Count -gt 0){throw "Properties missing values: $($Errors -join ', ')"}
+            If ($Errors.Count -gt 0){throw "`$Global:LMStudioVars missing values: $($Errors -join ', ')"}
 
         }
 
@@ -887,7 +832,7 @@ function Get-LMModel {
 
         try {$VariablesCheck = Confirm-LMGlobalVariables}
         catch {
-                throw "Required variables (Server, Port) are missing, and `$Global:LMStudioVars is not populated. Please run Set-LMGlobalVariables or Import-LMConfig"
+                throw "Required variables (Server, Port) are missing, and `$Global:LMStudioVars is not populated. Please run Import-LMConfig"
     
             }
 
@@ -1276,7 +1221,7 @@ end {
 } #Close function
 
 #This function initiates a "greeting"
-function Start-LMGreeting {
+function Get-LMGreeting {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true, ParameterSetName='Auto')]
@@ -1307,12 +1252,16 @@ begin {
             
             $Server = $Global:LMStudioVars.ServerInfo.Server
             $Port = $Global:LMStudioVars.ServerInfo.Port
+            $Endpoint = $Global:LMStudioVars.ServerInfo.Endpoint
             $GreetingFile = $global:LMStudioVars.FilePaths.GreetingFilePath
             $StreamCachePath = $Global:LMStudioVars.FilePaths.StreamCachePath
             $UseGreetingFile = ([boolean](Test-Path -Path $GreetingFile))
             $Stream = $Global:LMStudioVars.ChatSettings.stream
             $Temperature = $Global:LMStudioVars.ChatSettings.temperature
             $MaxTokens = $Global:LMStudioVars.ChatSettings.max_tokens
+            $CompletionURI = $Global:LMStudioVars.URIs.CompletionURI
+            $ContextDepth = $Global:LMStudioVars.ChatSettings.ContextDepth
+
         }
 
         $False {
@@ -1321,6 +1270,9 @@ begin {
             If (!$PSBoundParameters.ContainsKey('Stream')){$Stream = $True} #Stream by Default
             $Temperature = 0.7 #Default
             $MaxTokens = -1 #Default
+            $Endpoint = "$Server" + ":" + "$Port"
+            $CompletionURI = "http://$Endpoint/v1/chat/completions"
+            $ContextDepth = 10 #Default
         }
     
     }
@@ -1335,12 +1287,7 @@ begin {
             $UseGreetingFile = $False
             }
     }
-    #endregion
-
-    #region Set Endpoint information
-    $Endpoint = "$Server" + ":" + "$Port"
-    $CompletionURI = "http://$Endpoint/v1/chat/completions"
-    #endregion
+   #endregion
  
 }
 
@@ -1373,28 +1320,45 @@ process {
             $GreetingData[0].Temperature = $Temperature
             $GreetingData[0].Max_Tokens = $MaxTokens
             $GreetingData[0].Stream = $Stream
-            $GreetingData[0].ContextDepth = $global:LMStudioVars.ChatSettings.ContextDepth
+            $GreetingData[0].ContextDepth = $ContextDepth
 
         }
 
-        Else { #We have to put the previous requests in Q/A order:
+        Else { 
 
+            #region Create a new entry to append to existing greeting file:
+            $GreetingEntry = Get-LMTemplate -Type ChatGreeting
+
+            $GreetingEntry.TimeStamp = (Get-Date).ToString()
+            $GreetingEntry.System = $Body.messages[0].content
+            $GreetingEntry.User = $Body.messages[1].content
+            $GreetingEntry.Model = "$Model"        
+            $GreetingEntry.Temperature = $Temperature
+            $GreetingEntry.Max_Tokens = $MaxTokens
+            $GreetingEntry.Stream = $Stream
+            $GreetingEntry.ContextDepth = $ContextDepth
+            #endregion
+            
+            #region Put the previous requests in Q/A order:
             $ContextEntries = $GreetingData | Select-Object -Last ([int]($ContextDepth / 2))
 
             $ContextMessages = New-Object System.Collections.ArrayList
             
-            $ContextMessages.Add([pscustomobject]@{"role" = "system"; "content" = "$($Body.messages[0].content)"})
+            $ContextMessages.Add([pscustomobject]@{"role" = "system"; "content" = "$($Body.messages[0].content)"}) | Out-Null
 
             Foreach ($Entry in $ContextEntries){
 
-                $ContextMessages.Add([pscustomobject]@{"role" = "user"; "content" = "$($Entry.User)"})
-                $ContextMessages.Add([pscustomobject]@{"role" = "assistent"; "content" = "$($Entry.Assistant)"})
+                $ContextMessages.Add([pscustomobject]@{"role" = "user"; "content" = "$($Entry.User)"})  | Out-Null
+                $ContextMessages.Add([pscustomobject]@{"role" = "assistant"; "content" = "$($Entry.Assistant)"})  | Out-Null
 
             }
 
-            $ContextMessages.Add([pscustomobject]@{"role" = "user"; "content" = "$($Body.messages[1].content)"})
+            $ContextMessages.Add([pscustomobject]@{"role" = "user"; "content" = "$($Body.messages[1].content)"})  | Out-Null
 
             $Body.messages = $ContextMessages
+            #endregion
+
+
 
         }
 
@@ -1410,7 +1374,31 @@ process {
     Write-Host ""
 }
 
-end {}
+end {
+
+    If ($UseGreetingFile){
+
+        If ($NewFile){
+
+            $GreetingData[0].Assistant = "$ServerResponse"
+
+            try {$GreetingData | Export-Csv -Path $GreetingFile -NoTypeInformation -ErrorAction Stop}
+            catch {Write-Warning "Unable to save greeting file."}
+
+        }
+
+        Else {
+
+            $GreetingEntry.Assistant = "$ServerResponse"
+
+            try {$GreetingEntry | Export-csv -Path $GreetingFile -Append -NoTypeInformation -ErrorAction Stop}
+            catch {Write-Warning "Unable to save greeting file."}
+
+            }
+
+        } #Close If UseGreetingFile
+
+    }
 
 }
 
