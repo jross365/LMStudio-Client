@@ -25,6 +25,8 @@ Please see my **development journal** below to follow my progress!
 
 ⬜️ **\- Feature/Improvement Incomplete**
 
+**❌ - Cancelled/Removed**
+
 **🚧 - Feature/Improvement In Progress**
 
 **✅ - Feature/Improvement Complete**
@@ -35,15 +37,15 @@ Please see my **development journal** below to follow my progress!
 
 I spent a great deal of time last night implementing parameter validation. This is not yet complete.
 
-**Start-LMGreeting** (⬜️ _soon to be renamed **Get-LMGreeting**_) works great:
+**Start-LMGreeting** (**✅** _soon to be renamed **Get-LMGreeting**_) works great:
 
 ![](/Docs/images/get-lmgreeting.gif)
 
-⬜️ The only code remaining for **Start-LMGreeting** is to write the received information out to the **hello.greeting** file in the folder.
+**✅** The only code remaining for **Start-LMGreeting** is to write the received information out to the **hello.greeting** file in the folder.
 
 Some additional things I'd like to accomplish today/tomorrow:
 
-- ⬜️ Incorporate the following fields into the Config File:
+- **✅** Incorporate the following fields into the Config File:
   - $Global:LMStudioVars. Endpoints = @{}
     - .Endpoints.ModelURI = \[computed from ServerInfo Server, Port information\]
     - .Endpoints.CompletionURI = \[computed from ServerInfo Server, Port information\]
@@ -51,7 +53,17 @@ Some additional things I'd like to accomplish today/tomorrow:
 
 #### **Follow-Up:**
 
-I parameterized a few more functions. It didn't get me back a lot of lines, but ti's cleaner now. ⬜️ **\[Set-LMGlobalVariables\]** and a few others still need parameterizing.
+I parameterized a few more functions. It didn't get me back a lot of lines, but ti's cleaner now. **❌** **\[Set-LMGlobalVariables\]** and a few others still need parameterizing.
+
+#### **Follow-Up:**
+
+I got a lot of things done today: created all of the Config entries I could ever need; I deleted the superfluous **Set-LMGlobalVariables** and **Initialize-LMVarStore** functions and instead incorporated their utility directly into the (_now renamed_) **Import-LMConfig** and **New-LMConfig** functions.
+
+**Import-LMConfig** will be supplemented by **Set-LMOption \[-Commit\],** which serves to change settings in **Global:LMStudioVars**, as well as ⬜️ Save the state of **$Global:LMStudioVars** _as-is_.
+
+⬜️ Mark-down might be a neat thing to experiment with, particularly for the **New-Config** prompts as well as verbose check results.
+
+**Get-LMGreeting** works perfectly, and ⬜️I need to finish incorporating it into the **Start-LMChat** function.
 
 ---
 
@@ -65,13 +77,13 @@ I've moved on to doing the same for **New-ConfigFile**, and shortly after I'll d
 
 I'm on the fence about **$CompletionURI** and **$ModelURI**. I think it would be convenient and "clean" in a small way. The temptation to reduce a whole bunch of duplicate API endpoint paths into a couple variables and parameter names is strong, but I have more important problems to solve at the moment.
 
-**✅** Oh yeah, I restored the fragmentation rfunctionality to the **Invoke-LMStream** function. It turns out to be a problem with models that seem to "struggle" with assembling and returning the words. It wasn't my code, it wasn't the computer, it's the model and web server software.
+**✅** Oh yeah, I restored the fragmentation functionality to the **Invoke-LMStream** function. It turns out to be a problem with models that seem to "struggle" with assembling and returning the words. It wasn't my code, it wasn't the computer, it's the model and web server software.
 
 (_Something they could do with LM Studio to improve the web server would be to moderate the stream output speed to be slightly slower than the average of all received characters in a burst. Sounds easy but it's hard to do, but it would make the output slower but less "jittery"_).
 
 (_Alternatively, I could do it myself, from the front-end_).
 
-⬜️ I also forgot to implement the "**Greeting**" property in the **$Global:LMVars**. Whoops, I'll do that tomorrow.
+**✅** I also forgot to implement the "**Greeting**" property in the **$Global:LMVars**. Whoops, I'll do that tomorrow.
 
 ---
 
@@ -95,7 +107,7 @@ Finished updating **Import-LMHistoryFile**.
 
 **A few script-wide improvements to do:**
 
-- **🚧** I use "_$null -ne $\_ -or $\_.Length -gt 0_" a LOT. It works, but it's not elegant. I will work toward moving to this, instead (where it makes sense):
+- **✅** I use "_$null -ne $\_ -or $\_.Length -gt 0_" a LOT. It works, but it's not elegant. I will work toward moving to this, instead (where it makes sense):
 
 ```
 Parameter ValidateScript: [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
@@ -288,7 +300,21 @@ Re-ordered functions according to the dependencies and processes. Built shells f
 
 ✅ These two days were spent building and testing the asynchronous, job-based streaming response function (**Invoke-LMStream**). Much trial and error, but it's fully functional.
 
-**Invoke-LMStream** uses "old" C# Web Client integrations; ⬜️ need to track down what version of the .NET Framework (2.0?) is required for the C# code to run.
+_**\[Edit\]**_ The asynchronicity of **Invoke-LMStream** is probably one of the most functional and well-performing instances of using a job that I've ever built.
+
+Most jobs are treated as "dump a bunch of tasks off at once, and then collect the results", to maximize multithreading in the script.
+
+In this case, I'm maximizing the utility of a single additional thread: I'm running a background task that is receiving JSON web responses directly from the web server, which is writing those to a text file on disk.
+
+In the foreground, I'm reading that text file whenever I can (**Get-Content -Tail**) and outputting a text stream to console.
+
+From the parent process (the main thread), the Powershell console, I'm retrieving the data stored in the job's return buffer (**Receive-Job**) in a loop. The console output from the job is returned as an array of strings.
+
+Every instance in the loop, I'm reading, interpreting and acting in various ways against each line in the returned array: throwing errors, converting from JSON to objects, writing out to the console, returning objects.
+
+**And they say  Powershell isn't programming** ¯\\\_(ツ)\_/¯
+
+- **Invoke-LMStream** uses "old" C# Web Client integrations; ⬜️ need to track down what version of the .NET Framework (2.0?) is required for the C# code to run.
 
 ---
 
