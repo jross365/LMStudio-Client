@@ -33,6 +33,28 @@ Please see my **development journal** below to follow my progress!
 
 ---
 
+### 05/17/2024
+
+Today, I built the **Invoke-LMBlob** function, which isn't complete or polished but should take **✅** maybe 5-10 more minutes to make functional and error-sensitive.
+
+I also established that **.Net Framework 4.5** is the minimum I require for this code to work, due to the use of async methods in the C# code.
+
+Out of curiosity, I used ChatGPT to generate a non-obsolete version of the C# class I'm using for the asynchronous HTTP session. It works great in PS7, standalone, except that it crashed my console. When I run it standalone, it runs okay, but error handling seems to be broken. **❌ Shelving this for now,** let me get everything else working first.
+
+**Out-Gridview** has the curious feature of allowing a user to double-click an entry, which sends a value to a variable. This is **super** helpful for file management.
+
+I will use the **Out-Gridview** functionality to make it easy to:
+
+⬜️  Resume a previous conversation (using the History File)
+
+⬜️  Select a System Prompt (from a statically defined list of system prompts, exported from LM Studio).
+
+I'm also not happy with my **Get-LMGreeting** prompt generator. Functionally, it's perfect; but ⬜️  I need better prompts and questions.
+
+⬜️ Also need to go through my functions list and add/strike things off of the list.
+
+---
+
 ### 05/16/2024
 
 I spent a great deal of time last night implementing parameter validation. This is not yet complete.
@@ -300,9 +322,9 @@ Re-ordered functions according to the dependencies and processes. Built shells f
 
 ✅ These two days were spent building and testing the asynchronous, job-based streaming response function (**Invoke-LMStream**). Much trial and error, but it's fully functional.
 
-_**\[Edit\]**_ The asynchronicity of **Invoke-LMStream** is probably one of the most functional and well-performing instances of using a job that I've ever built.
+_**\[edit\]**_ The asynchronicity of **Invoke-LMStream** is probably one of the most functional and well-performing instances of using a job that I've ever built.
 
-Most jobs are treated as "dump a bunch of tasks off at once, and then collect the results", to maximize multithreading in the script.
+Most jobs are treated as "dump a bunch of tasks off at once, and then collect the results", to maximize multithreading in a script.
 
 In this case, I'm maximizing the utility of a single additional thread: I'm running a background task that is receiving JSON web responses directly from the web server, which is writing those to a text file on disk.
 
@@ -313,6 +335,8 @@ From the parent process (the main thread), the Powershell console, I'm retrievin
 Every instance in the loop, I'm reading, interpreting and acting in various ways against each line in the returned array: throwing errors, converting from JSON to objects, writing out to the console, returning objects.
 
 **And they say  Powershell isn't programming** ¯\\\_(ツ)\_/¯
+
+_**\[/edit\]**_
 
 - **Invoke-LMStream** uses "old" C# Web Client integrations; ⬜️ need to track down what version of the .NET Framework (2.0?) is required for the C# code to run.
 
@@ -328,3 +352,11 @@ Every instance in the loop, I'm reading, interpreting and acting in various ways
 ### 04/27/2024 - 05/05/2024
 
 Built prototype, built greeting system, built history file system, began functionalizing.
+
+_**\[edit\]**_ There's not a lot here from when I started this journal. I didn't realize how important the journal would be for keeping track of required and desired features.
+
+The first week was spent building some lightweight proofs of concept. In this time, I worked out the HTTP body format and strict typing requirements, the base code for sending and receiving responses, and built a functional Question/Response flow using "Blob" (_all at once_) output.
+
+I was very excited about the working client/server functionality, but unhappy with having to wait for a complete response. So I began to look into how I might "stream" the output to console in an aesthetically similar way as LLM service providers do (OpenAI, Groq, etc)., A great deal of time was spent successfully building such a system.
+
+_**\[/edit\]**_

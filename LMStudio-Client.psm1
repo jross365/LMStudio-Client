@@ -573,7 +573,7 @@ function Get-LMTemplate { #Complete
 }
 
 #This function validates $Global:LMStudioVars is fully populated
-function Confirm-LMGlobalVariables ([switch]$ReturnBoolean) { #INComplete, needs temp,maxtokens,stream additions
+function Confirm-LMGlobalVariables ([switch]$ReturnBoolean) { #Complete, rewrote this to be completely property name-agnostic
 
     $Errors = New-Object System.Collections.ArrayList
     
@@ -954,11 +954,32 @@ function New-LMGreetingPrompt { #Complete
 } #Close Function
 
 #This function invokes a synchronous connection to "blob" chat output to the console
-function Invoke-LMBlob {
+function Invoke-LMBlob { 
     param (
         [Parameter(Mandatory=$true)][string]$CompletionURI,
-        [Parameter(Mandatory=$true)][pscustomobject]$Body
+        [Parameter(Mandatory=$true)][pscustomobject]$Body,
+        [Parameter(Mandatory=$False)][switch]$StreamSim
         )
+
+        $Body.stream = $False #So there's no ambiguity
+
+        try {$Output = Invoke-restmethod -Uri $CompletionURI -Method POST -Body ($Body | convertto-json -depth 4) -ContentType "application/json"}
+        catch {throw $_.Exception.Message}
+
+        if ($null -eq ($Output.choices[0].message.content)){throw "Webserver response did not contain the expected data: property 'choices[0].message.content' is empty"}
+        $Response = $Output.choices[0].message.content
+
+        switch ($StreamSim.IsPresent){
+
+            $True {$Response.Split(' ').ForEach({Write-Host "$_ " -NoNewline; start-sleep -Milliseconds (Get-Random -Minimum 5 -Maximum 20)})}
+
+            $False {Write-Host "$Message"}
+
+        }
+        
+        Write-Host ""
+
+        return $Message
 }
 
 #This function establishes an asynchronous connection to "stream" chat output to the console
@@ -981,7 +1002,7 @@ param (
     $CompletionURI = $args[0]
     $Body = $args[1]    
     $File = $args[2]
-    
+
 $PostForStream = @"
 using System;
 using System.IO;
@@ -1085,7 +1106,7 @@ namespace LMStudio
     }
 }
 
-"@   
+"@
 
     Add-Type -TypeDefinition $PostForStream
     
@@ -1432,20 +1453,7 @@ function Start-LMChat { #INCMPLETE
         $SystemPrompt = "Please be polite, concise and informative."
         #endregion
     
-        #region Define the BODY Template
-        $BodyTemplate = '{ 
-            "model": "MODELHERE",
-            "messages": [ 
-              { "role": "system", "content": "SYSPROMPTHERE" },
-              { "role": "user", "content": "USERPROMPTHERE" }
-            ], 
-            "temperature": 0.7, 
-            "max_tokens": -1,
-            "stream": false
-        }'
-    
-        #endregion
-    
+
         #region Try to Load or Create a history
     #Need to check if this is still valid:
         If (!($PSBoundParameters.ContainsKey('HistoryFile'))){$HistoryFile = $Global:LMStudioVars.FIlePaths.HistoryFilePath}
