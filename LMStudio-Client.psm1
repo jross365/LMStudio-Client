@@ -388,10 +388,10 @@ function Set-LMConfigOptions {
         [Parameter(Mandatory=$true)][ValidateSet('ServerInfo', 'ChatSettings', 'FilePaths',"URIs")][string]$Branch,
         [Parameter(Mandatory=$true)][hashtable]$Options,
         [Parameter(Mandatory=$false, ParameterSetName='SaveChanges')][switch]$Commit,
-        [Parameter(Mandatory=$true, ParameterSetName='SaveChanges')][string]$ConfigFile
+        [Parameter(Mandatory=$false, ParameterSetName='SaveChanges')][string]$ConfigFile
     )
 
-    $GlobalKeys = $Global:LMStudioVars.$Branch.GetEnumerator().Name
+    $GlobalKeys = $Global:LMStudioVars.$Branch.psobject.Properties.Name
 
     $RequestedKeys = $Options.GetEnumerator().Name
 
@@ -1243,7 +1243,7 @@ end {
 
 #This function initiates a "greeting"
 function Get-LMGreeting {
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName="Auto")]
     param (
         [Parameter(Mandatory=$true, ParameterSetName='Auto')]
         [switch]$UseLoadedConfig,
