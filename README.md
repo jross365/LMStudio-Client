@@ -35,6 +35,15 @@ Please see my **development journal** below to follow my progress!
 
 ### 05/17/2024
 
+Today, I built the **Invoke-LMSaveOrOpenUI** function, which presents an Open/Save Windows dialog. This will _really_ help me cut down on validation code, in cases where the user provides no path or an invalid path.
+
+- I need to integrate the function into every case where I open or save a CFG, INDEX, GREETING or DIALOG file
+- This will significantly simplify the History File selection in **Start-LMChat**.
+
+---
+
+### 05/17/2024
+
 Today, I built the **Invoke-LMBlob** function, which isn't complete or polished but should take **✅** maybe 5-10 more minutes to make functional and error-sensitive.
 
 I also established that **.Net Framework 4.5** is the minimum I require for this code to work, due to the use of async methods in the C# code.

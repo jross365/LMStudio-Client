@@ -882,9 +882,9 @@ function Get-LMModel {
 function Import-LMChatDialog (){
 
     #The general idea:
-$DialogTemplate = New-LMChatDialogTemplate
+$DialogTemplate = Get-LMTemplate -Type ChatDialog
 
-$DialogContents = Get-Content $DialogFile | ConvertFrom-Json -depth 2
+$DialogContents = Get-Content $DialogFile | ConvertFrom-Json -depth 4
 
 $MessageContents = $DialogContents.Messages | ConvertFrom-Csv
 
@@ -906,6 +906,86 @@ function Search-LMChatDialog { #NOT STARTED
      #ReturnResults - return the results (as an array?)
     #
 
+
+}
+
+#This function invokes Windows Forms Open and SaveAs:
+function Invoke-LMSaveOrOpenUI {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('Save','Open')]
+        [string]$Action,
+                
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('cfg', 'dialog','greeting', 'index')]
+        [string]$Extension,
+        
+        [Parameter(Mandatory=$false)]
+        [string]$StartPath
+
+    )
+
+    begin {
+
+        try {Add-Type -AssemblyName PresentationCore,PresentationFramework,System.Windows.Forms -ErrorAction Stop}
+        catch {throw "Unable to load UI assemblies"}
+
+        If ($null -eq $StartPath -or $StartPath.Length -eq 0 -or (!(Test-Path $StartPath))){
+         
+            If (Test-Path "$Env:USERPROFILE\Documents\LMStudio-PSClient"){$StartPath = "$Env:USERPROFILE\Documents\LMStudio-PSClient"}
+            Else {$StartPath = "$Env:USERPROFILE\Documents"}
+
+        }
+
+        switch ($Extension){
+
+            {$_ -ieq 'cfg'}{$Title = "$Action Configuration"; $Filter = "Config File (*.cfg)|*.cfg"}
+
+            {$_ -ieq 'dialog'}{$Title = "$Action Dialog"; $Filter = "Dialog File (*.dialog)|*.dialog"}
+
+            {$_ -ieq 'greeting'}{$Title = "$Action Greetings"; $Filter = "Greeting File (*.greeting)|*.greeting"}
+
+            {$_ -ieq 'index'}{$Title = "$Action History File"; $Filter = "History File (*.index)|*.index"}
+        }
+    }
+    process {
+
+        switch ($Action){
+
+            {$_ -eq "Save"}{
+
+                $UI = New-Object System.Windows.Forms.SaveFileDialog
+
+            }
+
+            {$_ -eq "Open"}{
+
+                $UI = New-Object System.Windows.Forms.OpenFileDialog
+
+            }
+
+        }
+
+        $UI.Title = $Title        
+        $UI.InitialDirectory = $StartPath
+        $UI.Filter = $Filter
+
+        $UIResult = $UI.ShowDialog()
+
+    }
+
+    end {
+
+        switch ($UIResult){
+
+            {$_ -eq "Cancel"}{throw "User cancelled $Action prompt"}
+
+            {$_ -eq "OK"}{return $UI.FileName}
+
+        }
+
+    }
 
 }
 
@@ -1564,7 +1644,13 @@ begin {
 
     }
 
-    Else {} ### 05/17 LEFT OFF HERE: This (If/Else) is a good place to do History File management
+    Else {
+
+        If (!($Lite.IsPresent)){}
+
+        
+
+    } ### 05/17 LEFT OFF HERE: This (If/Else) is a good place to do History File management
     #endregion
 
     #region -ChooseSystemPrompt triggers System Prompt function (NOT BUILT YET)
