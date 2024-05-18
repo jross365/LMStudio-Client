@@ -33,12 +33,18 @@ Please see my **development journal** below to follow my progress!
 
 ---
 
-### 05/17/2024
+### 05/18/2024
 
 Today, I built the **Invoke-LMSaveOrOpenUI** function, which presents an Open/Save Windows dialog. This will _really_ help me cut down on validation code, in cases where the user provides no path or an invalid path.
 
 - I need to integrate the function into every case where I open or save a CFG, INDEX, GREETING or DIALOG file
+  - **⬜️ New-Config**
+  - **⬜️ Import-Config**
+  - **⬜️ Get-LMGreeting**
+  - **⬜️ Start-LMChat**
 - This will significantly simplify the History File selection in **Start-LMChat**.
+- ⬜️ I need to write a small console script that prompts for a "y/N" answer.
+  - This will be useful in **Start-LMChat** and **New-Config**, where there are a lot of lines dedicated to repetitive y/N questions
 
 ---
 

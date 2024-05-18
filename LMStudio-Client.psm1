@@ -30,7 +30,7 @@ function New-LMConfig { #Complete
     
     begin {
 
-        #Request Server parameter
+        #region Request Server parameter
         If (!($PSBoundParameters.ContainsKey('Server'))){
 
             $InputAccepted = $false
@@ -1564,6 +1564,12 @@ function Get-LMSystemPrompts {} #Not started
 #This function presents a selection prompt (Out-Gridview) to continue a history file
 #For use with Start-LMChat
 Function Select-LMHistoryEntry {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$false)]
+        [ValidateScript({ if (!(Test-Path -Path $_)) { throw "File path does not exist" } else { $true } })]
+        [string]$HistoryFile
+    )
 
     If (!(Test-Path $Global:LMStudioVars.FilePaths.HistoryFilePath)){throw "History file not found - path invalid [$($Global:LMStudioVars.FilePaths.HistoryFilePath)]"}
 
@@ -1576,15 +1582,23 @@ Function Select-LMHistoryEntry {
 function Start-LMChat {
     [CmdletBinding(DefaultParameterSetName="Auto")]
     param (
+        #Use $Global:LMGlobalVars
         [Parameter(Mandatory=$true, ParameterSetName='Auto')]
-        [switch]$UseConfig, #Use $Global:LMGlobalVars
+        [switch]$UseConfig, 
 
+        #Signals a prompt to select an entry from the History File
         [Parameter(Mandatory=$False, ParameterSetName='Auto')]
-        [switch]$ResumeChat, #Signals a prompt to select an entry from the History File
+        [switch]$ResumeChat, 
 
+        #No Greeting, No History File, one prompt in, one answer back
         [Parameter(Mandatory=$false, ParameterSetName='Auto')]
         [Parameter(Mandatory=$false, ParameterSetName='Lite')]
-        [switch]$Lite, #No Greeting, No History File, one prompt in, one answer back
+        [switch]$Lite, 
+
+        #For -Lite. This is the "prompt in"
+        [Parameter(Mandatory=$true, ParameterSetName='Lite')]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [string]$UserPrompt, 
 
         [Parameter( Mandatory=$False,ParameterSetName='Auto')]
         [Parameter(Mandatory=$false, ParameterSetName='Manual')]
@@ -1597,15 +1611,12 @@ function Start-LMChat {
         [Parameter(Mandatory=$true, ParameterSetName='Manual')]
         [ValidateRange(1, 65535)][int]$Port,
 
-        [Parameter(Mandatory=$true, ParameterSetName='Lite')]
-        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
-        [string]$UserPrompt, #For -Lite. This is the "prompt in"
-
-        [Parameter(Mandatory=$true, ParameterSetName='Manual')]
-        [boolean]$Stream, #Stream the response, or 
+         #Stream the response, or Blob the response
+        [Parameter(Mandatory=$false, ParameterSetName='Manual')]
+        [boolean]$Stream,
 
         [Parameter(Mandatory=$false, ParameterSetName='Manual')]
-        [switch]$NoGreeting,
+        [switch]$Greeting,
 
         [Parameter(Mandatory=$false, ParameterSetName='Manual')]
         [ValidateScript({ if ($_.GetType().Name -ne "Hashtable") { throw "Parameter must be a hashtable" } else { $true } })]
@@ -1637,11 +1648,9 @@ begin {
 
         $False {
             $Endpoint = "$Server" + ":" + "$Port"
-            $UseGreetingFile = $PSBoundParameters.ContainsKey('GreetingFile')
             $StreamCachePath = (Get-Location).Path + '\lmstream.cache'
             If (!$PSBoundParameters.ContainsKey('Stream')){$Stream = $True} #Stream by Default
-            If ($NoGreeting.IsPresent){$Greeting = $False}
-            Else {$Greeting = $True}
+            $Greeting = ([boolean]($Greeting.IsPresent)) #Simplified
 
             #Set tunables via hash table
             If (!$PSBoundParameters.ContainsKey('Settings')){
@@ -1674,32 +1683,57 @@ begin {
     #endregion
 
     #region -ResumeChat Selector
-    If ($ResumeChat.IsPresent){
-        If ($Lite.IsPresent){throw "-ResumeChat is incompatible with -Lite"}
+    switch ($ResumeChat.IsPresent){
+
+        $true {
+                If ($Lite.IsPresent){throw "-ResumeChat is incompatible with -Lite"}
+
+                #If the history file doesn't exist:
+                If (!(Test-Path $HistoryFile)){
         
-        try {$ChosenDialog = Select-LMHistoryEntry}
-        catch {throw "Unable to select a dialog to resume: $($_.Exception.Message)"}
+                    #Prompt to browse and "open" it
+                    try {$HistoryFile = Invoke-LMSaveOrOpenUI -Action Open -Extension index -StartPath "$env:Userprofile\Documents"}
+                    catch {throw $_.Exception.Message}
+        
+                }
+                
+                #Open a GridView selector from the history file
+                try {$ChosenDialog = Select-LMHistoryEntry -HistoryFile $HistoryFile}
+                catch {throw "Unable to select a dialog to resume: $($_.Exception.Message)"}
+        
+                #If We didn't pick one: (Might be able to make this obsolete)
+                If ($null -eq $ChosenDialog -or $ChosenDialog -eq "Cancelled"){throw "Dialog selection was cancelled."}
+                Else {
+        
+                    #Otherwise: Read the contents of the chosen Dialog file
+                    try {$Dialog = Get-Content $ChosenDialog.FilePath -ErrorAction Stop | ConvertFrom-Json -Depth 5 -ErrorAction Stop}
+                    catch {throw $_.Exception.Message}
+        
+                }
 
-        If ($null -eq $ChosenDialog -or $ChosenDialog -eq "Cancelled"){throw "Dialog selection was cancelled or incompleted."}
-        Else {
+                #If we made it this far, Let's set $NewFile
+                $NewFile = $False
 
-            try {$Dialog = Get-Content $ChosenDialog.FilePath -ErrorAction Stop | ConvertFrom-Json -Depth 5 -ErrorAction Stop}
-            catch {throw $_.Exception.Message}
+
+        } #Close Case $True
+
+        $false {
+
+            If (!($Lite.IsPresent)){
+                $Dialog = Get-LMTemplate -Type ChatDialog
+                $NewFile = $True
+
+                #05/18/2024: PROMPT TO SAVE FILE HERE
+            }
 
         }
 
     }
 
-    Else {
-
-        If (!($Lite.IsPresent)){}
-
-        
-
-    } ### 05/17 LEFT OFF HERE: This (If/Else) is a good place to do History File management
+ 
     #endregion
 
-    #region -ChooseSystemPrompt triggers System Prompt function (NOT BUILT YET)
+    #region -ChooseSystemPrompt triggers System Prompt selector (FUNCTION NOT BUILT YET)
     If ($ChooseSystemPrompt.IsPresent){
     
         $SystemPrompt = Get-LMSystemPrompts
@@ -1727,6 +1761,7 @@ process {
     
     #region Get the model and prep the body
 
+    
 
     $GreetingPrompt = New-LMGreetingPrompt
     
