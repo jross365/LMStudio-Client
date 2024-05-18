@@ -66,8 +66,8 @@ I'm also not happy with my **Get-LMGreeting** prompt generator. Functionally, it
 I've begun shaping the parameters for **Start-LMChat**, which will be rewritten from a copy of **Get-LMGreeting**.
 
 - I've added a **\-ResumeChat** parameter, exclusive to the **\-UseConfig** parameter.
-- The reason I made this choice is because making **Start-LMChat** capable of picking up the History File makes the Config pointless.
-- ⬜️ A future accommodation (_via perhaps a typical Windows browse form_) might be made.
+  - The reason I made this choice is because making **Start-LMChat** capable of picking up the History File makes the Config pointless.
+  - ⬜️ A future accommodation (_via perhaps a typical Windows browse form_) might be made.
 - I've added a -**Lite** parameter to send single, unrecorded prompt to the server, where you receive a single response back.
   - ⬜️ Greetings will be turned off with this feature, and cannot be turned on.
   - I would like to create a function that only responds (or does anything) if **$Global:LMStudioVars** is provisioned
