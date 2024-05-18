@@ -922,7 +922,10 @@ function Invoke-LMSaveOrOpenUI {
         [string]$Extension,
         
         [Parameter(Mandatory=$false)]
-        [string]$StartPath
+        [string]$StartPath,
+        
+        [Parameter(Mandatory=$false)]
+        [string]$FileName
 
     )
 
@@ -938,15 +941,57 @@ function Invoke-LMSaveOrOpenUI {
 
         }
 
+        #If the filename extension doesn't match what I require:
+        If ($null -ne $FileName -and $FileName.Length -gt 0 -or (!(Test-Path $StartPath))){
+         
+            $SplitFileName = $FileName.Split('.')
+
+            If ($SplitFileName.Count -eq 1){$FileName = $FileName + ".$Extension"}
+            Else {
+
+                $SplitFileName[$SplitFileName.GetUpperBound(0)] = $Extension
+
+                $FileName = $SplitFileName -join '.'
+
+            }
+
+            $FileNameSpecified = $True
+
+        }
+        Else {$FileNameSpecified = $False}
+
         switch ($Extension){
 
-            {$_ -ieq 'cfg'}{$Title = "$Action Configuration"; $Filter = "Config File (*.cfg)|*.cfg"}
+            {$_ -ieq 'cfg'}{
+                
+                $Title = "$Action Configuration"
+                $Filter = "Config File (*.cfg)|*.cfg"
 
-            {$_ -ieq 'dialog'}{$Title = "$Action Dialog"; $Filter = "Dialog File (*.dialog)|*.dialog"}
+                If (!($FileNameSpecified)){$FileName = "lmsc.cfg"}
+            
+            }
 
-            {$_ -ieq 'greeting'}{$Title = "$Action Greetings"; $Filter = "Greeting File (*.greeting)|*.greeting"}
+            {$_ -ieq 'dialog'}{
+                $Title = "$Action Dialog"
+                $Filter = "Dialog File (*.dialog)|*.dialog"
 
-            {$_ -ieq 'index'}{$Title = "$Action History File"; $Filter = "History File (*.index)|*.index"}
+                If (!($FileNameSpecified)){$FileName = "$(get-date -format 'MMddyyyy_hhmm')_lmchat.dialog"}
+            }
+
+            {$_ -ieq 'greeting'}{
+                $Title = "$Action Greetings"
+                $Filter = "Greeting File (*.greeting)|*.greeting"
+
+                If (!($FileNameSpecified)){$FileName = "hello.greeting"}
+
+            }
+
+            {$_ -ieq 'index'}{
+                $Title = "$Action History File"
+                $Filter = "History File (*.index)|*.index"
+                
+                If (!($FileNameSpecified)){$FileName = "$($env:USERNAME)-HF.index"}
+            }
         }
     }
     process {
@@ -970,6 +1015,7 @@ function Invoke-LMSaveOrOpenUI {
         $UI.Title = $Title        
         $UI.InitialDirectory = $StartPath
         $UI.Filter = $Filter
+        If ($FileNameSpecified){$UI.FileName = $FileName}
 
         $UIResult = $UI.ShowDialog()
 
@@ -979,7 +1025,7 @@ function Invoke-LMSaveOrOpenUI {
 
         switch ($UIResult){
 
-            {$_ -eq "Cancel"}{throw "User cancelled $Action prompt"}
+            {$_ -eq "Cancel"}{throw "User canceled $Action prompt"}
 
             {$_ -eq "OK"}{return $UI.FileName}
 
@@ -1732,208 +1778,3 @@ end {
     }
 
 }
-
-#THIS IS THE OLD ONE
-@'
-
-
-function Start-LMChat { #INCMPLETE
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory=$False)][string]$Server,
-        [Parameter(Mandatory=$false)][ValidateRange(1, 65535)][int]$Port = 1234,
-        [Parameter(Mandatory=$false)][string]$HistoryFile = $Global:LMStudioVars.FIlePaths.HistoryFilePath,
-        [Parameter(Mandatory=$false)][double]$Temperature = 0.7,
-        [Parameter(Mandatory=$false)][switch]$SkipGreeting,
-        [Parameter(Mandatory=$false)][ValidateSet('Stream', 'Blob')][string]$ResponseType
-        #[Parameter(Mandatory=$false)][switch]$NoTimestamps, #Not sure what to do with this, or where to hide the timestamps
-        )
-    
-    begin {
-    
-        
-        #region Prerequisite Variables
-        $OrigProgPref = $ProgressPreference
-        $ProgressPreference = 'SilentlyContinue'
-        $ReplayLimit = 10 #Sets the max number of assistant/user content context entries    
-    
-        $Version = "0.5" #Could pull this information from the Module version information    
-        
-        $CompletionURI = "http://$EndPoint/v1/chat/completions"
-    
-        $host.UI.RawUI.WindowTitle = "LM Studio Client v$Version ### Show Help: !h "
-        #endregion    
-
-        #region Try to Load or Create a history
-    #Need to check if this is still valid:
-        If (!($PSBoundParameters.ContainsKey('HistoryFile'))){$HistoryFile = $Global:LMStudioVars.FIlePaths.HistoryFilePath}
-    
-        If (!(Test-Path $HistoryFile)){ #Build a dummy history file
-    
-            try {
-    
-                $History = New-HistoryObject
-                Set-HistoryFile -HistoryFile $HistoryFile -History $History
-    
-            }
-            catch{throw "Unable to create history file $HistoryFile : $($_.Exception.Message))"}
-    
-        }
-        Else {
-    
-            try {$History = Get-HistoryFile -HistoryFile $HistoryFile}
-            catch {throw "Unable to import history file $HistoryFile : $($_.Exception.Message)"}
-    
-        }
-        #endregion
-    
-        #region Connection Test, and Model Name Retrieval, Add model to History
-        try {$Model = Get-LMModel -Server $Server -Port $Port}
-        catch {throw "Unable to retrieve model information. Check to see if the server is up."}
-    
-        $Model = $ModelData.data.id
-    
-        If (($History.Models.GetEnumerator() | ForEach-Object {$_.Value}) -notcontains "$Model"){
-    
-            $ModelAdded = $False
-            $ModelIndex = 2
-    
-            do {
-                try {
-                    $History.Models.Add("$ModelIndex",$Model)
-                    $ModelAdded = $True
-                }
-               catch {$ModelIndex++; $ModelAdded = $False}
-    
-            }
-            until ($ModelAdded -eq $True)
-            
-            Set-HistoryFile -HistoryFile $HistoryFile -History $History
-    
-        } #Close If
-        Else {$ModelIndex = ($History.Models.GetEnumerator() | Where-Object {$_.Value -eq "$Model"}).Name}
-    
-        #endregion
-        
-        If (!$SkipGreeting){
-            $NewGreeting = New-LMGreetingPrompt
-            
-            #region Walk backwards through the $History.Greetings index to create a correct context replay:
-            $ContextReplays = New-Object System.Collections.ArrayList
-            
-            $x = 1
-            $LastGreetingIndex = $History.Greetings.Count - 1
-            $SysPromptChainBroken = $False
-            
-            :iloop Foreach ($Index in $LastGreetingIndex..2){
-    
-                If ($Index -eq $LastGreetingIndex -and (($History.Greetings[$Index].role -eq "system") -or ($History.Greetings[$Index].role -eq "user"))){continue iloop}
-    
-                If ($History.Greetings[$Index].role -eq "system" -and $SysPromptChainBroken -eq $False){
-                    
-                    If ($History.Greetings[$Index].content -ieq "$SystemPrompt"){continue iloop}
-                    Else {
-                            $ContextReplays.Add(($History.Greetings[$Index])) | Out-Null
-                            $SysPromptChainBroken = $True
-                            $x++
-                        }
-                }
-    
-                If ($History.Greetings[$Index].role -eq "assistant" -or $History.Greetings[$Index].role -eq "user"){
-                    $ContextReplays.Add(($History.Greetings[$Index])) | Out-Null
-                    $x++
-                }
-    
-                If ($x -eq ($ReplayLimit)){break iloop}
-    
-            }
-            #endregion
-    
-            #region Fill in the Model, System Prompt and User Prompt of the $Body:
-            $Body = $BodyTemplate | ConvertFrom-Json
-            $Body.model = $Model
-            #$Body.stream = $True #For testing
-    
-            $Body.messages = @()
-            $SystemPromptObj = ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})
-            $UserPromptObj = ([pscustomobject]@{"role" = "user"; "content" = $NewGreeting})
-    
-            # Add a "system" role to the top to set the interpretation:
-            If ($ContextReplays.role -notcontains "system"){$body.messages += ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})}
-            # Replay the relevant/captured interactions back into $Body.messages:
-            $ContextReplays[($ContextReplays.Count - 1)..0].ForEach({$Body.messages += $_})
-            # If we detected a broken system prompt chain, add the current system prompt back in:
-            If ($SysPromptChainBroken){$body.messages += ([pscustomobject]@{"role" = "system"; "content" = $SystemPrompt})}
-            # Finally, add our new greeting prompt back in:
-            $body.messages += $UserPromptObj
-                
-            #Add the messages to the history, and save the history:
-            $History.Greetings.Add($SystemPromptObj) | Out-Null
-            $History.Greetings.Add($UserPromptObj) | Out-Null
-            $SaveHistory = Set-HistoryFile -HistoryFile $HistoryFile -History $History
-            #endregion
-    
-            #region Write the generated greeting to the console
-            Write-Host "You: " -ForegroundColor Green -NoNewline; Write-Host "$NewGreeting"
-            Write-Host " "
-            #endregion
-    
-            #region Prompt for and receiving greeting
-            $GreetingParams = @{
-                "Uri" = "$CompletionURI"
-                "Method" = "POST"
-                "Body" = ($Body | ConvertTo-Json -Depth 3)
-                "ContentType" = "application/json"
-            }
-    
-            try {$Response = Invoke-RestMethod @GreetingParams -UseBasicParsing -ErrorAction Stop}
-            catch {$_.Exception.Message}
-    
-            $ResponseText = $Response.choices.message.content
-            #endregion
-    
-            #region Response and file management
-            Write-Host "AI: " -ForegroundColor DarkMagenta -NoNewline; Write-Host "$ResponseText"
-    
-            $History.Greetings += ([pscustomobject]@{"role" = "assistant"; "content" = "$ResponseText"})
-            $SaveHistory = Set-HistoryFile -HistoryFile $HistoryFile -History $History
-            #endregion
-    
-        } #Close If $SkipGreeting isn't Present
-    
-        #endregion
-    
-    }
-    
-    process {
-    
-        $Quit = $false
-    
-        do {
-    
-            write-host "You: " -ForegroundColor Green -NoNewline; $UserPrompt = Read-Host
-    
-            $Body = $BodyTemplate
-            $Body = $Body -replace 'MODELHERE',"$Model"
-            $Body = $Body -replace 'SYSPROMPTHERE',"$SystemPrompt"
-            $Body = $Body -replace 'USERPROMPTHERE',"$UserPrompt"
-    
-            
-            $Response = Invoke-RestMethod -Uri $CompletionURI -Method POST -Body $Body -WebSession $R2D2 -ContentType "Application/json"
-    
-            $Response.choices.message.content
-    
-        }
-        until ($Quit -eq $true)
-    
-    
-    }
-    
-    end {
-        $ProgressPreference = $OrigProgPref
-    
-    
-    }
-    
-    }
-'@
