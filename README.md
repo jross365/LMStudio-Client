@@ -53,6 +53,36 @@ I'm also not happy with my **Get-LMGreeting** prompt generator. Functionally, it
 
 ⬜️ Also need to go through my functions list and add/strike things off of the list.
 
+#### **Follow-Up:**
+
+**✅** I decided to write the path to the config file to $Global:LMConfigFile. This is done by **Import-LMConfig** and **New-LMConfig**. At this time, the only place I'm using the variable is in **Set-LMVariableOptions** (⬜️ soon to be **Set-LMOptions**) . Not sure if there's a use for it anywhere else.
+
+**✅** I changed **$UseLoadedConfig** to **$UseConfig**. Documentation regarding parameters will cover this more ambiguous parameter name.
+
+⬜️ Shell Functions **Set-LMSystemPrompt** and **Select-LMHistoryFile** were created to use **Out-GridView** as a file selection mechanism.
+
+⬜️ I should probably add **$Global:LMStudioVars.ChatSettings.SystemPrompt** variable to make this value settable/persistent.
+
+I've begun shaping the parameters for **Start-LMChat**, which will be rewritten from a copy of **Get-LMGreeting**.
+
+- I've added a **\-ResumeChat** parameter, exclusive to the **\-UseConfig** parameter.
+- The reason I made this choice is because making **Start-LMChat** capable of picking up the History File makes the Config pointless.
+- ⬜️ A future accommodation (_via perhaps a typical Windows browse form_) might be made.
+- I've added a -**Lite** parameter to send single, unrecorded prompt to the server, where you receive a single response back.
+  - ⬜️ Greetings will be turned off with this feature, and cannot be turned on.
+  - I would like to create a function that only responds (or does anything) if **$Global:LMStudioVars** is provisioned
+    - This function would pass the **Start-LMChat** function a set of parameters, pulled from **Global:LMChatLite**
+    - Command would look like **lc -q "**_Please give me 5 facts about America\*\*"\*\*_
+  - _⬜️_ I need to add a **LiteParams** template in the **Get-LMTemplate** function.
+
+**Follow-Up:**
+
+I made significant progress on **Start-LMChat**. I'm working through the **begin {}** block, pulling in variables and data. I have quite a bit of work to do. I think the next steps will be handling the condition of **(1)** a new History file, **(2)** continuing a dialog, and **(3)** no history file.
+
+Once I have the history file management set up, it'll be time to enter the **Do/Until** loop, and all that fun (Send/receive responses, append responses to history dialog, write out history dialog; Build "Help" and "Options", set and manage quit options).
+
+I also **✅** incorporated **Invoke-LMBlob** into **Get-LMGreeting.**
+
 ---
 
 ### 05/16/2024
