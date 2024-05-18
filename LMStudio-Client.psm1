@@ -428,7 +428,7 @@ function Get-LMTemplate { #Complete
     param(
         # Param1 help description
         [Parameter(Mandatory=$true)]
-        [ValidateSet('ConfigFile', 'HistoryEntry', 'ChatGreeting', 'ChatDialog', 'Body', 'ManualChatSettings')]
+        [ValidateSet('ConfigFile', 'HistoryEntry', 'ChatGreeting', 'ChatDialog','DialogMessage', 'Body', 'ManualChatSettings')]
         [string]$Type
     )
 
@@ -519,15 +519,7 @@ function Get-LMTemplate { #Complete
             #The "Messages" portion of the file.
             $Messages = New-Object System.Collections.ArrayList
 
-            $DummyRow = [pscustomobject]@{
-                "TimeStamp" = ((Get-Date).ToString());
-                "temperature" = $Global:LMStudioVars.ChatSettings.temperature;
-                "max_tokens" = $Global:LMStudioVars.ChatSettings.max_tokens;
-                "stream" = $Global:LMStudioVars.ChatSettings.stream;
-                "ContextDepth" = $Global:LMStudioVars.ChatSettings.ContextDepth;
-                "Role" = "system";
-                "Content" = "Please be polite, concise and informative."
-            }
+            $DummyRow = Get-LMTemplate -Type DialogMessage
 
             If ($null -eq $DummyRow.temperature){$DummyRow.temperature = 0.7}
             If ($null -eq $DummyRow.max_tokens){$DummyRow.max_tokens = -1}
@@ -537,6 +529,19 @@ function Get-LMTemplate { #Complete
             $Messages.Add($DummyRow) | Out-Null
 
             $Object = [pscustomobject]@{"Info" = $Info; "Messages" = $Messages}
+
+        }
+        {$_ -ieq "DialogMessage"}{
+            
+            $Object = [pscustomobject]@{
+                "TimeStamp" = ((Get-Date).ToString());
+                "temperature" = $Global:LMStudioVars.ChatSettings.temperature;
+                "max_tokens" = $Global:LMStudioVars.ChatSettings.max_tokens;
+                "stream" = $Global:LMStudioVars.ChatSettings.stream;
+                "ContextDepth" = $Global:LMStudioVars.ChatSettings.ContextDepth;
+                "Role" = "system";
+                "Content" = "Please be polite, concise and informative."
+            }
 
         }
         {$_ -ieq "Body"}{
@@ -1600,6 +1605,14 @@ function Start-LMChat {
         [Parameter(Mandatory=$False, ParameterSetName='Auto')]
         [switch]$ResumeChat, 
 
+        [Parameter(Mandatory=$true, ParameterSetName='Manual')]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [string]$Server,
+        
+        [Parameter(Mandatory=$true, ParameterSetName='Manual')]
+        [ValidateRange(1, 65535)][int]$Port,
+
+
         [Parameter( Mandatory=$False,ParameterSetName='Auto')]
         [Parameter(Mandatory=$false, ParameterSetName='Manual')]
         [switch]$ChooseSystemPrompt,
@@ -1607,13 +1620,6 @@ function Start-LMChat {
         [Parameter( Mandatory=$False,ParameterSetName='Auto')]
         [Parameter(Mandatory=$false, ParameterSetName='Manual')]
         [switch]$SkipSavePrompt,        
-
-        [Parameter(Mandatory=$true, ParameterSetName='Manual')]
-        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
-        [string]$Server,
-        
-        [Parameter(Mandatory=$true, ParameterSetName='Manual')]
-        [ValidateRange(1, 65535)][int]$Port,
 
         [Parameter(Mandatory=$false, ParameterSetName='Manual')]
         [ValidateScript({ if ($_.GetType().Name -ne "Hashtable") { throw "Parameter must be a hashtable" } else { $true } })]
@@ -1632,6 +1638,7 @@ begin {
             $Server = $Global:LMStudioVars.ServerInfo.Server
             $Port = $Global:LMStudioVars.ServerInfo.Port
             $Endpoint = $Global:LMStudioVars.ServerInfo.Endpoint
+            $CompletionURI = "http://" + $EndPoint + "/v1/chat/completions"
             $HistoryFile = $Global:LMStudioVars.FilePaths.HistoryFilePath
             $DialogFolder = $Global:LMStudioVars.FilePaths.DialogFolderPath
             $StreamCachePath = $Global:LMStudioVars.FilePaths.StreamCachePath
@@ -1646,6 +1653,7 @@ begin {
         $False {
 
             $Endpoint = "$Server" + ":" + "$Port"
+            $CompletionURI = "http://" + $EndPoint + "/v1/chat/completions"
             $StreamCachePath = (Get-Location).Path + '\lmstream.cache'
 
             #Set tunables via hash table
@@ -1679,7 +1687,7 @@ begin {
     #region -ResumeChat Selector
     switch ($ResumeChat.IsPresent){
 
-        #This section requires everything goes right (throw if it doesn't)
+        #This section requires everything goes right (terminates with [throw] if it doesn't)
         $true { 
                 #If the history file doesn't exist, find it:
                 If (!(Test-Path $HistoryFile)){
@@ -1716,13 +1724,22 @@ begin {
         $false { #If not Resume Chat, then Create New Dialog File
 
                 $Dialog = Get-LMTemplate -Type ChatDialog
+                
+                $Dialog.Info.Model = $Model
+                $Dialog.Info.Modified = "$((Get-Date).ToString())"
+                $Dialog.Messages[0].temperature = $Temperature
+                $Dialog.Messages[0].max_tokens = $MaxTokens
+                $Dialog.Messages[0].stream = $Stream
+                $Dialog.Messages[0].ContextDepth = $ContextDepth
+                $Dialog.Messages[0].Content = $SystemPrompt
+
                 $NewFile = $True
 
                 # Set the directory path for the chat file:
                 #
                 # We need this set even if we skip the save prompt,
                 # in case we decide to save during the prompt (:s to save?)
-                #
+                # This is why it's outside of (!($SkipSavePrompt.IsPresent))
                 If ($UseConfig.IsPresent){$DialogStartPath = $global:LMStudioVars.FilePaths.DialogFolderPath}
                 Else {$DialogStartPath = "$($env:USERPROFILE)\Documents)"}
 
@@ -1783,34 +1800,85 @@ begin {
 
 process {
     
-    #region Get the model and prep the body
+    #Key File Management Variables:
+    $NewFile          # Indicates we have a brand new file from a template (May/may not need this)
+    $DialogFileExists # Whether opening an existing dialog or creating a new one, this confirms the file is valid
+    $DialogFilePath   # The 
 
-    
+    $BreakDialog = $False
 
-    $GreetingPrompt = New-LMGreetingPrompt
-    
-    $Body = Get-LMTemplate -Type Body
-    $Body.model = $Model
-    $Body.temperature = $Temperature
-    $Body.max_tokens =  $MaxTokens
-    $Body.Stream = $Stream
-    $Body.messages[0].content = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
-    $Body.messages[1].content = $GreetingPrompt
-    #endregion
+    #The magic is here:
+    do { 
 
-    #region If using a Greeting File, prep the Body with context    
-  
+        #region Construct the HTTP Body
+        $Body = Get-LMTemplate -Type Body
+        $Body.Model = $Model
+        $Body.temperature = $Temperature
+        $Body.max_tokens = $MaxTokens
+        $Body.stream = $Stream
+        #endregion
 
-    Write-Host "You: " -ForegroundColor Green -NoNewline; Write-Host "$GreetingPrompt"
-    Write-Host ""
-    Write-Host "AI: " -ForegroundColor Magenta -NoNewline
-    
-    $ServerResponse = Invoke-LMStream -CompletionURI $CompletionURI -Body $Body -File $StreamCachePath
+        #region 
 
-    Write-Host ""
+        Write-Host "You: " -ForegroundColor Green -NoNewline;
+        $UserInput = Read-Host
+        $Body.messages[1].content = $UserInput
+
+        #region Construct the user Dialog Message for appending to the Dialog:
+        $UserMessage = Get-LMTemplate -Type DialogMessage
+      
+        $UserMessage.TimeStamp = (Get-Date).ToString()
+        $UserMessage.temperature = $Temperature
+        $UserMessage.max_tokens = $MaxTokens
+        $UserMessage.stream = $Stream
+        $UserMessage.ContextDepth = $ContextDepth
+        $UserMessage.Role = "user"
+        $UserMessage.Content = "$UserInput"
+        #endregion
+
+        Write-Host ""
+        Write-Host "AI: " -ForegroundColor Magenta -NoNewline
+
+        switch ($Stream){
+
+            $True {$LMOutput = Invoke-LMStream -Body $Body -CompletionURI $CompletionURI -File $StreamCachePath}
+            $False {$LMOutput = Invoke-LMBlob -Body $Body -CompletionURI $CompletionURI}
+
+        }
+
+        Write-Host ""
+
+        #region Construct the assistant Dialog message for appending to the Dialog:
+        $AssistantMessage = Get-LMTemplate -Type DialogMessage
+        
+        $AssistantMessage.TimeStamp = (Get-Date).ToString()
+        $AssistantMessage.temperature = $Temperature
+        $AssistantMessage.max_tokens = $MaxTokens
+        $AssistantMessage.stream = $Stream
+        $AssistantMessage.ContextDepth = $ContextDepth
+        $AssistantMessage.Role = "assistant"
+        $AssistantMessage.Content = "$LMOutput"
+        #endregion
+
+        #region Append both messages to the Dialog:
+        $Dialog.Messages.Add($UserMessage) | out-null
+        $Dialog.Messages.Add($AssistantMessage) | out-null
+        #endregion
+
+        #region Update and Save Dialog File
+        $Dialog.Info.Modified = $AssistantMessage.TimeStamp
+        If ($DialogFileExists){$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
+
+
+    }
+    until ($BreakDialog = $True)
 }
 
 end {
+
+    #HERE:
+        # - Need to Update the "opener" line for the Dialog object
+        # - Need to update the History File with the new Dialog object information
 
     If ($UseGreetingFile){
 

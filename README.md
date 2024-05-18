@@ -54,6 +54,20 @@ I built a pretty functional "Save Prompt" system in **Start-LMChat**. I also add
 
 **🚧** I decided to strip out the "**\-Lite**" parameter and all of its intricacies, in favor of a new **Get-LMResponse** function. This new function is a basic "_send a prompt, get an answer_" function. It's non-interactive, and built for use with coding (_like, some of my ambitions after I finish this project_).
 
+**Follow-Up:**
+
+Some improvements; started moving into the **Do/Until** loop to get a feel for what order I need to provision and save data.
+
+I need another new function to keep things simple:
+
+⬜️ A Dialog => Body function:
+
+- Intakes the contents of a Dialog object
+- Evaluates the messages in the $Dialog.Messages Array
+- References the $ContextDepth
+- Builds the array, containing the leading \[system\] role statement, and the previous $ContextDepth number of \[user\] and \[assistant\] messages
+- Returns a properly ordered $Body.messages array
+
 ---
 
 ### 05/17/2024
