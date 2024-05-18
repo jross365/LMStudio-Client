@@ -428,7 +428,7 @@ function Get-LMTemplate { #Complete
     param(
         # Param1 help description
         [Parameter(Mandatory=$true)]
-        [ValidateSet('ConfigFile', 'HistoryEntry', 'ChatGreeting', 'ChatDialog', 'Body')]
+        [ValidateSet('ConfigFile', 'HistoryEntry', 'ChatGreeting', 'ChatDialog', 'Body', 'ManualChatSettings')]
         [string]$Type
     )
 
@@ -568,6 +568,16 @@ function Get-LMTemplate { #Complete
             }
 
                 $Object = $Object | ConvertFrom-Json -Depth 3
+
+        }
+        {$_ -ieq "ManualChatSettings"}{
+
+            $Object = @{}
+            $Object.Add("temperature", 0.7)
+            $Object.Add("max_tokens", -1)
+            $Object.Add("ContextDepth", 10)
+            $Object.Add("Stream", $True)
+            $Object.Add("Greeting", $True)
 
         }
 
@@ -942,7 +952,7 @@ function Invoke-LMSaveOrOpenUI {
         }
 
         #If the filename extension doesn't match what I require:
-        If ($null -ne $FileName -and $FileName.Length -gt 0 -or (!(Test-Path $StartPath))){
+        If ($null -ne $FileName -and $FileName.Length -gt 0){
          
             $SplitFileName = $FileName.Split('.')
 
@@ -1015,7 +1025,7 @@ function Invoke-LMSaveOrOpenUI {
         $UI.Title = $Title        
         $UI.InitialDirectory = $StartPath
         $UI.Filter = $Filter
-        If ($FileNameSpecified){$UI.FileName = $FileName}
+        $UI.FileName = $FileName
 
         $UIResult = $UI.ShowDialog()
 
@@ -1590,19 +1600,13 @@ function Start-LMChat {
         [Parameter(Mandatory=$False, ParameterSetName='Auto')]
         [switch]$ResumeChat, 
 
-        #No Greeting, No History File, one prompt in, one answer back
-        [Parameter(Mandatory=$false, ParameterSetName='Auto')]
-        [Parameter(Mandatory=$false, ParameterSetName='Lite')]
-        [switch]$Lite, 
-
-        #For -Lite. This is the "prompt in"
-        [Parameter(Mandatory=$true, ParameterSetName='Lite')]
-        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
-        [string]$UserPrompt, 
+        [Parameter( Mandatory=$False,ParameterSetName='Auto')]
+        [Parameter(Mandatory=$false, ParameterSetName='Manual')]
+        [switch]$ChooseSystemPrompt,
 
         [Parameter( Mandatory=$False,ParameterSetName='Auto')]
         [Parameter(Mandatory=$false, ParameterSetName='Manual')]
-        [switch]$ChooseSystemPrompt,        
+        [switch]$SkipSavePrompt,        
 
         [Parameter(Mandatory=$true, ParameterSetName='Manual')]
         [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
@@ -1610,13 +1614,6 @@ function Start-LMChat {
         
         [Parameter(Mandatory=$true, ParameterSetName='Manual')]
         [ValidateRange(1, 65535)][int]$Port,
-
-         #Stream the response, or Blob the response
-        [Parameter(Mandatory=$false, ParameterSetName='Manual')]
-        [boolean]$Stream,
-
-        [Parameter(Mandatory=$false, ParameterSetName='Manual')]
-        [switch]$Greeting,
 
         [Parameter(Mandatory=$false, ParameterSetName='Manual')]
         [ValidateScript({ if ($_.GetType().Name -ne "Hashtable") { throw "Parameter must be a hashtable" } else { $true } })]
@@ -1647,37 +1644,34 @@ begin {
         }
 
         $False {
+
             $Endpoint = "$Server" + ":" + "$Port"
             $StreamCachePath = (Get-Location).Path + '\lmstream.cache'
-            If (!$PSBoundParameters.ContainsKey('Stream')){$Stream = $True} #Stream by Default
-            $Greeting = ([boolean]($Greeting.IsPresent)) #Simplified
 
             #Set tunables via hash table
-            If (!$PSBoundParameters.ContainsKey('Settings')){
+            If (!$PSBoundParameters.ContainsKey('Settings')){$Settings = Get-LMTemplate -Type ManualChatSettings}
 
-                If ($null -ne $Settings.temperature){$Temperature = ([double]($Settings.temperature))}
-                Else {$Temperature = 0.7} #Default
-                
-                
-                If ($null -ne $Settings.max_tokens){$Temperature = ([int]($Settings.max_tokens))}
-                Else {$MaxTokens = -1} #Default
+            If ($null -ne $Settings.temperature){$Temperature = ([double]($Settings.temperature))}
+            Else {$Temperature = 0.7} #Default
+            
+            If ($null -ne $Settings.max_tokens){$Temperature = ([int]($Settings.max_tokens))}
+            Else {$MaxTokens = -1} #Default
 
-                If ($null -ne $Settings.ContextDepth){$ContextDepth = ([int]($Settings.ContextDepth))}
-                Else {$ContextDepth = 10} #Default
+            If ($null -ne $Settings.ContextDepth){$ContextDepth = ([int]($Settings.ContextDepth))}
+            Else {$ContextDepth = 10} #Default
+
+            If ($null -ne $Settings.Stream){$Stream = ([boolean]($Settings.Stream))}
+            Else {$Stream = $True} #Default
+
+            If ($null -ne $Settings.Greeting){$Greeting = ([boolean]($Settings.Greeting))}
+            Else {$Greeting = $True} #Default
 
             }
-            Else {
-                $Temperature = 0.7 #Default
-                $MaxTokens = -1 #Default 
-                $ContextDepth = 10 #Default
-            }            
             
         }
-    
-    }
     #endregion
 
-    #region Get Model: Also serves as an initial connection test, before greeting
+    #region Get Model (Connection Test)
     try {$Model = Get-LMModel -Server $Server -Port $Port}
     catch {throw $_.Exception.Message}
     #endregion
@@ -1685,10 +1679,9 @@ begin {
     #region -ResumeChat Selector
     switch ($ResumeChat.IsPresent){
 
-        $true {
-                If ($Lite.IsPresent){throw "-ResumeChat is incompatible with -Lite"}
-
-                #If the history file doesn't exist:
+        #This section requires everything goes right (throw if it doesn't)
+        $true { 
+                #If the history file doesn't exist, find it:
                 If (!(Test-Path $HistoryFile)){
         
                     #Prompt to browse and "open" it
@@ -1701,38 +1694,70 @@ begin {
                 try {$ChosenDialog = Select-LMHistoryEntry -HistoryFile $HistoryFile}
                 catch {throw "Unable to select a dialog to resume: $($_.Exception.Message)"}
         
-                #If We didn't pick one: (Might be able to make this obsolete)
+                #If We didn't pick one: (Might be able to make this obsolete, by incorporating it into SELECT-LMHISTORYENTRY)
                 If ($null -eq $ChosenDialog -or $ChosenDialog -eq "Cancelled"){throw "Dialog selection was cancelled."}
                 Else {
+
+                    $DialogFilePath = $ChosenDialog.FilePath
         
                     #Otherwise: Read the contents of the chosen Dialog file
-                    try {$Dialog = Get-Content $ChosenDialog.FilePath -ErrorAction Stop | ConvertFrom-Json -Depth 5 -ErrorAction Stop}
+                    try {$Dialog = Get-Content $DialogFilePath -ErrorAction Stop | ConvertFrom-Json -Depth 5 -ErrorAction Stop}
                     catch {throw $_.Exception.Message}
         
                 }
 
                 #If we made it this far, Let's set $NewFile
                 $NewFile = $False
-
+                $DialogFileExists = $True
 
         } #Close Case $True
 
-        $false {
+        #This section can accommodate a failure to create a new Dialog file
+        $false { #If not Resume Chat, then Create New Dialog File
 
-            If (!($Lite.IsPresent)){
                 $Dialog = Get-LMTemplate -Type ChatDialog
                 $NewFile = $True
 
-                #05/18/2024: PROMPT TO SAVE FILE HERE
-            }
+                # Set the directory path for the chat file:
+                #
+                # We need this set even if we skip the save prompt,
+                # in case we decide to save during the prompt (:s to save?)
+                #
+                If ($UseConfig.IsPresent){$DialogStartPath = $global:LMStudioVars.FilePaths.DialogFolderPath}
+                Else {$DialogStartPath = "$($env:USERPROFILE)\Documents)"}
 
-        }
+                #If we didn't opt to skip this prompt:
+                If (!($SkipSavePrompt.IsPresent)){
+        
+                    try { # Prompt to create the full file path
+                        $DialogFilePath = Invoke-LMSaveOrOpenUI -Action Save -Extension dialog -StartPath $DialogStartPath
+                        $DialogFileExists = $True
+                    }
+                    catch {
+                        Write-Warning "$($_.Exception.Message)"
+                        $DialogFileExists = $False
+                    }
 
-    }
+                    # If the path creation prompt succeeds, export the contents of the Chat Dialog template to the file:
+                    If ($DialogFileExists){
 
- 
+                        try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
+                        catch {
+                            Write-Warning "$($_.Exception.Message)"
+                            $DialogFileExists = $False
+                        }
+
+                    }
+
+                } #Close SkipSavePrompt Not Present
+                Else {$DialogFileExists = $False}
+
+                } #Close Case $False
+            
+            } #Close Switch
+
     #endregion
-
+    
     #region -ChooseSystemPrompt triggers System Prompt selector (FUNCTION NOT BUILT YET)
     If ($ChooseSystemPrompt.IsPresent){
     
@@ -1754,8 +1779,7 @@ begin {
     #endregion
  
 
-
-}
+} #begin
 
 process {
     
@@ -1811,5 +1835,35 @@ end {
         } #Close If UseGreetingFile
 
     }
+
+}
+
+function Get-LMResponse {
+    [CmdletBinding(DefaultParameterSetName="Auto")]
+    param (
+
+    [Parameter(Mandatory=$true)]
+    [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+    [string]$Server,
+    
+    [Parameter(Mandatory=$true)]
+    [ValidateRange(1, 65535)]
+    [int]$Port, 
+
+    [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+    [string]$UserPrompt, 
+    
+    [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+    [string]$SystemPrompt
+
+    )
+
+    begin {}
+
+    process {}
+
+    end {}
+
+
 
 }

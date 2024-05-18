@@ -46,6 +46,14 @@ Today, I built the **Invoke-LMSaveOrOpenUI** function, which presents an Open/Sa
 - ⬜️ I need to write a small console script that prompts for a "y/N" answer.
   - This will be useful in **Start-LMChat** and **New-Config**, where there are a lot of lines dedicated to repetitive y/N questions
 
+**Follow-Up:**
+
+I built a pretty functional "Save Prompt" system in **Start-LMChat**. I also added the **\-SkipSavePrompt** parameter, to bypass the whole thing: ⬜️ I'll need to include a "**:s**" instruction in the **do/until** loop to give the user an opportunity to save the file during/after the dialog has begun.
+
+**✅** I also fixed a problem with the **Invoke-LMSaveOrOpenUI** function's name generation: There was a **!Test-Path** instruction in there, and I had a good reason to put it there, but I can't remember why. So I pulled it out.
+
+**🚧** I decided to strip out the "**\-Lite**" parameter and all of its intricacies, in favor of a new **Get-LMResponse** function. This new function is a basic "_send a prompt, get an answer_" function. It's non-interactive, and built for use with coding (_like, some of my ambitions after I finish this project_).
+
 ---
 
 ### 05/17/2024
