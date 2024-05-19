@@ -820,65 +820,46 @@ function Update-LMHistoryFile { #Complete, requires testing
 
         $History = New-Object System.Collections.ArrayList
 
-        try {$History = Import-LMHistoryFile -FilePath $FilePath}
+        try {(Import-LMHistoryFile -FilePath $FilePath) | Foreach-Object {$History.Add($_) | Out-Null}}
         catch {throw "History File import (for write) failed: $($_.Exception.Message)"}
 
-        #If this is a brand new History File
-        If ($null -eq $History){
-            
-            #Reinstantiate and provision $History as an array:
-            $History = New-Object System.Collections.ArrayList
-            $History.Add((Get-LMTemplate -Type HistoryEntry)) | out-null
-            $History.Add($Entry) | out-null
+        $MatchingEntries = $History | Where-Object {($_.Created -eq $Entry.Created) -and ($_.FilePath -eq $Entry.FilePath)}
+
+        If ($null -eq $MatchingEntries){$History += $Entry}
         
-        }
-        #If not, check for an existing entry, append, and remove duplicates:
         Else {
 
-            $MatchingEntries = $History | Where-Object {($_.Created -eq $Entry.Created) -and ($_.FilePath -eq $Entry.FilePath)}
+            switch ($MatchingEntries.Count){
 
-            If ($null -eq $MatchingEntries){
-            
-                $History = New-Object System.Collections.ArrayList #Reinstantiate $History
-                $History.Add($Entry) | out-null
+                #If there's one matching value, update it in-place:
+                {$_ -eq 1}{
 
-            }
-            
-            Else {
+                    $Index = 0
+                    
+                    break
 
-                switch ($MatchingEntries.Count){
+                } #Close Case -eq 1
 
-                    #If there's one matching value, update it in-place:
-                    {$_ -eq 1}{
+                #If there's more than one matching value, find the most recent one and remove the old ones
+                {$_ -gt 1}{
 
-                        $Index = 0
-                        
-                        break
+                    $SortedEntries = $MatchingEntries | Sort-Object Modified -Descending
+                    
+                    $TargetEntry = $SortedEntries[0]
 
-                    } #Close Case -eq 1
+                    $SortedEntries[1..($SortedEntries.Count - 1)] | ForEach-Object {$History.Remove($_) | out-null}
 
-                    #If there's more than one matching value, find the most recent one and remove the old ones
-                    {$_ -gt 1}{
+                    $Index = $History.IndexOf($TargetEntry)
 
-                        $SortedEntries = $MatchingEntries | Sort-Object Modified -Descending
-                        
-                        $TargetEntry = $SortedEntries[0]
+                    break
 
-                        $SortedEntries[1..($SortedEntries.Count - 1)] | ForEach-Object {$History.Remove($_) | out-null}
+                } #Close Case -gt 1
 
-                        $Index = $History.IndexOf($TargetEntry)
+                Default {throw "[Update-LMHistoryFile] : Something went wrong while trying to find/remove duplicates"}
 
-                        break
+            } #Close switch
 
-                    } #Close Case -gt 1
-
-                    Default {throw "[Update-LMHistoryFile] : Something went wrong while trying to find/remove duplicates"}
-
-                } #Close switch
-
-                @("Modified", "Title", "Opener", "Model", "Tags").ForEach({$History[$Index].$_ = $Entry.$_})
-
-            }
+            @("Modified", "Title", "Opener", "Model", "Tags").ForEach({$History[$Index].$_ = $Entry.$_})
 
         }
        
