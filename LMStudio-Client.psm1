@@ -274,8 +274,13 @@ function New-LMConfig { #Complete
 
                 try {(Get-LMTemplate -Type ChatGreeting | Export-csv $GreetingFilePath -NoTypeInformation)}
                 catch {throw "Greeting file creation failed: $($_.Exception.Message)"}
+
+                $HistoryArray = New-Object System.Collections.ArrayList
+
+                $HistoryArray.Add((Get-LMTemplate -Type HistoryEntry)) | Out-Null
+                $HistoryArray.Add((Get-LMTemplate -Type HistoryEntry)) | Out-Null
         
-                try {@((Get-LMTemplate -Type HistoryEntry)) | ConvertTo-Json | Out-File -FilePath $HistoryFilePath -ErrorAction Stop}
+                try {$HistoryArray | ConvertTo-Json -depth 5 | Out-File -FilePath $HistoryFilePath -ErrorAction Stop}
                 catch {throw "History file creation failed: $($_.Exception.Message)"}
             }
 
@@ -748,9 +753,11 @@ function Import-LMHistoryFile { #Complete
     #region If not a test, move over content from Fixed-Length arrays to New ArrayLists:
     If (!($AsTest.IsPresent)){
     
-        $NewHistory = @((Get-LMTemplate -Type HistoryEntry))
+        $NewHistory = New-Object System.Collections.ArrayList
 
-        $HistoryContent.Histories | ForEach-Object {$NewHistory += ($_)}
+        If ($HistoryContent.Count -eq 1){$NewHistory.Add((Get-LMTemplate -Type HistoryEntry)) | Out-Null}
+
+        $HistoryContent | ForEach-Object {$NewHistory.Add($_) | Out-Null}
     }
     #endregion
 
@@ -781,7 +788,7 @@ function Update-LMHistoryFile { #Complete, requires testing
         [Parameter(Mandatory=$False)]
         [ValidateScript({ if (!(Test-Path -Path $_)) { throw "History file path does not exist" } else { $true } })]
         [string]$FilePath
-        )
+    )
 
     begin {
 
@@ -805,6 +812,7 @@ function Update-LMHistoryFile { #Complete, requires testing
              If (!(Test-Path $FilePath)){throw "Provided history file path is not valid or accessible ($FilePath)"}             
     
         }
+        #endregion
 
     }
 
@@ -812,18 +820,30 @@ function Update-LMHistoryFile { #Complete, requires testing
 
         $History = New-Object System.Collections.ArrayList
 
-        try {$History = Import-LMHistoryFile -FilePath $FilePath | Where-Object {$_.Created -ne 'dummyvalue'}}
+        try {$History = Import-LMHistoryFile -FilePath $FilePath}
         catch {throw "History File import (for write) failed: $($_.Exception.Message)"}
 
         #If this is a brand new History File
-        If ($null -eq $History){$History.Add($Entry) | out-null}
+        If ($null -eq $History){
+            
+            #Reinstantiate and provision $History as an array:
+            $History = New-Object System.Collections.ArrayList
+            $History.Add((Get-LMTemplate -Type HistoryEntry)) | out-null
+            $History.Add($Entry) | out-null
+        
+        }
         #If not, check for an existing entry, append, and remove duplicates:
         Else {
-        
 
             $MatchingEntries = $History | Where-Object {($_.Created -eq $Entry.Created) -and ($_.FilePath -eq $Entry.FilePath)}
 
-            If ($null -eq $MatchingEntries){$History.Add($Entry) | out-null}
+            If ($null -eq $MatchingEntries){
+            
+                $History = New-Object System.Collections.ArrayList #Reinstantiate $History
+                $History.Add($Entry) | out-null
+
+            }
+            
             Else {
 
                 switch ($MatchingEntries.Count){
@@ -831,7 +851,7 @@ function Update-LMHistoryFile { #Complete, requires testing
                     #If there's one matching value, update it in-place:
                     {$_ -eq 1}{
 
-                        $Index = $History.IndexOf($MatchingEntries[0])
+                        $Index = 0
                         
                         break
 
@@ -866,10 +886,11 @@ function Update-LMHistoryFile { #Complete, requires testing
 
     end {
 
+        #If we have 2+ 'real' entries, we don't need the dummy values anymore to preserve the array structure in JSON:
+        If ($History.Where({$_.Created -ne 'dummyvalue'}).Count -ge 2){$History = $History.Where({$_.Created -ne 'dummyvalue'})}
+
         try {$History | Sort-Object Modified -Descending | ConvertTo-Json -Depth 10 -ErrorAction Stop | Out-File -FilePath $FilePath -ErrorAction Stop}
         catch {throw "[Update-LMHistoryFile] : Unable to save history to File Path: $($_.Exception.Message)"}
-    
-        return $True
 
     }
 
@@ -951,6 +972,7 @@ $MessageContents = $DialogContents.Messages | ConvertFrom-Csv
 }
 
 #This function saves a chat dialog to a dialog file, and updates the history file
+#Can probably get rid of this
 function Update-LMChatDialog {}
 
 #Searches the HistoryFile for strings and provides multiple ways to output the contents
@@ -2092,10 +2114,23 @@ process {
         #region Update Dialog File, History File
         If ($DialogFileExists){
 
-            Write-Verbose "Dialog Info || Type: $($Dialog.GetType().Name) || Path: $DialogFilePath" -Verbose
+            # Save the Dialog File
+            try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
+            catch {
+                Write-Warning "Dialog file save failed; Disabling file saving (:Save to recreate a Dialog file)"
+                $DialogFileExists = $False
+            }
+
+            # Update the History File
+            If ($DialogFileExists){
             
-            $Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop
-            Update-LMHistoryFile -FilePath $HistoryFile -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath) 
+                try {Update-LMHistoryFile -FilePath $HistoryFile -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
+                catch {
+                    Write-Warning "Unable to append Dialog updates to History file; Disabling file-saving (:Save to recreate a Dialog file)"
+                    $DialogFileExists = $False
+                }
+
+            }
 
         }
         #endregion       
