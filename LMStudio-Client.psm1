@@ -1588,11 +1588,12 @@ function Convert-LMDialogToBody {
         [array]$DialogMessages,
 
         #Signals a prompt to select an entry from the History File
-        [Parameter(Mandatory=$False)]
+        [Parameter(Mandatory=$True)]
         [int]$ContextDepth,
         
-        [Parameter(Mandatory=$False)]
-        [int]$Settings
+        [Parameter(Mandatory=$True)]
+        [ValidateScript({ if ($_.GetType().Name -ne "Hashtable") { throw "Parameter must be a hashtable" } else { $true } })]
+        [HashTable]$Settings
     )
     
     begin {
@@ -1855,7 +1856,10 @@ begin {
                     }
 
                 } #Close SkipSavePrompt Not Present
-                Else {$DialogFileExists = $False}
+                Else {
+                    $DialogFileExists = $False
+                    Write-Warning "Dialog file not saved to file. In the User prompt, enter ':Save'to try to save again."
+                }
 
                 } #Close Case $False
             
@@ -1898,7 +1902,14 @@ process {
     #05/18/2024:
     # For all-new files, I think preloading the do/until loop with the initial request, and creating a provisioned Dialog object
     # would do a lot to simplify the order of how things need to go.
-
+    
+    #Set $BodySettings for use with Convert-LMDialogToBody:
+    $BodySettings = @{}
+    $BodySettings.Add('model',$Model)
+    $BodySettings.Add('temperature', $Temperature)
+    $BodySettings.Add('max_tokens', $MaxTokens)
+    $BodySettings.Add('stream', $Stream)
+    $BodySettings.Add('SystemPrompt', $SystemPrompt)
 
     #The magic is here:
     do { 
@@ -1915,7 +1926,7 @@ process {
 
         Write-Host "You: " -ForegroundColor Green -NoNewline;
         $UserInput = Read-Host
-        $Body.messages[1].content = $UserInput
+        
 
         #region Construct the user Dialog Message for appending to the Dialog:
         $UserMessage = Get-LMTemplate -Type DialogMessage
@@ -1929,19 +1940,23 @@ process {
         $UserMessage.Content = "$UserInput"
         #endregion
 
+        #region Send $Dialog.Messages to Convert-DialogToBody:
+        $Body = Convert-LMDialogToBody -DialogMessages ($Dialog.Messages) -ContextDepth $ContextDepth -Settings $BodySettings
+        #endregion
+
         Write-Host ""
         Write-Host "AI: " -ForegroundColor Magenta -NoNewline
 
         switch ($Stream){
 
             $True {$LMOutput = Invoke-LMStream -Body $Body -CompletionURI $CompletionURI -File $StreamCachePath}
-            $False {$LMOutput = Invoke-LMBlob -Body $Body -CompletionURI $CompletionURI}
+            $False {$LMOutput = Invoke-LMBlob -Body $Body -CompletionURI $CompletionURI -StreamSim}
 
         }
 
         Write-Host ""
 
-        #region Construct the assistant Dialog message for appending to the Dialog:
+        #region Construct the assistant Dialog message and append to the Dialog:
         $AssistantMessage = Get-LMTemplate -Type DialogMessage
         
         $AssistantMessage.TimeStamp = (Get-Date).ToString()
