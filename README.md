@@ -49,6 +49,8 @@ The **Select-LMHistoryEntry** function hints at the ⬜️ **Repair-LMHistoryFil
 
 ⬜️ Sort out History File handling in **Start-LMChat**
 
+⬜️ Integrate the **ChatInfo.SystemPrompt** field into the Configuration file
+
 ---
 
 ### 05/18/2024

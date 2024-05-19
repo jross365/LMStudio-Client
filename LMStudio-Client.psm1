@@ -771,15 +771,15 @@ function Repair-LMHistoryFile {
 }
 
 #This function saves a history entry to the history file
-function Update-LMHistoryFile { #Complete
+function Update-LMHistoryFile { #Complete, requires testing
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [ValidateScript({ if ($_.GetType().GetType().Name -ne "PSCustomObject"){throw "Expected object of type [pscustomobject]"} else { $true } })]
+        [ValidateScript({ if ($_.GetType().Name -ne "PSCustomObject"){throw "Expected object of type [pscustomobject]"} else { $true } })]
         [pscustomobject]$Entry,
         
         [Parameter(Mandatory=$False)]
-        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [ValidateScript({ if (!(Test-Path -Path $_)) { throw "History file path does not exist" } else { $true } })]
         [string]$FilePath
         )
 
@@ -797,32 +797,77 @@ function Update-LMHistoryFile { #Complete
 
         #region Check history file location in global variables, or use provided FilePath
         If (!($PSBoundParameters.ContainsKey('FilePath'))){
-
-            try {$HistoryFileCheck = Confirm-LMGlobalVariables}
-            catch {throw "Error validating Global variables: $($_.Exception.Message)"}
         
-            If ($HistoryFileCheck -ne $True){throw "Something went wrong when running Confirm-LMGlobalVariables (didn't return True)"}
+            If ((Confirm-LMGlobalVariables -ReturnBoolean) -ne $True){throw "Something went wrong when running Confirm-LMGlobalVariables (didn't return True)"}
         
             $FilePath = $Global:LMStudioVars.FilePaths.HistoryFilePath
+
+             If (!(Test-Path $FilePath)){throw "Provided history file path is not valid or accessible ($FilePath)"}             
     
         }
-        
-        If (!(Test-Path $FilePath)){throw "Provided history file path is not valid or accessible ($FilePath)"}
 
     }
 
     process {
 
-        try {$History = Import-LMHistoryFile -FilePath $FilePath}
+        $History = New-Object System.Collections.ArrayList
+
+        try {$History = Import-LMHistoryFile -FilePath $FilePath | Where-Object {$_.Created -ne 'dummyvalue'}}
         catch {throw "History File import (for write) failed: $($_.Exception.Message)"}
 
-        try {$AppendEntry = $History.Histories.Add($Entry)}
-        catch {throw "Unable to append Entry to history file (is file malformed?)"}
-    }
+        #If this is a brand new History File
+        If ($null -eq $History){$History.Add($Entry) | out-null}
+        #If not, check for an existing entry, append, and remove duplicates:
+        Else {
+        
+
+            $MatchingEntries = $History | Where-Object {($_.Created -eq $Entry.Created) -and ($_.FilePath -eq $Entry.FilePath)}
+
+            If ($null -eq $MatchingEntries){$History.Add($Entry) | out-null}
+            Else {
+
+                switch ($MatchingEntries.Count){
+
+                    #If there's one matching value, update it in-place:
+                    {$_ -eq 1}{
+
+                        $Index = $History.IndexOf($MatchingEntries[0])
+                        
+                        break
+
+                    } #Close Case -eq 1
+
+                    #If there's more than one matching value, find the most recent one and remove the old ones
+                    {$_ -gt 1}{
+
+                        $SortedEntries = $MatchingEntries | Sort-Object Modified -Descending
+                        
+                        $TargetEntry = $SortedEntries[0]
+
+                        $SortedEntries[1..($SortedEntries.Count - 1)] | ForEach-Object {$History.Remove($_) | out-null}
+
+                        $Index = $History.IndexOf($TargetEntry)
+
+                        break
+
+                    } #Close Case -gt 1
+
+                    Default {throw "[Update-LMHistoryFile] : Something went wrong while trying to find/remove duplicates"}
+
+                } #Close switch
+
+                @("Modified", "Title", "Opener", "Model", "Tags").ForEach({$History[$Index].$_ = $Entry.$_})
+
+            }
+
+        }
+       
+    } #Close Process
 
     end {
-        try {$History | ConvertTo-Json -Depth 10 -ErrorAction Stop | Out-File -FilePath $FilePath -ErrorAction Stop}
-        catch {throw "Unable to save history to File Path; $($_.Exception.Message)"}
+
+        try {$History | Sort-Object Modified -Descending | ConvertTo-Json -Depth 10 -ErrorAction Stop | Out-File -FilePath $FilePath -ErrorAction Stop}
+        catch {throw "[Update-LMHistoryFile] : Unable to save history to File Path: $($_.Exception.Message)"}
     
         return $True
 
@@ -1129,7 +1174,7 @@ function Invoke-LMBlob {
 }
 
 #This function establishes an asynchronous connection to "stream" chat output to the console
-function Invoke-LMStream{ #Complete
+function Invoke-LMStream { #Complete
     [CmdletBinding()]
 param (
     [Parameter(Mandatory=$true)][string]$CompletionURI,
@@ -1736,7 +1781,7 @@ function Select-LMHistoryEntry {
 
         $HistoryData = New-Object System.Collections.ArrayList
 
-        try {$HistoryEntries = Get-Content $HistoryFile -ErrorAction Stop | ConvertFrom-Json -depth 3 | Select-Object Created, Modified, Title, Opener, FilePath, @{N = "Tags"; E = {$_.Tags -join ', '}}}
+        try {$HistoryEntries = Import-LMHistoryFile -FilePath $HistoryFile | Select-Object Created, Modified, Title, Opener, FilePath, @{N = "Tags"; E = {$_.Tags -join ', '}}}
         catch {throw "History file is not the correct file format [$HistoryFile]"}
     
         $HistoryEntries | ForEach-Object {$HistoryData.Add($_) | out-null}
@@ -1748,7 +1793,7 @@ function Select-LMHistoryEntry {
     }
     end {
         
-        If ($Selection.Created -eq 'Select' -and $Selection.Modified -eq 'this' -and $Selection.FilePath -eq 'Cancel'){throw "Chat selection cancelled"}
+        If (($Selection.Created -eq 'Select' -and $Selection.Modified -eq 'this' -and $Selection.FilePath -eq 'Cancel') -or $null -eq $Selection){throw "Chat selection cancelled"}
 
         $DialogFilePath = "$($HistoryFile.TrimEnd('.index'))" + "$($Selection.FilePath)"
 
@@ -1872,19 +1917,14 @@ begin {
                 
                 #Open a GridView selector from the history file
                 try {$ChosenDialog = Select-LMHistoryEntry -HistoryFile $HistoryFile}
-                catch {throw "Unable to select a dialog to resume: $($_.Exception.Message)"}
-        
-                #If We didn't pick one: (Might be able to make this obsolete, by incorporating it into SELECT-LMHISTORYENTRY)
-                If ($null -eq $ChosenDialog -or $ChosenDialog -eq "Cancelled"){throw "Dialog selection was cancelled."}
-                Else {
+                catch {throw "Dialog selection error: $($_.Exception.Message)"}
 
-                    $DialogFilePath = $ChosenDialog.FilePath
-        
-                    #Otherwise: Read the contents of the chosen Dialog file
-                    try {$Dialog = Get-Content $DialogFilePath -ErrorAction Stop | ConvertFrom-Json -Depth 5 -ErrorAction Stop}
-                    catch {throw $_.Exception.Message}
-        
-                }
+                #Removed the If/Else that was here: Select-LMHistoryEntry handles file validation
+                $DialogFilePath = $ChosenDialog.FilePath
+    
+                #Otherwise: Read the contents of the chosen Dialog file
+                try {$Dialog = Get-Content $DialogFilePath -ErrorAction Stop | ConvertFrom-Json -Depth 5 -ErrorAction Stop}
+                catch {throw $_.Exception.Message}
 
                 #If we made it this far, Let's set $NewFile
                 $NewFile = $False
@@ -1941,7 +1981,7 @@ begin {
                 } #Close SkipSavePrompt Not Present
                 Else {
                     $DialogFileExists = $False
-                    Write-Warning "Dialog file not saved to file. In the User prompt, enter ':Save'to save."
+                    Write-Warning "Dialog file not saved to file. In the User prompt, enter ':Save' to save."
                 }
 
                 } #Close Case $False
@@ -1970,7 +2010,6 @@ begin {
     }
     #endregion
  
-
 } #begin
 
 process {
@@ -1997,21 +2036,8 @@ process {
     #The magic is here:
 :main do { 
 
-        #region Construct the HTTP Body
-        <#
-        $Body = Get-LMTemplate -Type Body
-        $Body.Model = $Model
-        $Body.temperature = $Temperature
-        $Body.max_tokens = $MaxTokens
-        $Body.stream = $Stream
-        #>
-        #endregion
-
-        #region 
-
         Write-Host "You: " -ForegroundColor Green -NoNewline;
         $UserInput = Read-Host
-        
 
         #region Construct the user Dialog Message and append to the Dialog:
         $UserMessage = Get-LMTemplate -Type DialogMessage
@@ -2059,9 +2085,20 @@ process {
         $Dialog.Messages.Add($AssistantMessage) | out-null
         #endregion
 
-        #region Update and Save Dialog File
+        #region Update Dialog Object
         $Dialog.Info.Modified = $AssistantMessage.TimeStamp
-        If ($DialogFileExists){$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
+        #endregion
+        
+        #region Update Dialog File, History File
+        If ($DialogFileExists){
+
+            Write-Verbose "Dialog Info || Type: $($Dialog.GetType().Name) || Path: $DialogFilePath" -Verbose
+            
+            $Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop
+            Update-LMHistoryFile -FilePath $HistoryFile -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath) 
+
+        }
+        #endregion       
         
     }
     until ($BreakDialog -eq $True)
