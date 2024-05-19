@@ -1612,7 +1612,6 @@ function Convert-LMDialogToBody {
         $SelectedMessages = New-Object System.Collections.ArrayList
 
         $Counter = 0
-
         $Index = 0
 
         :msgloop do {
@@ -1676,23 +1675,94 @@ function Convert-LMDialogToBody {
 
 }
 
+#This function intakes a Dialog object, and returns a History File entry object
+#Doesn't require a lot of fanciness, or much validation
+function Convert-LMDialogToHistoryEntry { #Complete
+    [CmdletBinding()]
+    param (
+    [Parameter(Mandatory=$true)]
+    [pscustomobject]$DialogObject,
+    
+    [Parameter(Mandatory=$true)]
+    [ValidateScript({ if (!(Test-Path -Path $_)) { throw "File path does not exist" } else { $true } })]
+    [string]$DialogFilePath
+    )
+
+    $HistoryEntry = Get-LMTemplate -Type HistoryEntry
+    
+    $HistoryEntry.Created = $DialogObject.Info.Created
+    $HistoryEntry.Modified = $DialogObject.Info.Modified
+    $HistoryEntry.Model = $DialogObject.Info.Model
+
+    $Opener = $DialogObject.Messages.Where({$_.Role -eq "user"}) | Select-Object -First 1
+    
+    If ($null -ne $Opener){$HistoryEntry.Opener = $Opener.Content}
+    Else {$Opener = "Unset"} #Not likely to encounter this
+
+    $RelativePath = ($DialogFilePath -split '\\' | Select-Object -Last 2) -join '\'
+
+    $HistoryEntry.FilePath = $RelativePath
+
+    If ($DialogObject.Info.Title -eq 'dummyvalue'){$HistoryEntry.Title = "Unset"}
+    Else {$HistoryEntry.Title = $DialogObject.Info.Title}
+
+    $HistoryEntry.Tags = $DialogObject.Info.Tags #Keep it simple
+
+    return $HistoryEntry
+
+}
+
 #This function presents a selection prompt (Out-Gridview) to continue a history file
-#For use with Start-LMChat
-Function Select-LMHistoryEntry {
+function Select-LMHistoryEntry {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$false)]
         [ValidateScript({ if (!(Test-Path -Path $_)) { throw "File path does not exist" } else { $true } })]
         [string]$HistoryFile
     )
+    begin {
 
-    If (!(Test-Path $Global:LMStudioVars.FilePaths.HistoryFilePath)){throw "History file not found - path invalid [$($Global:LMStudioVars.FilePaths.HistoryFilePath)]"}
+        If (!$PSBoundParameters.ContainsKey('HistoryFile')){
 
-        try {$HistoryData = Import-csv ($Global:LMStudioVars.FilePaths.HistoryFilePath) -ErrorAction Stop}
-        catch {throw "History file is not the correct file format [$($Global:LMStudioVars.FilePaths.HistoryFilePath)]"}
+            If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "-HistoryFile was not specified, and config file variables not loaded. Run [Import-ConfigFile] to load them"}
+            Else {$HistoryFile = $global:LMStudioVars.FilePaths.HistoryFilePath}
+    
+        }
 
+        If (!(Test-Path $HistoryFile)){throw "History file not found - path invalid [$HistoryFile]"}
 
-} #Not Started
+    }
+    process {
+
+        $HistoryData = New-Object System.Collections.ArrayList
+
+        try {$HistoryEntries = Get-Content $HistoryFile -ErrorAction Stop | ConvertFrom-Json -depth 3 | Select-Object Created, Modified, Title, Opener, FilePath, @{N = "Tags"; E = {$_.Tags -join ', '}}}
+        catch {throw "History file is not the correct file format [$HistoryFile]"}
+    
+        $HistoryEntries | ForEach-Object {$HistoryData.Add($_) | out-null}
+    
+        $HistoryData += ([pscustomobject]@{"Created" = "Select"; "Modified" = "this"; "Title" = "entry"; "Opener" = "to"; "FilePath" = "Cancel"})
+    
+        $Selection = $HistoryData | Out-GridView -Title "Select a Chat Dialog" -OutputMode Single
+
+    }
+    end {
+        
+        If ($Selection.Created -eq 'Select' -and $Selection.Modified -eq 'this' -and $Selection.FilePath -eq 'Cancel'){throw "Chat selection cancelled"}
+
+        $DialogFilePath = "$($HistoryFile.TrimEnd('.index'))" + "$($Selection.FilePath)"
+
+        switch ((Test-Path $DialogFilePath)){
+
+            $false {throw "Selected history entry is invalid (path not found). Please run [Repair-LMHistoryFile]"}
+
+            $true {return $DialogFilePath}
+            
+        }
+        
+    }
+
+}
 
 function Start-LMChat {
     [CmdletBinding(DefaultParameterSetName="Auto")]

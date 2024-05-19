@@ -33,6 +33,24 @@ Please see my **development journal** below to follow my progress!
 
 ---
 
+### 05/19/2024
+
+Put together the following functions:
+
+**✅ Convert-LMDialogToHistoryEntry** : This intakes a dialog and generates an entry for the History File. It's a flat, simple function, with minimal validation.
+
+**✅ Select-LMHistoryEntry :** This reads and parses the History file, and uses **Out-GridView** to present the contents for continuation of a previous dialog.
+
+The **Select-LMHistoryEntry** function hints at the ⬜️ **Repair-LMHistoryFile** function, which still needs to be written. It's functionally simple, it'll use the **Convert-LMDialogToHistoryEntry** function to read every Dialog file and reassemble the History File.
+
+**Today I need to:**
+
+⬜️ Integrate the two new functions into **Start-LMChat**
+
+⬜️ Sort out History File handling in **Start-LMChat**
+
+---
+
 ### 05/18/2024
 
 Today, I built the **Invoke-LMSaveOrOpenUI** function, which presents an Open/Save Windows dialog. This will _really_ help me cut down on validation code, in cases where the user provides no path or an invalid path.
@@ -70,7 +88,13 @@ I need another new function to keep things simple:
 
 **Follow-Up:**
 
-I wrote the DIalog => Body function,(**Convert-LMDialogToBody**) and it's one of the most elegant little functions I've ever written.
+I wrote the DIalog => Body function,(**Convert-LMDialogToBody**) and it's one of the most elegant little functions I've ever written. I had to fix a few things, but it works exactly in the way I need it to work, and helps declutter **Start-LMChat**.
+
+**Priorities:**
+
+⬜️ Add **$Global:LMStudioVars.ChatSettings.SystemPrompt** variable to make this value easilysettable/persistent.
+
+⬜️ Chase down **Update-HistoryFile**, **Import-HistoryFile,** work out how to save the key Dialog information to the History File
 
 ---
 
@@ -102,7 +126,7 @@ I'm also not happy with my **Get-LMGreeting** prompt generator. Functionally, it
 
 ⬜️ Shell Functions **Set-LMSystemPrompt** and **Select-LMHistoryFile** were created to use **Out-GridView** as a file selection mechanism.
 
-⬜️ I should probably add **$Global:LMStudioVars.ChatSettings.SystemPrompt** variable to make this value settable/persistent.
+**\[Moved\]** I should probably add **$Global:LMStudioVars.ChatSettings.SystemPrompt** variable to make this value settable/persistent.
 
 I've begun shaping the parameters for **Start-LMChat**, which will be rewritten from a copy of **Get-LMGreeting**.
 
@@ -110,11 +134,11 @@ I've begun shaping the parameters for **Start-LMChat**, which will be rewritten 
   - The reason I made this choice is because making **Start-LMChat** capable of picking up the History File makes the Config pointless.
   - ⬜️ A future accommodation (_via perhaps a typical Windows browse form_) might be made.
 - I've added a -**Lite** parameter to send single, unrecorded prompt to the server, where you receive a single response back.
-  - ⬜️ Greetings will be turned off with this feature, and cannot be turned on.
+  - **❌** Greetings will be turned off with this feature, and cannot be turned on.
   - I would like to create a function that only responds (or does anything) if **$Global:LMStudioVars** is provisioned
     - This function would pass the **Start-LMChat** function a set of parameters, pulled from **Global:LMChatLite**
     - Command would look like **lc -q "**_Please give me 5 facts about America\*\*"\*\*_
-  - _⬜️_ I need to add a **LiteParams** template in the **Get-LMTemplate** function.
+  - **❌** I need to add a **LiteParams** template in the **Get-LMTemplate** function.
 
 **Follow-Up:**
 
