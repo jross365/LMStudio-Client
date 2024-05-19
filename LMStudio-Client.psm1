@@ -1576,6 +1576,94 @@ end {
 #This function presents a selection prompt (Out-Gridview) for the system prompt
 function Get-LMSystemPrompts {} #Not started
 
+
+#This function consumes a Dialog, and returns a fully-furnished $Body object
+#Maybe I should make one of these for the Greetings, as well :-)
+function Convert-LMDialogToBody {
+
+    [CmdletBinding(DefaultParameterSetName="Auto")]
+    param (
+        #Use $Global:LMGlobalVars
+        [Parameter(Mandatory=$true)]
+        [array]$DialogMessages,
+
+        #Signals a prompt to select an entry from the History File
+        [Parameter(Mandatory=$False)]
+        [int]$ContextDepth,
+        
+        [Parameter(Mandatory=$False)]
+        [int]$Settings
+    )
+    
+    begin {
+
+        $Body = Get-LMTemplate -Type Body
+
+        $Body.model = $Settings.model
+        $Body.temperature = $Settings.temperature
+        $Body.max_tokens = $Settings.max_tokens
+        $Body.stream = $Settings.stream
+        $Body.messages[0].content = $Settings.SystemPrompt
+
+    }
+    process {
+        
+        $SelectedMessages = New-Object System.Collections.ArrayList
+
+        $Counter = 0
+
+        $Index = 0
+
+        :msgloop do {
+
+            $Message = $DialogMessages[$($DialogMessages.Count - (1 + $Index))]
+
+            If ($Message.role -ne 'user' -and $Message.role -ne 'assistant'){
+                $Index++
+                continue msgloop
+            }
+
+            $SelectedMessages.Add($Message) | Out-Null
+
+            $Index++
+            
+            #If, the answer before the last one
+            # is an 'assistant' entry, then our "user/assistant" pattern isn't broken.
+            # If it's not an "assistant" entry, we need to continue without incrementing counter
+            # to fix our Q/A Q/A sequence to start with a [user] entry:
+            If ($Counter -eq ($ContextDepth - 1) -and $Message.role -ne 'assistant'){continue msgloop}
+
+            #Otherwise, just increment $Counter:
+            $Counter++        
+
+        }
+        # Until we either get the context depth we want, or we reach the end of the list of messages
+        until (($Counter -eq $ContextDepth) -or ($Counter -eq ($DialogMessages.Count - 1)))
+
+    }
+    end {
+        # Because we started at the end and worked our way backward, we have to "flip" the array back into chronological order:
+        $SelectedMessages = $SelectedMessages[$($SelectedMessages.Count - 1)..$SelectedMessages[0]]
+
+        #Fill the first "provisioned" row from the template with the first entry of the selected messages
+        $Body.messages[1].content = $SelectedMessages[0].Content
+
+        #Add the remaining rows to the $Body
+        Foreach ($Entry in $SelectedMessages[1..$($SelectedMessages.Count - 1)]){
+
+            $BodyMessage = [pscustomobject]@{"role" = $Entry.Role; "content" = $Entry.content}
+
+            $Body.messages += $BodyMessage
+
+        }
+
+        return $Body
+
+    }
+    
+
+}
+
 #This function presents a selection prompt (Out-Gridview) to continue a history file
 #For use with Start-LMChat
 Function Select-LMHistoryEntry {
@@ -1806,6 +1894,11 @@ process {
     $DialogFilePath   # The 
 
     $BreakDialog = $False
+
+    #05/18/2024:
+    # For all-new files, I think preloading the do/until loop with the initial request, and creating a provisioned Dialog object
+    # would do a lot to simplify the order of how things need to go.
+
 
     #The magic is here:
     do { 

@@ -60,13 +60,17 @@ Some improvements; started moving into the **Do/Until** loop to get a feel for w
 
 I need another new function to keep things simple:
 
-⬜️ A Dialog => Body function:
+**✅** A Dialog => Body function:
 
 - Intakes the contents of a Dialog object
 - Evaluates the messages in the $Dialog.Messages Array
 - References the $ContextDepth
 - Builds the array, containing the leading \[system\] role statement, and the previous $ContextDepth number of \[user\] and \[assistant\] messages
 - Returns a properly ordered $Body.messages array
+
+**Follow-Up:**
+
+I wrote the DIalog => Body function,(**Convert-LMDialogToBody**) and it's one of the most elegant little functions I've ever written.
 
 ---
 
