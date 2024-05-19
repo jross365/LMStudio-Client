@@ -415,7 +415,7 @@ function Set-LMConfigOptions {
 
         }
 
-        try {$Global:LMStudioVars | ConvertTo-Json -depth 4 -error Stop | out-file $ConfigFile -ErrorAction Stop}
+        try {$Global:LMStudioVars | ConvertTo-Json -depth 5 -ErrorAction Stop | out-file $ConfigFile -ErrorAction Stop}
         catch {throw "Settings applied, but unable to save settings to $ConfigFile [Set-LMConfigOptions]"}
     }
 
@@ -1644,19 +1644,30 @@ function Convert-LMDialogToBody {
     }
     end {
         # Because we started at the end and worked our way backward, we have to "flip" the array back into chronological order:
-        $SelectedMessages = $SelectedMessages[$($SelectedMessages.Count - 1)..$SelectedMessages[0]]
+        If ($SelectedMessages.Count -gt 1){
 
-        #Fill the first "provisioned" row from the template with the first entry of the selected messages
-        $Body.messages[1].content = $SelectedMessages[0].Content
+            $SelectedMessages = $SelectedMessages[$($SelectedMessages.Count - 1)..0]
+        
+            #Fill the first "provisioned" row from the template with the first entry of the selected messages
+            $Body.messages[1].content = $SelectedMessages[0].Content
 
         #Add the remaining rows to the $Body
-        Foreach ($Entry in $SelectedMessages[1..$($SelectedMessages.Count - 1)]){
+            Foreach ($Entry in $SelectedMessages[1..$($SelectedMessages.Count - 1)]){
 
-            $BodyMessage = [pscustomobject]@{"role" = $Entry.Role; "content" = $Entry.content}
+                $BodyMessage = [pscustomobject]@{"role" = $Entry.Role; "content" = $Entry.content}
 
-            $Body.messages += $BodyMessage
+                $Body.messages += $BodyMessage
+
+            }
+    
+        }
+        ElseIf ($SelectedMessages.Count -eq 1){
+
+            $Body.messages[1].content = $SelectedMessages[0].Content
 
         }
+
+        Else {throw "Convert-LMDialogToBody: No messages were ordered: -DialogMessages empty?"}
 
         return $Body
 
@@ -1736,14 +1747,16 @@ begin {
             $Temperature = $Global:LMStudioVars.ChatSettings.temperature
             $MaxTokens = $Global:LMStudioVars.ChatSettings.max_tokens
             $ContextDepth = $Global:LMStudioVars.ChatSettings.ContextDepth
+            $SystemPrompt = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
     
         }
 
-        $False {
+        $False { #Not yet tested
 
             $Endpoint = "$Server" + ":" + "$Port"
             $CompletionURI = "http://" + $EndPoint + "/v1/chat/completions"
             $StreamCachePath = (Get-Location).Path + '\lmstream.cache'
+            $SystemPrompt = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
 
             #Set tunables via hash table
             If (!$PSBoundParameters.ContainsKey('Settings')){$Settings = Get-LMTemplate -Type ManualChatSettings}
@@ -1774,7 +1787,7 @@ begin {
     #endregion
 
     #region -ResumeChat Selector
-    switch ($ResumeChat.IsPresent){
+    switch ($ResumeChat.IsPresent){ #Not Yet Tested
 
         #This section requires everything goes right (terminates with [throw] if it doesn't)
         $true { 
@@ -1830,7 +1843,7 @@ begin {
                 # in case we decide to save during the prompt (:s to save?)
                 # This is why it's outside of (!($SkipSavePrompt.IsPresent))
                 If ($UseConfig.IsPresent){$DialogStartPath = $global:LMStudioVars.FilePaths.DialogFolderPath}
-                Else {$DialogStartPath = "$($env:USERPROFILE)\Documents)"}
+                Else {$DialogStartPath = "$($env:USERPROFILE)\Documents"}
 
                 #If we didn't opt to skip this prompt:
                 If (!($SkipSavePrompt.IsPresent)){
@@ -1893,9 +1906,9 @@ begin {
 process {
     
     #Key File Management Variables:
-    $NewFile          # Indicates we have a brand new file from a template (May/may not need this)
-    $DialogFileExists # Whether opening an existing dialog or creating a new one, this confirms the file is valid
-    $DialogFilePath   # The 
+    #$NewFile          # Indicates we have a brand new file from a template (May/may not need this)
+    #$DialogFileExists # Whether opening an existing dialog or creating a new one, this confirms the file is valid
+    #$DialogFilePath   # The 
 
     $BreakDialog = $False
 
@@ -1912,14 +1925,16 @@ process {
     $BodySettings.Add('SystemPrompt', $SystemPrompt)
 
     #The magic is here:
-    do { 
+:main do { 
 
         #region Construct the HTTP Body
+        <#
         $Body = Get-LMTemplate -Type Body
         $Body.Model = $Model
         $Body.temperature = $Temperature
         $Body.max_tokens = $MaxTokens
         $Body.stream = $Stream
+        #>
         #endregion
 
         #region 
@@ -1928,7 +1943,7 @@ process {
         $UserInput = Read-Host
         
 
-        #region Construct the user Dialog Message for appending to the Dialog:
+        #region Construct the user Dialog Message and append to the Dialog:
         $UserMessage = Get-LMTemplate -Type DialogMessage
       
         $UserMessage.TimeStamp = (Get-Date).ToString()
@@ -1938,6 +1953,8 @@ process {
         $UserMessage.ContextDepth = $ContextDepth
         $UserMessage.Role = "user"
         $UserMessage.Content = "$UserInput"
+
+        $Dialog.Messages.Add($UserMessage) | out-null
         #endregion
 
         #region Send $Dialog.Messages to Convert-DialogToBody:
@@ -1968,18 +1985,16 @@ process {
         $AssistantMessage.Content = "$LMOutput"
         #endregion
 
-        #region Append both messages to the Dialog:
-        $Dialog.Messages.Add($UserMessage) | out-null
+        #region Append the response to the Dialog::
         $Dialog.Messages.Add($AssistantMessage) | out-null
         #endregion
 
         #region Update and Save Dialog File
         $Dialog.Info.Modified = $AssistantMessage.TimeStamp
         If ($DialogFileExists){$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
-
-
+        
     }
-    until ($BreakDialog = $True)
+    until ($BreakDialog -eq $True)
 }
 
 end {
