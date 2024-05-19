@@ -803,7 +803,7 @@ function Update-LMHistoryFile { #Complete
         
             If ($HistoryFileCheck -ne $True){throw "Something went wrong when running Confirm-LMGlobalVariables (didn't return True)"}
         
-            $FilePath = $Global:LMStudioVars.FIlePaths.HistoryFilePath
+            $FilePath = $Global:LMStudioVars.FilePaths.HistoryFilePath
     
         }
         
@@ -1764,7 +1764,7 @@ begin {
             If ($null -ne $Settings.temperature){$Temperature = ([double]($Settings.temperature))}
             Else {$Temperature = 0.7} #Default
             
-            If ($null -ne $Settings.max_tokens){$Temperature = ([int]($Settings.max_tokens))}
+            If ($null -ne $Settings.max_tokens){$MaxTokens = ([int]($Settings.max_tokens))}
             Else {$MaxTokens = -1} #Default
 
             If ($null -ne $Settings.ContextDepth){$ContextDepth = ([int]($Settings.ContextDepth))}
@@ -1871,7 +1871,7 @@ begin {
                 } #Close SkipSavePrompt Not Present
                 Else {
                     $DialogFileExists = $False
-                    Write-Warning "Dialog file not saved to file. In the User prompt, enter ':Save'to try to save again."
+                    Write-Warning "Dialog file not saved to file. In the User prompt, enter ':Save'to save."
                 }
 
                 } #Close Case $False
