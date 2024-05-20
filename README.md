@@ -91,7 +91,7 @@ And tah-duh! **\-ResumeChat** will be fully integrated into the **:main** loop a
 
 **⬜️** Add **$Global:LMStudioVars.ChatSettings.SystemPrompt** variable to make this value easilysettable/persistent.
 
-**⬜️** Write **Get-LMSystemPrompt**
+**⬜️** Write **Get-LMSystemPrompt** (Involves more file-handling, likely CSVs.
 
 **⬜️**Integrate **Get-LMSystemPrompt**  into **Start-LMChat**, and possibly **New-LMConfig**.
 
@@ -108,6 +108,8 @@ And tah-duh! **\-ResumeChat** will be fully integrated into the **:main** loop a
 💡 If the History File starts to become too big, I could figure out a way to break it out into files/folders.
 
 ⬜️ Check my functions, and identify which have never been used by any other function.
+
+⬜️ Get a start on how the **Start-LMChat** prompt is going to handle option (**:**) inputs. I could outsource it to another function, we'll see.
 
 ---
 
