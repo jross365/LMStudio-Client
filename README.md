@@ -31,6 +31,8 @@ Please see my **development journal** below to follow my progress!
 
 **✅ - Feature/Improvement Complete**
 
+**💡 - Idea**
+
 ---
 
 ### 05/19/2024
@@ -50,6 +52,62 @@ The **Select-LMHistoryEntry** function hints at the ⬜️ **Repair-LMHistoryFil
 ⬜️ Sort out History File handling in **Start-LMChat**
 
 ⬜️ Integrate the **ChatInfo.SystemPrompt** field into the Configuration file
+
+**Follow-Up:**
+
+I spent quite a bit of time today (3-4 hours) working on the dialog file and history file interactions, and ironing out history file entries and trying to guarantee history accuracy for non-edge cases. I'm not perfectly confident, but I _think_ it's working as intended.
+
+After doing some work on the **\-ResumeChat** support (And the **Select-LMHistoryEntry** integration), I was able to make the Dialog file read-in and presentation work as intended. It displays the **You:**/**AI:** prompts, replayed back as they were received.
+
+💡 (I would like to modulate the replay speed (_in the same way that I do with the **Get-LMBlob** -**StreamSim** parameter, to give it some aesthetic consistency_).
+
+**I now have the problem** that the Dialog file import types everything as fixed-length arrays. The consequence is that when the LLM response is received, the :main do loop can't append to the $Dialog.Messages sub-array.
+
+It's causing a problem here:
+
+![](/Docs/images/$Dialog.Messages.png)
+
+Resulting in **this error:**
+
+`MethodInvocationException:`  
+`Line |`  
+`2101 |          $Dialog.Messages.Add($UserMessage) | out-null`  
+`|          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`  
+`| Exception calling "Add" with "1" argument(s): "Collection was of a fixed size."`
+
+**The solution**: I don't need to understand exactly how this error is manifesting (_getting into the **Convert-LMDialogToBody** function, and how it works)_ to solve this problem.
+
+**🚧 Import-LMDialogFile** will Spawn a dialog template, copy all of the **$Dialog** array data into the (_non-fixed size_) ArrayLists, and then return the re-provisioned and non-fixed object. This will make the **Convert-LMDialogToBody** function work properly.
+
+Once that function works as intended (and it shouldn't be difficult to write), I can put that in place of **Line 1963:**
+
+`try {$Dialog = Get-Content $DialogFilePath -ErrorAction Stop | ConvertFrom-Json -Depth 5 -ErrorAction Stop}`
+
+`catch {throw $_.Exception.Message}`
+
+And tah-duh! **\-ResumeChat** will be fully integrated into the **:main** loop algorithm. Then History File and Dialog file integration will be complete!
+
+#### After I'm over that small hurdle, these are my next priorities:
+
+**⬜️** Add **$Global:LMStudioVars.ChatSettings.SystemPrompt** variable to make this value easilysettable/persistent.
+
+**⬜️** Write **Get-LMSystemPrompt**
+
+**⬜️**Integrate **Get-LMSystemPrompt**  into **Start-LMChat**, and possibly **New-LMConfig**.
+
+💡 Setting/changing the system prompt should be done via a function called **Set-LMSystemPrompt,** and adding/removing a prompt should be done via **Add-LMSystemPrompt.**
+
+💡 Though I may consolidate all of the features into a single function, we'll see.
+
+⬜️ Separate out Public and Private functions, though I might wait until I'm ready to hard-test it.
+
+⬜️ Read about how queuing works with the webserver, and update **Invoke-LMStream** and **Invoke-LMBlob** if they don't/won't work with it. (_It might work just fine now, we'll see._)
+
+⬜️ Integrate **Invoke-LMSaveOrOpenUI** where-ever files are being saved or opened (for name/path validation)
+
+💡 If the History File starts to become too big, I could figure out a way to break it out into files/folders.
+
+⬜️ Check my functions, and identify which have never been used by any other function.
 
 ---
 
@@ -94,9 +152,9 @@ I wrote the DIalog => Body function,(**Convert-LMDialogToBody**) and it's one of
 
 **Priorities:**
 
-⬜️ Add **$Global:LMStudioVars.ChatSettings.SystemPrompt** variable to make this value easilysettable/persistent.
+**\[moved\]** Add **$Global:LMStudioVars.ChatSettings.SystemPrompt** variable to make this value easilysettable/persistent.
 
-⬜️ Chase down **Update-HistoryFile**, **Import-HistoryFile,** work out how to save the key Dialog information to the History File
+**✅** Chase down **Update-HistoryFile**, **Import-HistoryFile,** work out how to save the key Dialog information to the History File
 
 ---
 
@@ -112,9 +170,9 @@ Out of curiosity, I used ChatGPT to generate a non-obsolete version of the C# cl
 
 I will use the **Out-Gridview** functionality to make it easy to:
 
-⬜️  Resume a previous conversation (using the History File)
+**✅**  Resume a previous conversation (using the History File)
 
-⬜️  Select a System Prompt (from a statically defined list of system prompts, exported from LM Studio).
+**\[Moved\]**  Select a System Prompt (from a statically defined list of system prompts, exported from LM Studio).
 
 I'm also not happy with my **Get-LMGreeting** prompt generator. Functionally, it's perfect; but ⬜️  I need better prompts and questions.
 
@@ -135,7 +193,7 @@ I've begun shaping the parameters for **Start-LMChat**, which will be rewritten 
 - I've added a **\-ResumeChat** parameter, exclusive to the **\-UseConfig** parameter.
   - The reason I made this choice is because making **Start-LMChat** capable of picking up the History File makes the Config pointless.
   - ⬜️ A future accommodation (_via perhaps a typical Windows browse form_) might be made.
-- I've added a -**Lite** parameter to send single, unrecorded prompt to the server, where you receive a single response back.
+- **❌** I've added a -**Lite** parameter to send single, unrecorded prompt to the server, where you receive a single response back.
   - **❌** Greetings will be turned off with this feature, and cannot be turned on.
   - I would like to create a function that only responds (or does anything) if **$Global:LMStudioVars** is provisioned
     - This function would pass the **Start-LMChat** function a set of parameters, pulled from **Global:LMChatLite**
@@ -182,7 +240,7 @@ I got a lot of things done today: created all of the Config entries I could ever
 
 ⬜️ Mark-down might be a neat thing to experiment with, particularly for the **New-Config** prompts as well as verbose check results.
 
-**Get-LMGreeting** works perfectly, and ⬜️I need to finish incorporating it into the **Start-LMChat** function.
+**Get-LMGreeting** works perfectly, and **✅**I need to finish incorporating it into the **Start-LMChat** function.
 
 ---
 
@@ -289,7 +347,7 @@ Doing documentation, clean-up and identifying missing functions today. Might bre
 
 **Some Ideas:**
 
-⬜️ I can separate out Public and Private functions, and provide a Module Parameter to [expose all functions (for an advanced user)](https://stackoverflow.com/questions/36897511/powershell-module-pass-a-parameter-while-importing-module)
+**\[Moved\]** I can separate out Public and Private functions, and provide a Module Parameter to [expose all functions (for an advanced user)](https://stackoverflow.com/questions/36897511/powershell-module-pass-a-parameter-while-importing-module)
 
 ✅ I can combine all of my object (template) creations into a single function (simplification)
 

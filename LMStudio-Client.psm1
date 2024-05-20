@@ -1808,7 +1808,7 @@ function Select-LMHistoryEntry {
     
         $HistoryEntries | ForEach-Object {$HistoryData.Add($_) | out-null}
     
-        $HistoryData += ([pscustomobject]@{"Created" = "Select"; "Modified" = "this"; "Title" = "entry"; "Opener" = "to"; "FilePath" = "Cancel"})
+        $HistoryData += ([pscustomobject]@{"Created" = "Select this entry"; "Modified" = "to Cancel"; "Title" = ""; "Opener" = ""; "FilePath" = ""})
     
         $Selection = $HistoryData | Out-GridView -Title "Select a Chat Dialog" -OutputMode Single
 
@@ -1817,7 +1817,7 @@ function Select-LMHistoryEntry {
         
         If (($Selection.Created -eq 'Select' -and $Selection.Modified -eq 'this' -and $Selection.FilePath -eq 'Cancel') -or $null -eq $Selection){throw "Chat selection cancelled"}
 
-        $DialogFilePath = "$($HistoryFile.TrimEnd('.index'))" + "$($Selection.FilePath)"
+        $DialogFilePath = "$($HistoryFile.TrimEnd('.index'))" + '-DialogFiles\' + "$($Selection.FilePath.Split('\')[1])"
 
         switch ((Test-Path $DialogFilePath)){
 
@@ -1938,18 +1938,15 @@ begin {
                 }
                 
                 #Open a GridView selector from the history file
-                try {$ChosenDialog = Select-LMHistoryEntry -HistoryFile $HistoryFile}
+                try {$DialogFilePath = Select-LMHistoryEntry -HistoryFile $HistoryFile}
                 catch {throw "Dialog selection error: $($_.Exception.Message)"}
 
-                #Removed the If/Else that was here: Select-LMHistoryEntry handles file validation
-                $DialogFilePath = $ChosenDialog.FilePath
-    
                 #Otherwise: Read the contents of the chosen Dialog file
                 try {$Dialog = Get-Content $DialogFilePath -ErrorAction Stop | ConvertFrom-Json -Depth 5 -ErrorAction Stop}
                 catch {throw $_.Exception.Message}
 
-                #If we made it this far, Let's set $NewFile
-                $NewFile = $False
+                #If we made it this far, Let's set $Greeting and $DialogFIleExists
+                $Greeting = $False
                 $DialogFileExists = $True
 
         } #Close Case $True
@@ -2020,7 +2017,8 @@ begin {
         If ($SystemPrompt -eq "Cancelled" -or $null -eq $SystemPrompt -or $SystemPrompt.Length -eq 0){$SystemPrompt = "Please be polite, concise and informative."} 
     
     }
-    Else {$SystemPrompt = "Please be polite, concise and informative."} #Set to "default"    
+    Else {$SystemPrompt = "Please be polite, concise and informative."} #Set to "default" - Need to move this out to $Global:LMGlobalVars
+
     #endregion
 
     #region Initiate Greeting
@@ -2054,6 +2052,34 @@ process {
     $BodySettings.Add('max_tokens', $MaxTokens)
     $BodySettings.Add('stream', $Stream)
     $BodySettings.Add('SystemPrompt', $SystemPrompt)
+
+    If ($ResumeChat.IsPresent){ #Play the previous conversation back to the 
+
+        $Dialog.Messages.Foreach({
+
+            $Message = $_
+
+            If ($Message.Role -match 'user|assistant'){
+            
+                If ($Message.Role -eq "user"){
+                    $Color = "Green"
+                    $Title = "You: "
+                }
+                
+                If ($Message.Role -eq "assistant"){
+                    $Color = "Magenta"
+                    $Title = "AI: "
+                }
+
+                Write-Host "$Title" -ForegroundColor $Color -NoNewline
+                Write-Host "$($Message.Content)" #Opportunity for Markdown here
+                Write-Host ""
+
+            }
+
+        })
+
+    }
 
     #The magic is here:
 :main do { 
