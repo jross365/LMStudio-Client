@@ -319,7 +319,7 @@ function Import-LMConfig { #Complete
 begin {
     
     #region Import config file
-    try {$ConfigData = Get-Content $ConfigFile -ErrorAction Stop | ConvertFrom-Json -Depth 3 -ErrorAction Stop}
+    try {$ConfigData = Get-Content $ConfigFile -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop}
     catch {throw $_.Exception.Message}
     #endregion
 
@@ -577,7 +577,7 @@ function Get-LMTemplate { #Complete
 
             }
 
-                $Object = $Object | ConvertFrom-Json -Depth 3
+                $Object = $Object | ConvertFrom-Json
 
         }
         {$_ -ieq "ManualChatSettings"}{
@@ -732,7 +732,7 @@ function Import-LMHistoryFile { #Complete
         #endregion
 
         #region Import the History file
-        try {$HistoryContent = Get-Content $FilePath -ErrorAction Stop | ConvertFrom-Json -Depth 4 -ErrorAction Stop}
+        try {$HistoryContent = Get-Content $FilePath -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop}
         catch {throw "Unable to import history file $FilePath : $($_.Exception.Message))"}
         #endregion
 
@@ -984,7 +984,7 @@ function Import-LMChatDialog (){
     #The general idea:
 $DialogTemplate = Get-LMTemplate -Type ChatDialog
 
-$DialogContents = Get-Content $DialogFile | ConvertFrom-Json -depth 4
+$DialogContents = Get-Content $DialogFile | ConvertFrom-Json
 
 $MessageContents = $DialogContents.Messages | ConvertFrom-Csv
 
@@ -1961,7 +1961,7 @@ begin {
                 catch {throw "Dialog selection error: $($_.Exception.Message)"}
 
                 #Otherwise: Read the contents of the chosen Dialog file
-                try {$Dialog = Get-Content $DialogFilePath -ErrorAction Stop | ConvertFrom-Json -Depth 5 -ErrorAction Stop}
+                try {$Dialog = Get-Content $DialogFilePath -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop}
                 catch {throw $_.Exception.Message}
 
                 #If we made it this far, Let's set $Greeting and $DialogFIleExists
@@ -2170,9 +2170,16 @@ process {
             If ($DialogFileExists){
             
                 try {Update-LMHistoryFile -FilePath $HistoryFile -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
-                catch {
-                    Write-Warning "Unable to append Dialog updates to History file; Disabling file-saving (:Save to recreate a Dialog file)"
-                    $DialogFileExists = $False
+                catch { #Sleep and then try once more, in case we're stepping on our own feet (multiple)
+                    
+                    Start-Sleep -Seconds 2
+
+                    try {Update-LMHistoryFile -FilePath $HistoryFile -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
+                    catch {
+                    
+                        Write-Warning "Unable to append Dialog updates to History file; Disabling file-saving (:Save to recreate a Dialog file)"
+                        $DialogFileExists = $False
+                    }
                 }
 
             }
