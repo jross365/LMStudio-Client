@@ -743,12 +743,31 @@ function Import-LMHistoryFile { #Complete
     process {
     
         $HistoryColumns = (Get-LMTemplate -Type HistoryEntry).psobject.Properties.Name
-        $FileColumns = $HistoryContent.psobject.Properties.name
+        
+        If ($HistoryContent.Count -eq 1){
 
-        $ColumnComparison = Compare-Object -ReferenceObject $HistoryColumns -DifferenceObject $FileColumns
+            $FileColumns = $HistoryContent.psobject.Properties.Name
+            $ColumnComparison = Compare-Object -ReferenceObject $HistoryColumns -DifferenceObject $FileColumns
 
-        If ($ColumnComparison.Count -eq 0){$ValidContents = $True}
-        If ($ColumnComparison.Count -gt 0){$ValidContents = $False}
+            If ($ColumnComparison.Count -eq 0){$ValidContents = $True}
+            If ($ColumnComparison.Count -gt 0){$ValidContents = $False}
+
+        }
+        If ($HistoryContent.Count -gt 1){
+
+            $ValidContents = $True
+
+            Foreach ($Entry in $HistoryContent){
+                
+                $FileColumns = $Entry.psobject.Properties.Name
+
+                $ColumnComparison = Compare-Object -ReferenceObject $HistoryColumns -DifferenceObject $FileColumns
+
+                If ($ColumnComparison.Count -gt 0){$ValidContents = $False}
+
+            }
+
+        }
 
     #region If not a test, move over content from Fixed-Length arrays to New ArrayLists:
     If (!($AsTest.IsPresent)){
