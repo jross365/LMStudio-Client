@@ -896,6 +896,25 @@ function Update-LMHistoryFile { #Complete, requires testing
 
 }
 
+#$This function imports a dialog file, converts it to a non-fixed sized format [array => arraylist], and then returns it
+function Import-LMDialogFile {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$false)]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [string]$FilePath,
+
+        [Parameter(Mandatory=$false)][switch]$AsTest
+        )
+
+begin {}
+
+process {}
+
+end {}
+
+}
+
 #This function retrieves the model information from the server.
 #It can also be used as a connection test with the -AsTest parameter
 function Get-LMModel {
@@ -1641,7 +1660,7 @@ end {
 }
 
 #This function presents a selection prompt (Out-Gridview) for the system prompt
-function Get-LMSystemPrompts {} #Not started
+function Get-LMSystemPrompt {} #Not started
 
 
 #This function consumes a Dialog, and returns a fully-furnished $Body object
@@ -2012,7 +2031,7 @@ begin {
     #region -ChooseSystemPrompt triggers System Prompt selector (FUNCTION NOT BUILT YET)
     If ($ChooseSystemPrompt.IsPresent){
     
-        $SystemPrompt = Get-LMSystemPrompts
+        $SystemPrompt = Get-LMSystemPrompt
     
         If ($SystemPrompt -eq "Cancelled" -or $null -eq $SystemPrompt -or $SystemPrompt.Length -eq 0){$SystemPrompt = "Please be polite, concise and informative."} 
     
