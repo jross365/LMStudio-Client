@@ -900,18 +900,80 @@ function Update-LMHistoryFile { #Complete, requires testing
 function Import-LMDialogFile {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$false)]
-        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [Parameter(Mandatory=$true)]
+        [ValidateScript({ if (!(Test-Path -Path $_)) { throw "Dialog file path does not exist" } else { $true } })]
         [string]$FilePath,
 
         [Parameter(Mandatory=$false)][switch]$AsTest
         )
 
-begin {}
+begin {
 
-process {}
+    $DialogTemplate = Get-LMTemplate -Type ChatDialog
 
-end {}
+    try {$Dialog = Get-Content $FilePath -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop}
+    catch {throw "Unable to read $FilePath : $($_.Exception.Message)"}
+
+}
+
+process { 
+    
+    $IsValid = $True
+
+    #A fancier way of "hard coding" property paths
+    $TemplateKeys = @("Info")
+
+    $BadKeys = New-Object System.Collections.ArrayList
+
+    foreach ($Key in $TemplateKeys){
+       
+        switch ($DialogTemplate.$Key.GetType().Name){
+
+            {$_ -eq "ArrayList"}{$KeyProperties = ($DialogTemplate.$Key | Get-Member -MemberType NoteProperty).Name}
+            {$_ -eq "HashTable"}{$KeyProperties = $DialogTemplate.$Key.GetEnumerator().Name}
+
+        }
+
+        :ploop Foreach ($Property in $KeyProperties){
+            
+            If ($DialogTemplate.$Key.$Property.GetType().Name -imatch 'Array|hash'){continue ploop} #Check these in a second loop
+
+            If ($null -eq $Dialog.$Key.$Property){
+                
+                $IsValid = $False; 
+                $BadKeys.Add("$Key.$Property") | Out-Null
+                continue ploop
+            
+            }
+            Else {$DialogTemplate.$Key.$Property = $Dialog.$Key.$Property}
+
+        }
+
+    }
+    
+    $DialogTemplate.Messages = New-Object System.Collections.ArrayList
+    Foreach ($Message in $Dialog.Messages){$DialogTemplate.Messages.Add($Message) | out-null}
+
+    $DialogTemplate.Info.Tags = New-Object System.Collections.ArrayList
+    Foreach ($Tag in $Dialog.Info.Tags){$DialogTemplate.Info.Tags.Add($Tag) | out-null}
+}
+
+end {
+
+    switch ($AsTest.IsPresent){
+
+        $True {return ([boolean]$IsValid)}
+
+        $False {
+
+            If ($IsValid){return $DialogTemplate}
+            Else {throw "Missing values in keys: $($BadKeys -join '; ')"}
+
+        }
+
+    }
+
+}
 
 }
 
@@ -975,18 +1037,6 @@ function Get-LMModel {
         $False {return $Model}
 
     }
-
-}
-
-#This function imports a chat dialog from a dialog file (used for "continuing a conversation")
-function Import-LMChatDialog (){
-
-    #The general idea:
-$DialogTemplate = Get-LMTemplate -Type ChatDialog
-
-$DialogContents = Get-Content $DialogFile | ConvertFrom-Json
-
-$MessageContents = $DialogContents.Messages | ConvertFrom-Csv
 
 }
 
@@ -1359,13 +1409,6 @@ namespace LMStudio
     $jobOutput.Dispose()
       
     } #Close $StreamJob
-
-    $KillProcedure = {
-            
-        if (!($KeepJob.IsPresent)){Stop-Job -Id ($RunningJob.id) -ErrorAction SilentlyContinue; Remove-job -Id ($RunningJob.Id) -ErrorAction SilentlyContinue}
-        If (!($KeepFile.IsPresent)){Remove-Item $File -Force -ErrorAction SilentlyContinue}
-
-    }
     
     #Send the right parameters to let the old C# code run:
     $PSVersion = "$($PSVersionTable.PSVersion.Major)" + '.' + "$($PSVersionTable.PSVersion.Minor)"
@@ -1373,6 +1416,13 @@ namespace LMStudio
     if ($PSVersion -match "5.1"){$RunningJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File)}
     elseif ($PSVersion -match "7.") {$RunningJob = Start-Job -ScriptBlock $StreamJob -ArgumentList @($CompletionURI,$Body,$File) -PSVersion 5.1}
     else {throw "PSVersion $PSVersion doesn't match 5.1 or 7.x"}
+
+    $KillProcedure = {
+            
+        if (!($KeepJob.IsPresent)){Stop-Job -Id ($RunningJob.id) -ErrorAction SilentlyContinue; Remove-job -Id ($RunningJob.Id) -ErrorAction SilentlyContinue}
+        If (!($KeepFile.IsPresent)){Remove-Item $File -Force -ErrorAction SilentlyContinue}
+
+    }
 
     #To store our return output
     $MessageBuffer = ""
@@ -1465,7 +1515,9 @@ end {
     If (!($Interrupted)){
         
         &$KillProcedure
-        return $MessageBuffer}
+        return $MessageBuffer
+    }
+    Else {return "[stream_interrupted]"}
 
     Write-Host ""
 
@@ -1780,7 +1832,7 @@ function Convert-LMDialogToHistoryEntry { #Complete
     $HistoryEntry.Modified = $DialogObject.Info.Modified
     $HistoryEntry.Model = $DialogObject.Info.Model
 
-    $Opener = $DialogObject.Messages.Where({$_.Role -eq "user"}) | Select-Object -First 1
+    $Opener = $DialogObject.Info.Opener
     
     If ($null -ne $Opener){$HistoryEntry.Opener = $Opener.Content}
     Else {$Opener = "Unset"} #Not likely to encounter this
@@ -1961,7 +2013,7 @@ begin {
                 catch {throw "Dialog selection error: $($_.Exception.Message)"}
 
                 #Otherwise: Read the contents of the chosen Dialog file
-                try {$Dialog = Get-Content $DialogFilePath -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop}
+                try {$Dialog = Import-LMDialogFile -FilePath $DialogFilePath -ErrorAction Stop}
                 catch {throw $_.Exception.Message}
 
                 #If we made it this far, Let's set $Greeting and $DialogFIleExists
@@ -2053,17 +2105,9 @@ begin {
 
 process {
     
-    #Key File Management Variables:
-    #$NewFile          # Indicates we have a brand new file from a template (May/may not need this)
-    #$DialogFileExists # Whether opening an existing dialog or creating a new one, this confirms the file is valid
-    #$DialogFilePath   # The 
-
     $BreakDialog = $False
+    $OpenerSet = $False
 
-    #05/18/2024:
-    # For all-new files, I think preloading the do/until loop with the initial request, and creating a provisioned Dialog object
-    # would do a lot to simplify the order of how things need to go.
-    
     #Set $BodySettings for use with Convert-LMDialogToBody:
     $BodySettings = @{}
     $BodySettings.Add('model',$Model)
@@ -2120,6 +2164,13 @@ process {
         $Dialog.Messages.Add($UserMessage) | out-null
         #endregion
 
+        #region Set Opener
+        If (($OpenerSet -eq $False) -and (!($ResumeChat.IsPresent))){
+            $Dialog.Info.Opener = $UserInput
+            $OpenerSet = $True
+        }
+        #endregion
+
         #region Send $Dialog.Messages to Convert-DialogToBody:
         $Body = Convert-LMDialogToBody -DialogMessages ($Dialog.Messages) -ContextDepth $ContextDepth -Settings $BodySettings
         #endregion
@@ -2136,6 +2187,8 @@ process {
 
         Write-Host ""
 
+        If ($LMOutput -eq "[stream_interrupted]"){continue main}
+
         #region Construct the assistant Dialog message and append to the Dialog:
         $AssistantMessage = Get-LMTemplate -Type DialogMessage
         
@@ -2148,6 +2201,7 @@ process {
         $AssistantMessage.Content = "$LMOutput"
         #endregion
 
+        
         #region Append the response to the Dialog::
         $Dialog.Messages.Add($AssistantMessage) | out-null
         #endregion
@@ -2155,7 +2209,7 @@ process {
         #region Update Dialog Object
         $Dialog.Info.Modified = $AssistantMessage.TimeStamp
         #endregion
-        
+
         #region Update Dialog File, History File
         If ($DialogFileExists){
 

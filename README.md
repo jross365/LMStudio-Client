@@ -35,6 +35,16 @@ Please see my **development journal** below to follow my progress!
 
 ---
 
+### 05/20/2024
+
+I Successfully integrated the **Import-LMDialogFile** function to make "picking up" the conversation work. History file writing and dialog retention is now working as it should.
+
+**💡** I might add a kind of "break line" in the messages to indicate the model and date has changed, and that the conversation was picked back up.
+
+⬜️ In addition to the "**SystemPrompt**" variable, I want to add a **MarkDown** variable as well. This will be useful when it comes time to implement MarkDown with PS7.
+
+---
+
 ### 05/19/2024
 
 Put together the following functions:
@@ -49,7 +59,7 @@ The **Select-LMHistoryEntry** function hints at the ⬜️ **Repair-LMHistoryFil
 
 ⬜️ Integrate the two new functions into **Start-LMChat**
 
-⬜️ Sort out History File handling in **Start-LMChat**
+**✅** Sort out History File handling in **Start-LMChat**
 
 ⬜️ Integrate the **ChatInfo.SystemPrompt** field into the Configuration file
 
