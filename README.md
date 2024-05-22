@@ -1,5 +1,7 @@
 # LMStudio-Client
 
+![](/Docs/images/alpacas-prompt.gif)
+
 This project is to develop a full-featured, capable PowerShell 5 and PowerShell 7 LMStudio client.
 
 This client interfaces with the LMStudio Web Server, allowing a user to use LMStudio from a remote workstation.
@@ -15,7 +17,7 @@ This client interfaces with the LMStudio Web Server, allowing a user to use LMSt
 
 This module is being built and improved upon, and features are implemented as they're discovered.
 
-Please see my **development journal** below to follow my progress!
+This project isn't complete, and as of this writing the module isn't anywhere close to complete (_05/21/2024_). Please see my **development journal** below to follow my progress!
 
 ---
 
