@@ -793,6 +793,94 @@ function Import-LMHistoryFile { #Complete
 
 #This function reads the contents of a dialog folder, and rebuilds a history file from the contents
 function Repair-LMHistoryFile {
+    param (
+    [Parameter(Mandatory=$False)]
+    [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+    [string]$FilePath,
+
+    [Parameter(Mandatory=$False)]
+    [switch]$WriteProgress
+    )
+
+    begin {
+            #region Check history file location in global variables, or use provided FilePath
+            If (!($PSBoundParameters.ContainsKey('FilePath'))){
+    
+            If ((Confirm-LMGlobalVariables -ReturnBoolean) -ne $True){throw "Global:LMStudioVars variables don't seem to be correct."}
+        
+            $FilePath = $Global:LMStudioVars.FilePaths.HistoryFilePath
+            $DirectoryPath = $Global:LMStudioVars.FilePaths.DialogFolderPath
+    
+            }
+            Else {$DirectoryPath = $FilePath.TrimEnd('.index') + "-DialogFiles"}
+
+            If (!(Test-Path $DirectoryPath)){throw "'Dialog files' folder is not valid or accessible ($DirectoryPath)"}
+            #endregion
+
+            $DialogFiles = Get-ChildItem -Path $DirectoryPath -File -Filter *.dialog
+
+            If ($DialogFiles.Count -eq 0){throw "Folder $DirectoryPath does not contain any .dialog files"}
+    }
+
+    process {
+
+        $Succeeded = 0
+        $ImportFailed = 0
+        $UpdateFailed = 0
+        $FileCount = $DialogFiles.Count
+        $CurrentOne = 0
+
+        If (Test-Path $FilePath){Move-Item $FilePath -Destination "$FilePath.old"}
+
+        Get-LMTemplate -Type HistoryEntry | ConvertTo-Json | Out-File -FilePath $FilePath
+
+        :dfloop foreach ($File in $DialogFiles){
+
+            $CurrentOne++
+
+            if ($WriteProgress.IsPresent){Write-Progress -Activity "Importing Dialog Files" -Status "$($File.Name)" -PercentComplete ([int](($CurrentOne / $FileCount) * 100))}
+
+            try {$Dialog = Import-LMDialogFile -FilePath ($File.FullName)}
+            catch {
+
+                $ImportFailed++
+                $FileCount++
+                coninue dfloop
+
+            }
+
+            try {Update-LMHistoryFile -FilePath $FilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $($File.FullName))}
+            catch {
+            
+                $UpdateFailed++
+                $FileCount++
+                continue dfloop
+
+                }
+
+            $Succeeded++
+
+        }
+
+        Write-Progress -Activity "Importing Dialog Files" -Completed
+
+    }
+
+    end {
+
+        if ($Succeeded.Count -eq 0){Write-Error "Repair failed: unable to import any dialog files in $DirectoryPath"}
+
+        ElseIf ($Succeeded.Count -gt 0 -and ($ImportFailed.Count -gt 0 -or $UpdateFailed -gt 0)){
+
+            Write-Warning "Import succeeded: $Succeeded, Import failed: $ImportFailed, History file update failed: $UpdateFailed"
+
+        }
+        
+        Else {Write-Host "Import succeeded for all $Succeeded files. History File repair complete"}
+
+        Remove-Item "$FilePath.old" -ErrorAction SilentlyContinue
+
+    }
 
 }
 
@@ -806,7 +894,11 @@ function Update-LMHistoryFile { #Complete, requires testing
         
         [Parameter(Mandatory=$False)]
         [ValidateScript({ if (!(Test-Path -Path $_)) { throw "History file path does not exist" } else { $true } })]
-        [string]$FilePath
+        [string]$FilePath,
+        
+        [Parameter(Mandatory=$False)]
+        [switch]$ReturnAsObject
+
     )
 
     begin {
@@ -889,8 +981,12 @@ function Update-LMHistoryFile { #Complete, requires testing
         #If we have 2+ 'real' entries, we don't need the dummy values anymore to preserve the array structure in JSON:
         If ($History.Where({$_.Created -ne 'dummyvalue'}).Count -ge 2){$History = $History.Where({$_.Created -ne 'dummyvalue'})}
 
-        try {$History | Sort-Object Modified -Descending | ConvertTo-Json -Depth 10 -ErrorAction Stop | Out-File -FilePath $FilePath -ErrorAction Stop}
-        catch {throw "[Update-LMHistoryFile] : Unable to save history to File Path: $($_.Exception.Message)"}
+        If (!($ReturnAsObject.IsPresent)){
+            try {$History | Sort-Object Modified -Descending | ConvertTo-Json -Depth 10 -ErrorAction Stop | Out-File -FilePath $FilePath -ErrorAction Stop}
+            catch {throw "[Update-LMHistoryFile] : Unable to save history to File Path: $($_.Exception.Message)"}
+        }
+
+        Else {return ($History | Sort-Object Modified -Descending)}
 
     }
 
@@ -1815,6 +1911,9 @@ function Convert-LMDialogToBody {
 
 #This function intakes a Dialog object, and returns a History File entry object
 #Doesn't require a lot of fanciness, or much validation
+#This function is an odd duck, because I have the path (which is all I need) but I specify the $DialogObject anyway.
+#The reason it does this is because of the way I needed to implement it: it needs the path for the history entry,
+#not because it needs to read the file (it already has the contents)
 function Convert-LMDialogToHistoryEntry { #Complete
     [CmdletBinding()]
     param (
@@ -1879,14 +1978,14 @@ function Select-LMHistoryEntry {
     
         $HistoryEntries | ForEach-Object {$HistoryData.Add($_) | out-null}
     
-        $HistoryData += ([pscustomobject]@{"Created" = "Select this entry"; "Modified" = "to Cancel"; "Title" = ""; "Opener" = ""; "FilePath" = ""})
+        $HistoryData += ([pscustomobject]@{"Created" = "Select this entry to Cancel"; "Modified" = ""; "Title" = ""; "Opener" = ""; "FilePath" = ""})
     
         $Selection = $HistoryData | Out-GridView -Title "Select a Chat Dialog" -OutputMode Single
 
     }
     end {
         
-        If (($Selection.Created -eq 'Select' -and $Selection.Modified -eq 'this' -and $Selection.FilePath -eq 'Cancel') -or $null -eq $Selection){throw "Chat selection cancelled"}
+        If ($Selection.Created -eq 'Select this entry to Cancel' -or $null -eq $Selection){throw "Chat selection cancelled"}
 
         $DialogFilePath = "$($HistoryFile.TrimEnd('.index'))" + '-DialogFiles\' + "$($Selection.FilePath.Split('\')[1])"
 

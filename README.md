@@ -37,11 +37,49 @@ Please see my **development journal** below to follow my progress!
 
 ### 05/20/2024
 
+**✅** Completed and tested **Repair-LMHistoryFile**, which effectively rebuilds the History File from scratch. Works pretty well.
+
+This is a consolidated list of the work to do:
+
+\*Add the following variables to the Config File: ⬜️ **ChatInfo.SystemPrompt,** ⬜️ **ChatInfo.MarkDown**
+
+⬜️ Implement MarkDown into **Invoke-LMStream** and **Invoke-LMBlob**
+
+**⬜️** Write **Get-LMSystemPrompt** (Involves more file-handling)
+
+**⬜️**Integrate **Get-LMSystemPrompt**  into **Start-LMChat**, and possibly **New-LMConfig**.
+
+⬜️ Separate out Public and Private functions (second-to-last thing to do)
+
+⬜️ Integrate **Invoke-LMSaveOrOpenUI** where-ever files are being saved or opened (for name/path validation)
+
+⬜️ Check my functions, and identify which have never been used by any other function.
+
+⬜️ Get a start on how the **Start-LMChat** prompt is going to handle option (**:**) inputs. Maybe this should be an auxiliary function
+
+⬜️ Write a small console script that prompts for a "y/N" answer. (_Or a message box)_
+
+⬜️ Go through my functions list and add/strike things off of the list.
+
+⬜️ Better prompts and questions for the greeting generator.
+
+⬜️ I can add parameters to Show-LMHelp to give details for each parameter
+
+⬜️ Write **Get-LMResponse** (single-response query, no console output).
+
+My work's cut out for me. If I can complete one or two of these a day, I'll be a pretty closed to ready to make it public.
+
+Cheers!
+
+---
+
+### 05/20/2024
+
 I Successfully integrated the **Import-LMDialogFile** function to make "picking up" the conversation work. History file writing and dialog retention is now working as it should.
 
 **💡** I might add a kind of "break line" in the messages to indicate the model and date has changed, and that the conversation was picked back up.
 
-⬜️ In addition to the "**SystemPrompt**" variable, I want to add a **MarkDown** variable as well. This will be useful when it comes time to implement MarkDown with PS7.
+**\[moved\]** In addition to the "**SystemPrompt**" variable, I want to add a **MarkDown** variable as well. This will be useful when it comes time to implement MarkDown with PS7.
 
 ---
 
@@ -53,15 +91,15 @@ Put together the following functions:
 
 **✅ Select-LMHistoryEntry :** This reads and parses the History file, and uses **Out-GridView** to present the contents for continuation of a previous dialog.
 
-The **Select-LMHistoryEntry** function hints at the ⬜️ **Repair-LMHistoryFile** function, which still needs to be written. It's functionally simple, it'll use the **Convert-LMDialogToHistoryEntry** function to read every Dialog file and reassemble the History File.
+The **Select-LMHistoryEntry** function hints at the **✅** **Repair-LMHistoryFile** function, which still needs to be written. It's functionally simple, it'll use the **Convert-LMDialogToHistoryEntry** function to read every Dialog file and reassemble the History File.
 
 **Today I need to:**
 
-⬜️ Integrate the two new functions into **Start-LMChat**
+**✅** Integrate the two new functions into **Start-LMChat**
 
 **✅** Sort out History File handling in **Start-LMChat**
 
-⬜️ Integrate the **ChatInfo.SystemPrompt** field into the Configuration file
+**\[Moved\]** Integrate the **ChatInfo.SystemPrompt** field into the Configuration file
 
 **Follow-Up:**
 
@@ -87,7 +125,7 @@ Resulting in **this error:**
 
 **The solution**: I don't need to understand exactly how this error is manifesting (_getting into the **Convert-LMDialogToBody** function, and how it works)_ to solve this problem.
 
-**🚧 Import-LMDialogFile** will Spawn a dialog template, copy all of the **$Dialog** array data into the (_non-fixed size_) ArrayLists, and then return the re-provisioned and non-fixed object. This will make the **Convert-LMDialogToBody** function work properly.
+**✅ Import-LMDialogFile** will Spawn a dialog template, copy all of the **$Dialog** array data into the (_non-fixed size_) ArrayLists, and then return the re-provisioned and non-fixed object. This will make the **Convert-LMDialogToBody** function work properly.
 
 Once that function works as intended (and it shouldn't be difficult to write), I can put that in place of **Line 1963:**
 
@@ -99,27 +137,27 @@ And tah-duh! **\-ResumeChat** will be fully integrated into the **:main** loop a
 
 #### After I'm over that small hurdle, these are my next priorities:
 
-**⬜️** Add **$Global:LMStudioVars.ChatSettings.SystemPrompt** variable to make this value easilysettable/persistent.
+**\[Moved\]** Add **$Global:LMStudioVars.ChatSettings.SystemPrompt** variable to make this value easilysettable/persistent.
 
-**⬜️** Write **Get-LMSystemPrompt** (Involves more file-handling, likely CSVs.
+**\[Moved\]** Write **Get-LMSystemPrompt** (Involves more file-handling, likely CSVs.
 
-**⬜️**Integrate **Get-LMSystemPrompt**  into **Start-LMChat**, and possibly **New-LMConfig**.
+**\[Moved\]** Integrate **Get-LMSystemPrompt**  into **Start-LMChat**, and possibly **New-LMConfig**.
 
 💡 Setting/changing the system prompt should be done via a function called **Set-LMSystemPrompt,** and adding/removing a prompt should be done via **Add-LMSystemPrompt.**
 
 💡 Though I may consolidate all of the features into a single function, we'll see.
 
-⬜️ Separate out Public and Private functions, though I might wait until I'm ready to hard-test it.
+**\[Moved\]** Separate out Public and Private functions, though I might wait until I'm ready to hard-test it.
 
-⬜️ Read about how queuing works with the webserver, and update **Invoke-LMStream** and **Invoke-LMBlob** if they don't/won't work with it. (_It might work just fine now, we'll see._)
+**❌** Read about how queuing works with the webserver, and update **Invoke-LMStream** and **Invoke-LMBlob** if they don't/won't work with it. (_It might work just fine now, we'll see._)
 
-⬜️ Integrate **Invoke-LMSaveOrOpenUI** where-ever files are being saved or opened (for name/path validation)
+**\[Moved\]** Integrate **Invoke-LMSaveOrOpenUI** where-ever files are being saved or opened (for name/path validation)
 
 💡 If the History File starts to become too big, I could figure out a way to break it out into files/folders.
 
-⬜️ Check my functions, and identify which have never been used by any other function.
+**\[Moved\]** Check my functions, and identify which have never been used by any other function.
 
-⬜️ Get a start on how the **Start-LMChat** prompt is going to handle option (**:**) inputs. I could outsource it to another function, we'll see.
+**\[Moved**\] Get a start on how the **Start-LMChat** prompt is going to handle option (**:**) inputs. I could outsource it to another function, we'll see.
 
 ---
 
@@ -128,21 +166,21 @@ And tah-duh! **\-ResumeChat** will be fully integrated into the **:main** loop a
 Today, I built the **Invoke-LMSaveOrOpenUI** function, which presents an Open/Save Windows dialog. This will _really_ help me cut down on validation code, in cases where the user provides no path or an invalid path.
 
 - I need to integrate the function into every case where I open or save a CFG, INDEX, GREETING or DIALOG file
-  - **⬜️ New-Config**
-  - **⬜️ Import-Config**
-  - **⬜️ Get-LMGreeting**
-  - **⬜️ Start-LMChat**
+  - \[Moved\] **New-Config**
+  - \[Moved\] **Import-Config**
+  - \[Moved\] **Get-LMGreeting**
+  - \[Moved\] **Start-LMChat**
 - This will significantly simplify the History File selection in **Start-LMChat**.
-- ⬜️ I need to write a small console script that prompts for a "y/N" answer.
+- **\[Moved\]** I need to write a small console script that prompts for a "y/N" answer.
   - This will be useful in **Start-LMChat** and **New-Config**, where there are a lot of lines dedicated to repetitive y/N questions
 
 **Follow-Up:**
 
-I built a pretty functional "Save Prompt" system in **Start-LMChat**. I also added the **\-SkipSavePrompt** parameter, to bypass the whole thing: ⬜️ I'll need to include a "**:s**" instruction in the **do/until** loop to give the user an opportunity to save the file during/after the dialog has begun.
+I built a pretty functional "Save Prompt" system in **Start-LMChat**. I also added the **\-SkipSavePrompt** parameter, to bypass the whole thing:  I'll need to include a "**:s**" instruction in the **do/until** loop to give the user an opportunity to save the file during/after the dialog has begun.
 
 **✅** I also fixed a problem with the **Invoke-LMSaveOrOpenUI** function's name generation: There was a **!Test-Path** instruction in there, and I had a good reason to put it there, but I can't remember why. So I pulled it out.
 
-**🚧** I decided to strip out the "**\-Lite**" parameter and all of its intricacies, in favor of a new **Get-LMResponse** function. This new function is a basic "_send a prompt, get an answer_" function. It's non-interactive, and built for use with coding (_like, some of my ambitions after I finish this project_).
+**✅** I decided to strip out the "**\-Lite**" parameter and all of its intricacies, in favor of a new **Get-LMResponse** function. This new function is a basic "_send a prompt, get an answer_" function. It's non-interactive, and built for use with coding (_like, some of my ambitions after I finish this project_).
 
 **Follow-Up:**
 
@@ -186,17 +224,17 @@ I will use the **Out-Gridview** functionality to make it easy to:
 
 **\[Moved\]**  Select a System Prompt (from a statically defined list of system prompts, exported from LM Studio).
 
-I'm also not happy with my **Get-LMGreeting** prompt generator. Functionally, it's perfect; but ⬜️  I need better prompts and questions.
+I'm also not happy with my **Get-LMGreeting** prompt generator. Functionally, it's perfect; but **\[Moved\]**  I need better prompts and questions.
 
-⬜️ Also need to go through my functions list and add/strike things off of the list.
+**\[Moved\]** Also need to go through my functions list and add/strike things off of the list.
 
 #### **Follow-Up:**
 
-**✅** I decided to write the path to the config file to $Global:LMConfigFile. This is done by **Import-LMConfig** and **New-LMConfig**. At this time, the only place I'm using the variable is in **Set-LMVariableOptions** (⬜️ soon to be **Set-LMOptions**) . Not sure if there's a use for it anywhere else.
+**✅** I decided to write the path to the config file to $Global:LMConfigFile. This is done by **Import-LMConfig** and **New-LMConfig**. At this time, the only place I'm using the variable is in **Set-LMVariableOptions** (**✅**  soon to be **Set-LMOptions**) . Not sure if there's a use for it anywhere else.
 
 **✅** I changed **$UseLoadedConfig** to **$UseConfig**. Documentation regarding parameters will cover this more ambiguous parameter name.
 
-⬜️ Shell Functions **Set-LMSystemPrompt** and **Select-LMHistoryFile** were created to use **Out-GridView** as a file selection mechanism.
+**✅**  Shell Functions **Set-LMSystemPrompt** and **Select-LMHistoryFile** were created to use **Out-GridView** as a file selection mechanism.
 
 **\[Moved\]** I should probably add **$Global:LMStudioVars.ChatSettings.SystemPrompt** variable to make this value settable/persistent.
 
@@ -204,7 +242,7 @@ I've begun shaping the parameters for **Start-LMChat**, which will be rewritten 
 
 - I've added a **\-ResumeChat** parameter, exclusive to the **\-UseConfig** parameter.
   - The reason I made this choice is because making **Start-LMChat** capable of picking up the History File makes the Config pointless.
-  - ⬜️ A future accommodation (_via perhaps a typical Windows browse form_) might be made.
+  - **💡** A future accommodation (_via perhaps a typical Windows browse form_) might be made.
 - **❌** I've added a -**Lite** parameter to send single, unrecorded prompt to the server, where you receive a single response back.
   - **❌** Greetings will be turned off with this feature, and cannot be turned on.
   - I would like to create a function that only responds (or does anything) if **$Global:LMStudioVars** is provisioned
@@ -248,9 +286,9 @@ I parameterized a few more functions. It didn't get me back a lot of lines, but 
 
 I got a lot of things done today: created all of the Config entries I could ever need; I deleted the superfluous **Set-LMGlobalVariables** and **Initialize-LMVarStore** functions and instead incorporated their utility directly into the (_now renamed_) **Import-LMConfig** and **New-LMConfig** functions.
 
-**Import-LMConfig** will be supplemented by **Set-LMOption \[-Commit\],** which serves to change settings in **Global:LMStudioVars**, as well as ⬜️ Save the state of **$Global:LMStudioVars** _as-is_.
+**Import-LMConfig** will be supplemented by **Set-LMOption \[-Commit\],** which serves to change settings in **Global:LMStudioVars**, as well as **✅** Save the state of **$Global:LMStudioVars** _as-is_.
 
-⬜️ Mark-down might be a neat thing to experiment with, particularly for the **New-Config** prompts as well as verbose check results.
+**\[Moved\]** Mark-down might be a neat thing to experiment with, particularly for the **New-Config** prompts as well as verbose check results.
 
 **Get-LMGreeting** works perfectly, and **✅**I need to finish incorporating it into the **Start-LMChat** function.
 
@@ -340,7 +378,7 @@ I have much of the Config File (object) formatting done. **✅** **Confirm-LMGlo
 Had another thought:
 
 **✅** I need to convert all "New-LMHistoryFile" calls to the new Template function.  
-**🚧**  **New-LMHistoryFile** does nothing but save an arbitrary file, it's a pointless function. I just have to do:
+**✅**  **New-LMHistoryFile** does nothing but save an arbitrary file, it's a pointless function. I just have to do:
 
 ```
 [Get a new history entry template] | Convertto-Json -Depth 3 | out-file $somefilepath
@@ -381,7 +419,7 @@ Doing documentation, clean-up and identifying missing functions today. Might bre
   - Stream = $True (default)
   - StreamCacheFile = $env:userprofile\\Documents\\lmstream.cache (default)
 
-⬜️ Markdown compatibility: If (1) Client is PS7, (2) "**Show-Markdown**" is an available cmdlet, and (3) a "**\-Markdown**" (or similar) parameter is provided, I can use the **Show-Markdown** cmdlet to beautify the output
+**\[Moved\]** Markdown compatibility: If (1) Client is PS7, (2) "**Show-Markdown**" is an available cmdlet, and (3) a "**\-Markdown**" (or similar) parameter is provided, I can use the **Show-Markdown** cmdlet to beautify the output
 
 - The way this would work with "Stream" mode:
   - that a copy of the output would would retained (as per usual:  **$Output = Invoke-LMStream**  
@@ -402,9 +440,11 @@ I have many of the important pieces together now. I REALLY want to build a funct
 
 **Next up:**
 
-⬜️ Update Show-LMHelp to include changing the Title/Tags, Change the context message count, Save (without qutting)  
+**\[Moved\]** Update Show-LMHelp to include changing the Title/Tags, Change the context message count, Save (without qutting)
+
+**\[Moved\]** I can add parameters to Show-LMHelp to give details for each parameter  
 ✅ Make an official list of functions, and their purpose  
-⬜️ Update the Client to use the complete functions I have (should shorten the code substantially)  
+**✅**Update the Client to use the complete functions I have (should shorten the code substantially)  
 Review this, and likely simplify/replace it (Client):\`
 
 ✅ Need to check if this is still valid:
@@ -450,7 +490,7 @@ Re-ordered functions according to the dependencies and processes. Built shells f
 Have decided to "fragment" Dialogs from the History File:
 
 ✅ History File will keep an index of Dialog files and some information about them (Date, opening line, model, Dialog (array))  
-⬜️ Dialogs themselves will be stored as either random or sequentially named files, with the following columns:
+✅ Dialogs themselves will be stored as either random or sequentially named files, with the following columns:
 
 - Index, prompt type \[system, assistant, user\], body (statement/response)
 - Dialog files will be colocated in a folder next to the history file
