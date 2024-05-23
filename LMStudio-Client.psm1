@@ -433,7 +433,7 @@ function Get-LMTemplate { #Complete
     param(
         # Param1 help description
         [Parameter(Mandatory=$true)]
-        [ValidateSet('ConfigFile', 'HistoryEntry', 'ChatGreeting', 'ChatDialog','DialogMessage', 'Body', 'ManualChatSettings')]
+        [ValidateSet('ConfigFile', 'HistoryEntry', 'ChatGreeting', 'ChatDialog','DialogMessage', 'Body', 'ManualChatSettings','SystemPrompts')]
         [string]$Type
     )
 
@@ -588,6 +588,22 @@ function Get-LMTemplate { #Complete
             $Object.Add("ContextDepth", 10)
             $Object.Add("Stream", $True)
             $Object.Add("Greeting", $True)
+
+        }
+
+        {$_ -ieq "SystemPrompt"}{
+$Object = @'
+"Name","Prompt"
+"ChatML","Perform the task to the best of your ability."
+"CodeLlama Instruct","You are a helpful coding AI assistant. Please keep your responses concise, unless explicitly asked to expand further on the topic."
+"CodeLlama WizardCoder","Below is an instruction that describes a task. Write a response that appropriately completes the request."
+"Deepseek Coder","You are an AI programming assistant, utilizing the Deepseek Coder model, developed by Deepseek Company, and you only answer questions related to computer science."
+"Llama 3","You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
+"MetaAI Llama 2 Chat","You are a helpful coding AI assistant."
+"Moistral","You are the Moistral large language model. Your main function is to transform any ordinary text into a work of art making it moist and interesting. "
+"Phind CodeLlama","You are an intelligent programming assistant."
+"Vicuna v1.5 16K","A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions."
+'@ | ConvertFrom-Csv 
 
         }
 

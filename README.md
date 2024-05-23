@@ -45,7 +45,7 @@ This project isn't complete, and as of this writing the module isn't anywhere cl
 
 **✅** Squashed another where the condition I set in the **:main** was causing the "Opener" property to be provisioned in the Dialog file, which leads (downstream) to it missing in the History file.
 
-⬜️ **\-** I'm going to make the System Prompts a template in **Get-LMTemplate,** which will be instantiated by **New-LMConfig**. This will solve the problem of how to guarantee the file.
+**✅** **\-** I made the System Prompts a template in **Get-LMTemplate,** which will be instantiated by **New-LMConfig**. This will solve the problem of how to guarantee the file and its location.
 
 ✅ - I made the "Open Cancelled" output gentler. No reason to throw an error over that.
 
