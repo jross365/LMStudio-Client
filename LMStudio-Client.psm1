@@ -465,8 +465,11 @@ function Get-LMTemplate { #Complete
                 "stream" = $True;
                 "ContextDepth" = 10;
                 "Greeting" = $True;
+                "SystemPrompt" = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
+                "Markdown" = (If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False})
+                "SavePrompt" = $True
             }
-            
+                        
             $URIsObj = [pscustomobject]@{
                 "ModelURI" = "http://X/v1/models";
                 "CompletionURI" = "http://X/v1/chat/completions";
