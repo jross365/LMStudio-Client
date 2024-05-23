@@ -39,6 +39,18 @@ This project isn't complete, and as of this writing the module isn't anywhere cl
 
 ---
 
+### 05/22/2024
+
+**✅** Fixed problem with fragmentation in **Invoke-LMStream**: if the line fragmented twice, the second fragment wasn't caught.
+
+**💡** I need to "go deep" on the **Do/Until** loop for **Invoke-LMStream**. There looks like a lot of room for optimization, and it's cludgy at present. I bet I can improve performance.
+
+💡 I need to come up with a "Pacing" system to detect stuttering from a slow LLM response, and output console text so it's slower but smoother.
+
+⬜️ History File isn't being update with **\-ResumeChat,** need to look into this.
+
+---
+
 ### 05/21/2024
 
 **✅** Squashed a bug where I incorrectly terminated in a Default switch (PS5 doesn't assign '.Count' to most non-array objects). This was causing re-opened Dialog files to fail to save. Accommodates both 5/7 now.

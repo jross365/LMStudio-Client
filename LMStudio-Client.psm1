@@ -1574,7 +1574,9 @@ process {
 
             If ($Fragmented){ #Added this to try to reassemble fragments, troubleshooting 05/14
                     $Line = "$Fragment" + "$Line"
-                    Remove-Variable Fragment
+                    Remove-Variable Fragment -ErrorAction SilentlyContinue
+                    
+                    If ($Line.TrimEnd().SubString($($Line.TrimEnd().Length - 1),1) -ne '}'){break oloop}
                     $Fragmented = $False
             } 
 
@@ -1587,24 +1589,21 @@ process {
                 $Complete = $True
 
             }
+            
             elseif ($Line -match "data: [DONE]"){
                 $Complete = $True
                 break oloop
             }
+
             elseif ($Line -notmatch "data: "){continue oloop}
+
             else {
                     
-                #$TrimLine = $Line.TrimStart("data: ")
-                
-                #Added this to reassemble fragments: 
-
-                try {
-                $LineAsObj = ($Line.TrimStart("data: ")) | ConvertFrom-Json
-                }
+                try {$LineAsObj = ($Line.TrimStart("data: ")) | ConvertFrom-Json -ErrorAction Stop}
                 catch {
-                       $Fragment = $LineAsObj
+                       $Fragment = $Line
                        $Fragmented = $True
-                        break oloop
+                        continue oloop #Fixed this, was "break"
                 }
                 
                 If ($LineAsObj.id.Length -eq 0){continue oloop}
@@ -1612,7 +1611,8 @@ process {
                 $Word = $LineAsObj.choices.delta.content
                 Write-Host "$Word" -NoNewline
                 $MessageBuffer += $Word
-            
+                #If ($Fragmented){Start-sleep -Milliseconds 100} #Testing "metering" output
+
                 If ($null -ne $LineAsObj.choices.finish_reason){
                     Write-Host ""
                     #Write-Verbose "Finish reason: $($LineAsObj.choices.finish_reason)" -Verbose
