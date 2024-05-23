@@ -35,15 +35,31 @@ This project isn't complete, and as of this writing the module isn't anywhere cl
 
 **💡 - Idea**
 
+🐛 **Bug**
+
 ---
 
-### 05/20/2024
+### 05/21/2024
+
+**✅** Squashed a bug where I incorrectly terminated in a Default switch (PS5 doesn't assign '.Count' to most non-array objects). This was causing re-opened Dialog files to fail to save. Accommodates both 5/7 now.
+
+**✅** Squashed another where the condition I set in the **:main** was causing the "Opener" property to be provisioned in the Dialog file, which leads (downstream) to it missing in the History file.
+
+⬜️ **\-** I'm going to make the System Prompts a template in **Get-LMTemplate,** which will be instantiated by **New-LMConfig**. This will solve the problem of how to guarantee the file.
+
+✅ - I made the "Open Cancelled" output gentler. No reason to throw an error over that.
+
+I did a few other (small) improvements today.
+
+---
+
+### 05/21/2024
 
 **✅** Completed and tested **Repair-LMHistoryFile**, which effectively rebuilds the History File from scratch. Works pretty well.
 
 This is a consolidated list of the work to do:
 
-\*Add the following variables to the Config File: ⬜️ **ChatInfo.SystemPrompt,** ⬜️ **ChatInfo.MarkDown**
+\*Add the following variables to the Config File: ⬜️ **ChatInfo.SystemPrompt,** ⬜️ **ChatInfo.MarkDown** ⬜️ **ChatInfo.SavePrompt**
 
 ⬜️ Implement MarkDown into **Invoke-LMStream** and **Invoke-LMBlob**
 
@@ -65,7 +81,7 @@ This is a consolidated list of the work to do:
 
 ⬜️ Better prompts and questions for the greeting generator.
 
-⬜️ I can add parameters to Show-LMHelp to give details for each parameter
+⬜️ I can add parameters to **Show-LMHelp** to give details for each parameter
 
 ⬜️ Write **Get-LMResponse** (single-response query, no console output).
 

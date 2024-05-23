@@ -966,7 +966,8 @@ function Update-LMHistoryFile { #Complete, requires testing
 
                 } #Close Case -gt 1
 
-                Default {throw "[Update-LMHistoryFile] : Something went wrong while trying to find/remove duplicates"}
+                Default {$Index = 0} #PS5/7 difference: PS5 doesn't assign a ".Count" property to most non-array objects, PS7 does. This Default addresses a PS5 behavior
+                #Default {throw "[Update-LMHistoryFile] : Something went wrong while trying to find/remove duplicates"}
 
             } #Close switch
 
@@ -2109,7 +2110,11 @@ begin {
                 
                 #Open a GridView selector from the history file
                 try {$DialogFilePath = Select-LMHistoryEntry -HistoryFile $HistoryFile}
-                catch {throw "Dialog selection error: $($_.Exception.Message)"}
+                catch {
+                    If ($_.Exception.Message -match 'selection cancelled'){Write-Host "Selection cancelled." -ForegroundColor Green; return}
+                    else {Write-Warning "$($_.Exception.Message)"; return}
+
+                }
 
                 #Otherwise: Read the contents of the chosen Dialog file
                 try {$Dialog = Import-LMDialogFile -FilePath $DialogFilePath -ErrorAction Stop}
@@ -2264,7 +2269,7 @@ process {
         #endregion
 
         #region Set Opener
-        If (($OpenerSet -eq $False) -and (!($ResumeChat.IsPresent))){
+        If (($OpenerSet -eq $False) -and ((!($ResumeChat.IsPresent)) -or (($Dialog.Info.Opener -imatch 'dummy|set') -or ($null -eq $Dialog.Info.Opener)))){
             $Dialog.Info.Opener = $UserInput
             $OpenerSet = $True
         }
