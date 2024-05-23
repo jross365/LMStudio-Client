@@ -49,7 +49,23 @@ This project isn't complete, and as of this writing the module isn't anywhere cl
 
 ✅ - I made the "Open Cancelled" output gentler. No reason to throw an error over that.
 
-I did a few other (small) improvements today.
+Added **✅** **ChatSettings.SystemPrompt,** **✅** **ChatSettings.MarkDown** **✅** **ChatSettings.SavePrompt** everywhere:
+
+- In the Config
+- In the "ManualChatSettings" Template
+- In **Get-LMGreeting**
+- In **Start-LMChat** (both manual hashtable input and -UseConfig blocks)
+
+The variables are now fully integrated. Now the fun part, building the functions they're intended for.
+
+💡 I need to build a function that can serve as an intermediary for changing settings. What I could do is set the parameters to be whatever follows the ':' (:temp, ::maxdepth, etc) to specify the value: **:temp 0.5** or **ContextDepth 15**, etc.
+
+- The trouble with this is it becomes difficult to accommodate the "manual" mode, though I did extend those settings via the manual setting hashtable
+
+💡 I should probably be tracking the models and when they change. This could be done with **$Dialog.Info.Models** being an array/list containing two fields ("Model", "Timestamp") If the model changes, it gets updated there, and any "replay" will show the correct models for each prompt.
+
+This is a bit much to bite off right now though, there's some time/order logic I'd need to implement, and that's much lower priority than putting the functions and aesthetic into place.  
+💡 In the **Set-LMSystemPrompt** function, I should permit a "manual" entry (as a hashtable, of course).
 
 ---
 
@@ -59,7 +75,7 @@ I did a few other (small) improvements today.
 
 This is a consolidated list of the work to do:
 
-\*Add the following variables to the Config File: ⬜️ **ChatInfo.SystemPrompt,** ⬜️ **ChatInfo.MarkDown** ⬜️ **ChatInfo.SavePrompt**
+**🚧**Add the following variables to the Config File: \[**Moved**\]
 
 ⬜️ Implement MarkDown into **Invoke-LMStream** and **Invoke-LMBlob**
 

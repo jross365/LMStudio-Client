@@ -213,6 +213,9 @@ function New-LMConfig { #Complete
         $ConfigFileObj.ChatSettings.stream = $True
         $ConfigFileObj.ChatSettings.ContextDepth = 10
         $ConfigFileObj.ChatSettings.Greeting = $True
+        $ConfigFileObj.ChatSettings.SystemPrompt = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
+        $ConfigFileObj.ChatSettings.Markdown = (If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False})
+        $ConfigFileObj.ChatSettings.SavePrompt = $True
         $ConfigFileObj.URIs.CompletionURI = $ConfigFileObj.URIs.CompletionURI -replace 'X', "$($ConfigFileObj.ServerInfo.Endpoint)" 
         $ConfigFileObj.URIs.ModelURI = $ConfigFileObj.URIs.ModelURI -replace 'X', "$($ConfigFileObj.ServerInfo.Endpoint)" 
         #endregion
@@ -490,7 +493,7 @@ function Get-LMTemplate { #Complete
             $Object = [pscustomobject]@{
 
                 "TimeStamp" = "$((Get-Date).ToString())"
-                "System" = "Please be polite, concise and informative."; #System Prompt
+                "System" = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."; #System Prompt
                 "User" = $DummyValue;   #User Prompt
                 "Assistant" = $DummyValue;
                 "Model" = $DummyValue;
@@ -588,6 +591,9 @@ function Get-LMTemplate { #Complete
             $Object.Add("ContextDepth", 10)
             $Object.Add("Stream", $True)
             $Object.Add("Greeting", $True)
+            $Object.Add("ShowSavePrompt", $True)
+            $Object.Add("SystemPrompt", "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability.")
+            $Object.Add("MarkDown", $(If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False}))
 
         }
 
@@ -1679,6 +1685,9 @@ begin {
             $MaxTokens = $Global:LMStudioVars.ChatSettings.max_tokens
             $CompletionURI = $Global:LMStudioVars.URIs.CompletionURI
             $ContextDepth = $Global:LMStudioVars.ChatSettings.ContextDepth
+            $MarkDown = $Global:LMStudioVars.ChatSettings.MarkDown
+            $ShowSavePrompt = $Global:LMStudioVars.ChatSettings.SavePrompt
+            $SystemPrompt = $Global:LMStudioVars.ChatSettings.SystemPrompt
 
         }
 
@@ -1691,6 +1700,9 @@ begin {
             $Endpoint = "$Server" + ":" + "$Port"
             $CompletionURI = "http://$Endpoint/v1/chat/completions"
             $ContextDepth = 10 #Default
+            $MarkDown = (If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False})
+            $ShowSavePrompt = $True
+            $SystemPrompt = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
         }
     
     }
@@ -1722,7 +1734,7 @@ process {
     $Body.temperature = $Temperature
     $Body.max_tokens =  $MaxTokens
     $Body.Stream = $Stream
-    $Body.messages[0].content = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
+    $Body.messages[0].content = $SystemPrompt
     $Body.messages[1].content = $GreetingPrompt
     #endregion
 
@@ -2071,16 +2083,18 @@ begin {
             $Temperature = $Global:LMStudioVars.ChatSettings.temperature
             $MaxTokens = $Global:LMStudioVars.ChatSettings.max_tokens
             $ContextDepth = $Global:LMStudioVars.ChatSettings.ContextDepth
-            $SystemPrompt = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
+            $MarkDown = $Global:LMStudioVars.ChatSettings.MarkDown
+            $ShowSavePrompt = $Global:LMStudioVars.ChatSettings.SavePrompt
+            $SystemPrompt = $Global:LMStudioVars.ChatSettings.SystemPrompt
+            
     
         }
 
-        $False { #Not yet tested
+        $False { #Not tested, but straightforward: Takes a "ManualChatSettings" template
 
             $Endpoint = "$Server" + ":" + "$Port"
             $CompletionURI = "http://" + $EndPoint + "/v1/chat/completions"
             $StreamCachePath = (Get-Location).Path + '\lmstream.cache'
-            $SystemPrompt = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
 
             #Set tunables via hash table
             If (!$PSBoundParameters.ContainsKey('Settings')){$Settings = Get-LMTemplate -Type ManualChatSettings}
@@ -2097,8 +2111,14 @@ begin {
             If ($null -ne $Settings.Stream){$Stream = ([boolean]($Settings.Stream))}
             Else {$Stream = $True} #Default
 
-            If ($null -ne $Settings.Greeting){$Greeting = ([boolean]($Settings.Greeting))}
-            Else {$Greeting = $True} #Default
+            If ($null -ne $Settings.ShowSavePrompt){$ShowSavePrompt = ([boolean]($Settings.ShowSavePrompt))}
+            Else {$ShowSavePrompt = $True} #Default
+
+            If ($null -ne $Settings.SystemPrompt){$SystemPrompt = $Settings.SystemPrompt}
+            Else {$SystemPrompt = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."} #Default
+
+            If ($null -ne $Settings.MarkDown){$MarkDown = ([boolean]($Settings.MarkDown))}
+            Else {(If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False})}
 
             }
             
