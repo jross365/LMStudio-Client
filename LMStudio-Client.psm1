@@ -1933,7 +1933,7 @@ function Convert-LMDialogToHistoryEntry { #Complete
 
     $Opener = $DialogObject.Info.Opener
     
-    If ($null -ne $Opener){$HistoryEntry.Opener = $Opener.Content}
+    If ($null -ne $Opener){$HistoryEntry.Opener = $Opener}
     Else {$Opener = "Unset"} #Not likely to encounter this
 
     $RelativePath = ($DialogFilePath -split '\\' | Select-Object -Last 2) -join '\'
