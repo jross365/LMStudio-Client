@@ -214,7 +214,7 @@ function New-LMConfig { #Complete
         $ConfigFileObj.ChatSettings.ContextDepth = 10
         $ConfigFileObj.ChatSettings.Greeting = $True
         $ConfigFileObj.ChatSettings.SystemPrompt = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
-        $ConfigFileObj.ChatSettings.Markdown = (If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False})
+        $ConfigFileObj.ChatSettings.Markdown = &{If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False}}
         $ConfigFileObj.ChatSettings.SavePrompt = $True
         $ConfigFileObj.URIs.CompletionURI = $ConfigFileObj.URIs.CompletionURI -replace 'X', "$($ConfigFileObj.ServerInfo.Endpoint)" 
         $ConfigFileObj.URIs.ModelURI = $ConfigFileObj.URIs.ModelURI -replace 'X', "$($ConfigFileObj.ServerInfo.Endpoint)" 
@@ -466,7 +466,7 @@ function Get-LMTemplate { #Complete
                 "ContextDepth" = 10;
                 "Greeting" = $True;
                 "SystemPrompt" = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
-                "Markdown" = (If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False})
+                "Markdown" = &{If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False}}
                 "SavePrompt" = $True
             }
                         
@@ -596,7 +596,7 @@ function Get-LMTemplate { #Complete
             $Object.Add("Greeting", $True)
             $Object.Add("ShowSavePrompt", $True)
             $Object.Add("SystemPrompt", "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability.")
-            $Object.Add("MarkDown", $(If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False}))
+            $Object.Add("MarkDown", $(&{If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False}}))
 
         }
 
@@ -1706,7 +1706,7 @@ begin {
             $Endpoint = "$Server" + ":" + "$Port"
             $CompletionURI = "http://$Endpoint/v1/chat/completions"
             $ContextDepth = 10 #Default
-            $MarkDown = (If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False})
+            $MarkDown = &{If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False}}
             $ShowSavePrompt = $True
             $SystemPrompt = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
         }
@@ -2124,7 +2124,7 @@ begin {
             Else {$SystemPrompt = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."} #Default
 
             If ($null -ne $Settings.MarkDown){$MarkDown = ([boolean]($Settings.MarkDown))}
-            Else {(If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False})}
+            Else {$MarkDown = &{If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False}}}
 
             }
             
@@ -2311,7 +2311,7 @@ process {
         #endregion
 
         #region Set Opener
-        If (($OpenerSet -eq $False) -and ((!($ResumeChat.IsPresent)) -or (($Dialog.Info.Opener -imatch 'dummy|set') -or ($null -eq $Dialog.Info.Opener)))){
+        If (($OpenerSet -eq $False) -and ((!($ResumeChat.IsPresent)) -or (($Dialog.Info.Opener -imatch 'dummy|notset') -or ($null -eq $Dialog.Info.Opener)))){
             $Dialog.Info.Opener = $UserInput
             $OpenerSet = $True
         }
