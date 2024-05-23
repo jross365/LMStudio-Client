@@ -1561,63 +1561,66 @@ process {
                 Write-Host ""; Write-Warning "Escape character detected, this party is over"
                 &$KillProcedure
                 $Interrupted = $True
-
+    
             }
-
+    
         }
-
+    
         If ($Interrupted){break}
     
         $jobOutput = Receive-Job $RunningJob
         
         :oloop foreach ($Line in $jobOutput){
-
+    
             If ($Fragmented){ #Added this to try to reassemble fragments, troubleshooting 05/14
                     $Line = "$Fragment" + "$Line"
                     Remove-Variable Fragment -ErrorAction SilentlyContinue
                     
                     If ($Line.TrimEnd().SubString($($Line.TrimEnd().Length - 1),1) -ne '}'){break oloop}
                     $Fragmented = $False
-            } 
-
-            If ($Line.Length -eq 0){continue oloop}
-
-            if ($Line -cmatch 'ERROR!?!|"STOP!?! Cancel Detected' ){
-            
-                &$KillProcedure
-                throw "Exception: $($Line -replace 'ERROR!?!' -replace '"STOP!?! Cancel Detected')"
-                $Complete = $True
-
             }
-            
-            elseif ($Line -match "data: [DONE]"){
-                $Complete = $True
-                break oloop
-            }
-
-            elseif ($Line -notmatch "data: "){continue oloop}
-
-            else {
-                    
-                try {$LineAsObj = ($Line.TrimStart("data: ")) | ConvertFrom-Json -ErrorAction Stop}
-                catch {
-                       $Fragment = $Line
-                       $Fragmented = $True
-                        continue oloop #Fixed this, was "break"
-                }
-                
-                If ($LineAsObj.id.Length -eq 0){continue oloop}
     
-                $Word = $LineAsObj.choices.delta.content
-                Write-Host "$Word" -NoNewline
-                $MessageBuffer += $Word
-                #If ($Fragmented){Start-sleep -Milliseconds 100} #Testing "metering" output
-
-                If ($null -ne $LineAsObj.choices.finish_reason){
-                    Write-Host ""
-                    #Write-Verbose "Finish reason: $($LineAsObj.choices.finish_reason)" -Verbose
+            switch ($Line){
+                {$_ -notmatch 'data: '}{continue oloop}
+    
+                {$_.Length -eq 0}{continue oloop}
+                
+                {$_  -cmatch 'ERROR!?!|"STOP!?! Cancel Detected'}{
+                    
+                    &$KillProcedure
+                    throw "Exception: $($Line -replace 'ERROR!?!' -replace '"STOP!?! Cancel Detected')"
+                    $Complete = $True
+    
+                }
+    
+                {$_ -match 'data: [DONE]'}{
+    
                     $Complete = $True
                     break oloop
+                }
+    
+                {$_ -match 'data: {'}{
+                    try {$LineAsObj = ($Line.TrimStart("data: ")) | ConvertFrom-Json -ErrorAction Stop}
+                    catch {
+                           $Fragment = $Line
+                           $Fragmented = $True
+                            continue oloop #Fixed this, was "break"
+                    }
+                    
+                    If ($LineAsObj.id.Length -eq 0){continue oloop}
+        
+                    $Word = $LineAsObj.choices.delta.content
+                    Write-Host "$Word" -NoNewline
+                    $MessageBuffer += $Word
+                    #If ($Fragmented){Start-sleep -Milliseconds 100} #Testing "metering" output
+        
+                    If ($null -ne $LineAsObj.choices.finish_reason){
+                        Write-Host ""
+                        #Write-Verbose "Finish reason: $($LineAsObj.choices.finish_reason)" -Verbose
+                        $Complete = $True
+                        break oloop
+                    }
+    
                 }
     
             }

@@ -49,6 +49,8 @@ This project isn't complete, and as of this writing the module isn't anywhere cl
 
 ⬜️ History File isn't being update with **\-ResumeChat,** need to look into this.
 
+**✅** Restructured **Invoke-LMStream** from a series of IF statements, to a switch. Tested with PS5/PS7, seems to work just fine.
+
 ---
 
 ### 05/21/2024
