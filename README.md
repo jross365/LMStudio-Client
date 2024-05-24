@@ -47,9 +47,25 @@ This project isn't complete, and as of this writing the module isn't anywhere cl
 
 💡 I need to come up with a "Pacing" system to detect stuttering from a slow LLM response, and output console text so it's slower but smoother.
 
-⬜️ History File isn't being update with **\-ResumeChat,** need to look into this.
+**✅** History File isn't being updated with **\-ResumeChat,** need to look into this.
 
 **✅** Restructured **Invoke-LMStream** from a series of IF statements, to a switch. Tested with PS5/PS7, seems to work just fine.
+
+#### **Follow-Up:**
+
+I sorted a lot of little, meddling bugs out today.
+
+I fixed problems with updating the History File, and problems with setting the "Opener" line in the Dialog Files and in the History File.
+
+I improved **Repair-LMHistoryFile**'s functionality.
+
+I fixed a problem with how I determined the default **MarkDown** property.
+
+Plus everything above.
+
+I forgot to add something to the list below: ⬜️ Export the System Prompt file in **New-LMConfig.**
+
+That's all for now.
 
 ---
 
