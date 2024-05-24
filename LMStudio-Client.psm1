@@ -874,6 +874,14 @@ function Repair-LMHistoryFile {
 
             }
 
+            try {$Dialog.Info.Opener = (($Dialog.Messages | Sort-Object TimeStamp) | Where-Object {$_.role -eq "user"})[0].Content}
+            catch {
+                $UpdateFailed++
+                $FileCount++
+                continue dfloop
+            
+            }
+
             try {Update-LMHistoryFile -FilePath $FilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $($File.FullName))}
             catch {
             
@@ -2153,7 +2161,7 @@ begin {
                 #Open a GridView selector from the history file
                 try {$DialogFilePath = Select-LMHistoryEntry -HistoryFile $HistoryFile}
                 catch {
-                    If ($_.Exception.Message -match 'selection cancelled'){Write-Host "Selection cancelled." -ForegroundColor Green; return}
+                    If ($_.Exception.Message -match 'selection cancelled'){throw "Selection cancelled"}
                     else {Write-Warning "$($_.Exception.Message)"; return}
 
                 }
@@ -2216,7 +2224,7 @@ begin {
 
                 } #Close SkipSavePrompt Not Present
                 Else {
-                    $DialogFileExists = $False
+                    $DialogFileExists = Test-Path $DialogFilePath
                     Write-Warning "Dialog file not saved to file. In the User prompt, enter ':Save' to save."
                 }
 
@@ -2252,7 +2260,7 @@ begin {
 process {
     
     $BreakDialog = $False
-    $OpenerSet = $False
+    $OpenerSet = ([boolean](($Dialog.Info.Opener.Length -ne 0) -and ($null -ne $Dialog.Info.Opener) -and ($Dialog.Info.Opener -ne "dummyvalue")))
 
     #Set $BodySettings for use with Convert-LMDialogToBody:
     $BodySettings = @{}
@@ -2310,12 +2318,6 @@ process {
         $Dialog.Messages.Add($UserMessage) | out-null
         #endregion
 
-        #region Set Opener
-        If (($OpenerSet -eq $False) -and ((!($ResumeChat.IsPresent)) -or (($Dialog.Info.Opener -imatch 'dummy|notset') -or ($null -eq $Dialog.Info.Opener)))){
-            $Dialog.Info.Opener = $UserInput
-            $OpenerSet = $True
-        }
-        #endregion
 
         #region Send $Dialog.Messages to Convert-DialogToBody:
         $Body = Convert-LMDialogToBody -DialogMessages ($Dialog.Messages) -ContextDepth $ContextDepth -Settings $BodySettings
@@ -2359,6 +2361,13 @@ process {
         #region Update Dialog File, History File
         If ($DialogFileExists){
 
+             #region Set Opener
+            If (!($OpenerSet)){
+                $Dialog.Info.Opener = (($Dialog.Messages | Sort-Object TimeStamp) | Where-Object {$_.role -eq "user"})[0].Content
+                $OpenerSet = $False
+            }
+            #endregion
+
             # Save the Dialog File
             try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
             catch {
@@ -2367,7 +2376,7 @@ process {
             }
 
             # Update the History File
-            If ($DialogFileExists){
+            If ($DialogFileExists){ 
             
                 try {Update-LMHistoryFile -FilePath $HistoryFile -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
                 catch { #Sleep and then try once more, in case we're stepping on our own feet (multiple)
@@ -2396,28 +2405,6 @@ end {
     #HERE:
         # - Need to Update the "opener" line for the Dialog object
         # - Need to update the History File with the new Dialog object information
-
-    If ($UseGreetingFile){
-
-        If ($NewFile){
-
-            $GreetingData[0].Assistant = "$ServerResponse"
-
-            try {$GreetingData | Export-Csv -Path $GreetingFile -NoTypeInformation -ErrorAction Stop}
-            catch {Write-Warning "Unable to save greeting file."}
-
-        }
-
-        Else {
-
-            $GreetingEntry.Assistant = "$ServerResponse"
-
-            try {$GreetingEntry | Export-csv -Path $GreetingFile -Append -NoTypeInformation -ErrorAction Stop}
-            catch {Write-Warning "Unable to save greeting file."}
-
-            }
-
-        } #Close If UseGreetingFile
 
     }
 
