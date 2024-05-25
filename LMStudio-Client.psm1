@@ -124,7 +124,7 @@ function New-LMConfig { #Complete
         $DialogFolder = $HistoryFilePath.TrimEnd('.index') + '-DialogFiles'
         $GreetingFilePath = "$DialogFolder\hello.greetings"
         $StreamCachePath = "$BasePath\stream.cache"
-        $SystemPromptsPath = "$BasePath\system.prompts"
+        $SystemPromptPath = "$BasePath\system.prompts"
         #endregion
      
     } #End Begin
@@ -151,6 +151,7 @@ function New-LMConfig { #Complete
         $ConfigFileObj.FilePaths.DialogFolderPath = $DialogFolder
         $ConfigFileObj.FilePaths.GreetingFilePath = $GreetingFilePath
         $ConfigFileObj.FilePaths.StreamCachePath = $StreamCachePath
+        $ConfigFileObj.FilePaths.SystemPromptPath = $SystemPromptPath
         $ConfigFileObj.ChatSettings.temperature = 0.7
         $ConfigFileObj.ChatSettings.max_tokens = -1
         $ConfigFileObj.ChatSettings.stream = $True
@@ -181,7 +182,7 @@ function New-LMConfig { #Complete
         Write-Host ""; Write-Host "Stream Cache location:" -ForegroundColor Green
         Write-Host "$StreamCachePath"
         Write-Host ""; Write-Host "System Prompts location:" -ForegroundColor Green
-        Write-Host "$SystemPromptsPath"
+        Write-Host "$SystemPromptPath"
         Write-Host ""; Write-Host "Config File location:" -ForegroundColor Green
         Write-Host "$ConfigFile"
 
@@ -215,11 +216,11 @@ function New-LMConfig { #Complete
 
         }
 
-        If (!(Test-Path $SystemPromptsPath)){
+        If (!(Test-Path $SystemPromptPath)){
 
-            Write-Host "System prompts file $SystemPromptsPath not found, creating."
+            Write-Host "System prompts file $SystemPromptPath not found, creating."
 
-            try {($SystemPromptsObj | Export-csv $SystemPromptsPath -NoTypeInformation)}
+            try {($SystemPromptsObj | Export-csv $SystemPromptPath -NoTypeInformation)}
             catch {throw "System prompts file creation failed: $($_.Exception.Message)"}
 
         }
@@ -400,6 +401,7 @@ function Get-LMTemplate { #Complete
                 "DialogFolderPath" = "";
                 "GreetingFilePath" = "";
                 "StreamCachePath" = "";
+                "SystemPromptPath" = "";
             }            
 
             $ChatSettingsObj = [pscustomobject]@{
@@ -426,7 +428,7 @@ function Get-LMTemplate { #Complete
             $Object = [pscustomobject]@{
                 "Created" = "$DummyValue";
                 "Modified" = "$DummyValue";
-                "Title" = "$DummyValue;"
+                "Title" = "$DummyValue";
                 "Opener" = "$DummyValue";
                 "Model" = "$DummyValue";
                 "FilePath" = "$DummyValue"
@@ -863,7 +865,7 @@ function Update-LMHistoryFile { #Complete, requires testing
                 #If there's one matching value, update it in-place:
                 {$_ -eq 1}{
 
-                    $Index = 0
+                    $Index = $History.IndexOf($MatchingEntries)
                     
                     break
 
@@ -1071,8 +1073,6 @@ function Search-LMChatDialog { #NOT STARTED
      #SaveTo: File location to save the output
      #ReturnResults - return the results (as an array?)
     #
-
-
 }
 
 #This function invokes Windows Forms Open and SaveAs for files:

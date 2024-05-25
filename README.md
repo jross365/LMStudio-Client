@@ -41,11 +41,33 @@ This project isn't complete, and as of this writing the module isn't anywhere cl
 
 ### 05/25/2024
 
-Needed a break.
+I needed a break.
 
 **✅** I gutted the validation and complexity in **New-LMConfig** in favor of a single-path approach: define -**BasePath** and everything else is created under this.
 
 This gutting also enabled me to get rid of the **Set-LMHistoryFilePath** function, which was nothing more than a recursive directory creator.
+
+#### **Follow-Up:**
+
+I sorted out more bugs out today. Most notably, I fixed the index selection for **Update-LMHistoryFile**. In the event of a single matching entry, I was defaulting to **\[0\]**, which mapped to one of the "dummyvalues" in the History file.
+
+**Markdown Plans:**
+
+I did some thinking about how to implement Markdown. Doing it in-line will be impossible because of the way the async stream works: the output is directly to console, and the console pipeline can't be intercepted.
+
+I did some experimenting, and the way **Show-Markdown** works is it converts string text into a series of meta-commands available to PS7 that is also displayed as string text. This means text converted to markdown only needs to be converted once.
+
+The way I have to do this will be less than ideal, but better than the worst-case:
+
+- Create a "**$MarkdownBuffer**" arraylist to store converted text
+- For each message:
+  - Add the latest message, converted to markdown, to the $MarkdownBuffer (with Timestamp and role)
+  - Build the "console-consistent", markdown-converted output (as it displays in the console)
+  - Clear the screen (**cls**)
+  - Output the converted output
+  - Present the next **You:** and **Read-Host**
+
+It's not perfect. I really like how OpenAI converts it in-line, but I would need to redesign and improve how the HTTP client works, and that's a low priority.
 
 ---
 
