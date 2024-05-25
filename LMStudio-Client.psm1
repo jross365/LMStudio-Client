@@ -1,3 +1,30 @@
+function Confirm-LMYesNo {
+
+    $Answered = $False
+
+    do {
+
+        $DefaultAnswer = Read-Host "Accept? (y/N)"
+
+        If ($DefaultAnswer -ine 'y' -and $DefaultAnswer -ine 'n'){
+
+            Write-Host "Please enter 'Y' or 'N' (no quotes, but not case sensitive)" -ForegroundColor Yellow
+
+        }
+        Else {$Answered = $True}
+
+    }
+    until ($Answered -eq $True)
+
+    switch ($DefaultAnswer){
+
+        {$_ -ieq 'y'}{return $True}
+        {$_ -ieq 'n'}{return $False}
+
+    }
+
+}
+
 #This function prompts for server name and port:
     # it prompts to create a new history file, or to load an existing one. 
     # If loading an existing one, it needs to verify it.
@@ -6,26 +33,18 @@ function New-LMConfig { #Complete
     param (
         [Parameter(Mandatory=$false)]
         [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
-        [string]$ConfigFile = "$($Env:USERPROFILE)\Documents\LMStudio-PSClient\lmsc.cfg",
-
-        
-        [Parameter(Mandatory=$false)]
-        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
         [string]$Server,
         
         [Parameter(Mandatory=$false)]
         [ValidateRange(1, 65535)
         ][int]$Port,
-        
+
         [Parameter(Mandatory=$false)]
         [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
-        [string]$HistoryFilePath,
+        [string]$BasePath = "$($Env:USERPROFILE)\Documents\LMStudio-PSClient",
 
-        [Parameter(Mandatory=$false)][switch]$SkipValidation,
-
-        [Parameter(Mandatory=$false)][switch]$Import,
-
-        [Parameter(Mandatory=$false)][switch]$ReuseHistoryFile
+        [Parameter(Mandatory=$false)][switch]$Import
+        
     )#Structure: 
     
     begin {
@@ -71,135 +90,59 @@ function New-LMConfig { #Complete
             until ($InputValid -eq $true)
 
         }
-
         #endregion
 
-        #Region Validate History file input
-        If (!($PSBoundParameters.ContainsKey('HistoryFilePath'))){
-            
-            $HistoryFilePathValid = $False
+        #region Set the Base Path
+        If (!($PSBoundParameters.ContainsKey('BasePath'))){
 
-            $DefaultHistoryFilePath = "$($Env:USERPROFILE)\Documents\LMStudio-PSClient\$($ENV:USERNAME)-HF.index"
+            $SuggestedBasePath = "$Env:UserProfile\Documents\LMStudio-PSClient"
 
-            Write-Verbose "Default path for history file is $DefaultHistoryFilePath" -Verbose
+            Write-Host "Default directory path is $SuggestedBasePath"
 
-            $HFPathAnswered = $False
+            $ConfirmBasePath = Confirm-LMYesNo
 
-            do {
+            switch ($ConfirmBasePath){
 
-                $DefaultAnswer = Read-Host "Accept the default? (y/N)"
+                $True {$BasePath = $SuggestedBasePath}
 
-                If ($DefaultAnswer -ine 'y' -and $DefaultAnswer -ine 'n'){
-                    
-                    $HFPathAnswered = $False
-                    Write-Host "Please enter 'Y' or 'N' (no quotes, but not case sensitive)" -ForegroundColor Yellow
+                $False {
 
-                }
-                Else {$HFPathAnswered = $True}
-
-            }
-            until ($HFPathAnswered -eq $True)
-
-            switch ($DefaultAnswer){
-
-                {$_ -ieq "n"}{
-
-                    $PathProvided = $False
-
-                    do {
-    
-                        $HistoryFilePath = Read-host "Please provide a complete file path, including name ($($Env:USERNAME)-HF.cfg recommended)"
-                        $PathProvided = (![bool](($null -eq $HistoryFilePath -or $HistoryFilePath.Length -eq 0)))
-                    
-                    }
-                    until ($PathProvided -eq $True)
+                    try {$BasePath = Invoke-LMOpenFolderUI}
+                    catch {$_.Exception.Message}
 
                 }
 
-                {$_ -ieq "y"}{$HistoryFilePath = $DefaultHistoryFilePath}
-
+                Default {throw "Selection prompt was canceled"}
             }
-
-
-        } #Close If $null -eq HistoryFilePath
-
-        #Validate History File path
-        $HistFileDirPath  = ([System.IO.FileInfo]::new("$HistoryFilePath")).Directory.FullName
-
-        If (!(Test-Path $HistFileDirPath)){
-
-            $CreatePath = $True
-
-            Write-Host "Directory: $HistFileDirPath" -ForegroundColor Yellow
-
-            $CreatePathAnswered = $False
-
-            do {
-
-                $DefaultAnswer = Read-Host "Path doesn't exist. Create it? (y/N)"
-
-                If ($DefaultAnswer -ine 'y' -and $DefaultAnswer -ine 'n'){
-                    
-                    $CreatePathAnswered = $False
-                    Write-Host "Please enter 'Y' or 'N' (no quotes, but not case sensitive)" -ForegroundColor Yellow
-                }
-                Else {$CreatePathAnswered = $True}
-
-            }
-            until ($CreatePathAnswered -eq $True)
-
-            If ($DefaultAnswer -ieq 'n'){throw "Provided directory path must be created. Please rerun New-LMConfig."}
-            Else {$CreatePath = $True}
 
         }
-
-        Else {$CreatePath = $False}
-
         #endregion
 
+        #region Define files and folders from Base Path
+        $ConfigFile = "$BasePath\lmsc.cfg"
+        $HistoryFilePath = "$BasePath\$($ENV:USERNAME)-HF.index"
+        $DialogFolder = $HistoryFilePath.TrimEnd('.index') + '-DialogFiles'
+        $GreetingFilePath = "$DialogFolder\hello.greetings"
+        $StreamCachePath = "$BasePath\stream.cache"
+        $SystemPromptsPath = "$BasePath\system.prompts"
+        #endregion
+     
     } #End Begin
 
     process {
 
-        if (!$SkipVerification){
+        #region Create base path
+        If (!(Test-Path $BasePath)){
 
-            If ($HistoryFilePath.Substring(($HistoryFilePath.Length - 6),6) -ine ".index"){$HistoryFilePath = $HistoryFilePath + ".index"}
-
-            $Warnings = 0
-
-            #region Test Model retrieval (webserver connection)
-            try {$ModelRetrieval = Get-LMModel -Server $Server -Port $Port -AsTest}
-            catch {
-                Write-Warning "Unable to connect to server $Server on port $Port. This could be a server issue (Web server started?)"
-                $Warnings++
-            }
-            #endregion
-    
-            #region Create History File's directory path, format
-            try {Set-LMHistoryPath -HistoryFile $HistoryFilePath -CreatePath}
-            catch {Write-Warning "Unable to create the history file path."}
-            #endregion
+            try {mkdir $BasePath}
+            catch {throw "Unable to create directory path $BasePath"}
 
         }
-    }
+        #endregion
 
-    end {
-
-        If ($Warnings -gt 0){
-            Write-Host "Attention: " -ForegroundColor White -NoNewline
-            Write-Host "$Warning settings could not be verified." -ForegroundColor Yellow
-            Write-Host "If these settings are incorrect, please exit and re-run New-LMConfig." -ForegroundColor Green
-        }
-
-        #region Set creation variables
-        If (!($PSBoundParameters.ContainsKey('ConfigFile'))){$ConfigFile = "$($Env:USERPROFILE)\Documents\LMStudio-PSClient\lmsc.cfg"}
-    
-        
-        $DialogFolder = $HistoryFilePath.TrimEnd('.index') + '-DialogFiles'
-        $GreetingFilePath = $HistoryFilePath.TrimEnd('.index') + '-DialogFiles\hello.greetings'
-        $StreamCachePath = "$env:USERPROFILE\Documents\LMStudio-PSClient\stream.cache"
-
+        #region Set creation variables        
         $ConfigFileObj = Get-LMTemplate -Type ConfigFile
+        $SystemPromptsObj = Get-LMTemplate -Type SystemPrompts
 
         $ConfigFileObj.ServerInfo.Server = $Server
         $ConfigFileObj.ServerInfo.Port = $Port
@@ -220,6 +163,10 @@ function New-LMConfig { #Complete
         $ConfigFileObj.URIs.ModelURI = $ConfigFileObj.URIs.ModelURI -replace 'X', "$($ConfigFileObj.ServerInfo.Endpoint)" 
         #endregion
 
+    }
+
+    end {
+
         #region Display information and prompt for creation
         Write-Host "Config File Settings:" -ForegroundColor White
 
@@ -227,71 +174,67 @@ function New-LMConfig { #Complete
 
         Write-Host ""; Write-Host "History File location:" -ForegroundColor Green
         Write-Host "$HistoryFilePath"
+        Write-Host ""; Write-Host "Dialog subdirectory:" -ForegroundColor Green
+        Write-Host "$DialogFolder"
         Write-Host ""; Write-Host "Greeting File location:" -ForegroundColor Green
         Write-Host "$GreetingFilePath"
-        Write-Host ""; Write-Host "Stream Cachce location:" -ForegroundColor Green
+        Write-Host ""; Write-Host "Stream Cache location:" -ForegroundColor Green
         Write-Host "$StreamCachePath"
-        Write-Host ""; Write-Host "The following subdirectory will also be created:" -ForegroundColor Green
-        Write-Host "$DialogFolder"
-        Write-Host ""; Write-Host "Config File Path:" -ForegroundColor Green
+        Write-Host ""; Write-Host "System Prompts location:" -ForegroundColor Green
+        Write-Host "$SystemPromptsPath"
+        Write-Host ""; Write-Host "Config File location:" -ForegroundColor Green
         Write-Host "$ConfigFile"
 
-        $Proceed = Read-Host -Prompt "Proceed? (y/N)"
+        $Proceed = Confirm-LMYesNo
         #endregion
 
-        If ($Proceed -ine "y"){throw "Input other than 'y' provided, halting creation."}
-        
-        switch ($ReuseHistoryFile.IsPresent){
+        If ($Proceed -ne $true){throw "Configuration creation cancelled"}
 
-            $true {
-                If (!(Test-Path $HistoryFilePath)){
-                    
-                    Write-Warning "History File $HistoryFilePath not found, creating."
+        If (!(Test-Path $HistoryFilePath)){
+            
+            Write-Host "History File $HistoryFilePath not found, creating."
 
-                    try {@((Get-LMTemplate -Type HistoryEntry)) | ConvertTo-Json | Out-File -FilePath $HistoryFilePath -ErrorAction Stop}
-                    catch {throw "History file creation failed: $($_.Exception.Message)"}
-                }
+            try {@((Get-LMTemplate -Type HistoryEntry)) | ConvertTo-Json | Out-File -FilePath $HistoryFilePath -ErrorAction Stop}
+            catch {throw "History file creation failed: $($_.Exception.Message)"}
+        }
 
-                If (!(Test-Path $DialogFolder)){
-                    
-                    Write-Warning "Dialog Folder $DialogFolder not found, creating."
+        If (!(Test-Path $DialogFolder)){
+            
+            Write-Host "Dialog Folder $DialogFolder not found, creating."
 
-                    try {mkdir $DialogFolder -ErrorAction Stop | out-null}
-                    catch {throw "Dialog folder creation failed: $($_.Exception.Message)"}
-                }
+            try {mkdir $DialogFolder -ErrorAction Stop | out-null}
+            catch {throw "Dialog folder creation failed: $($_.Exception.Message)"}
+        }
 
-                If (!(Test-Path $GreetingFilePath)){
+        If (!(Test-Path $GreetingFilePath)){
 
-                    Write-Warning "Greeting file $GreetingFilePath not found, creating."
+            Write-Host "Greeting file $GreetingFilePath not found, creating."
 
-                    try {(Get-LMTemplate -Type ChatGreeting | Export-csv $GreetingFilePath -NoTypeInformation)}
-                    catch {throw "Greeting file creation failed: $($_.Exception.Message)"}
+            try {(Get-LMTemplate -Type ChatGreeting | Export-csv $GreetingFilePath -NoTypeInformation)}
+            catch {throw "Greeting file creation failed: $($_.Exception.Message)"}
 
-                }
+        }
 
-            }
+        If (!(Test-Path $SystemPromptsPath)){
 
-            $false {
-                try {mkdir $DialogFolder -ErrorAction Stop | out-null}
-                catch {throw "Dialog folder creation failed ($DialogFolder)"}
+            Write-Host "System prompts file $SystemPromptsPath not found, creating."
 
-                try {(Get-LMTemplate -Type ChatGreeting | Export-csv $GreetingFilePath -NoTypeInformation)}
-                catch {throw "Greeting file creation failed: $($_.Exception.Message)"}
+            try {($SystemPromptsObj | Export-csv $SystemPromptsPath -NoTypeInformation)}
+            catch {throw "System prompts file creation failed: $($_.Exception.Message)"}
 
-                $HistoryArray = New-Object System.Collections.ArrayList
+        }
 
-                $HistoryArray.Add((Get-LMTemplate -Type HistoryEntry)) | Out-Null
-                $HistoryArray.Add((Get-LMTemplate -Type HistoryEntry)) | Out-Null
-        
-                try {$HistoryArray | ConvertTo-Json -depth 5 | Out-File -FilePath $HistoryFilePath -ErrorAction Stop}
-                catch {throw "History file creation failed: $($_.Exception.Message)"}
-            }
+        $HistoryArray = New-Object System.Collections.ArrayList
 
-        } #Close Switch
+        $HistoryArray.Add((Get-LMTemplate -Type HistoryEntry)) | Out-Null
+        $HistoryArray.Add((Get-LMTemplate -Type HistoryEntry)) | Out-Null
+
+        try {$HistoryArray | ConvertTo-Json -depth 5 | Out-File -FilePath $HistoryFilePath -ErrorAction Stop}
+        catch {throw "History file creation failed: $($_.Exception.Message)"}
 
         If (Test-Path $ConfigFile){Remove-Item $ConfigFile}
 
-        try {$ConfigFileObj | ConvertTo-Json -Depth 3 -ErrorAction Stop | Out-File $ConfigFile -ErrorAction Stop}
+        try {$ConfigFileObj | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $ConfigFile -ErrorAction Stop}
         catch {throw "Config file creation failed: $($_.Exception.Message)"}
         
 
@@ -600,7 +543,7 @@ function Get-LMTemplate { #Complete
 
         }
 
-        {$_ -ieq "SystemPrompt"}{
+        {$_ -ieq "SystemPrompts"}{
 $Object = @'
 "Name","Prompt"
 "ChatML","Perform the task to the best of your ability."
@@ -672,64 +615,6 @@ function Confirm-LMGlobalVariables ([switch]$ReturnBoolean) { #Complete, rewrote
 
     } #Close Switch
 
-}
-
-# This function "Carves The Way" to the path where the history file should be saved. 
-# It verifies the path validity and tries to create the path, if specified
-
-function Set-LMHistoryPath { #Complete
-    param (
-        [Parameter(Mandatory=$true)]
-        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
-        [string]$HistoryFile,
-
-        [Parameter(Mandatory=$false)]
-        [switch]$CreatePath
-    )
-
-    If (!($PSBoundParameters.ContainsKey('HistoryFile'))){throw "Please enter a valid path to the history file"}
-
-    $HistFileDirs = $HistoryFile -split '\\'
-
-    $HistFileDirs = $HistFileDirs[0..($HistFileDirs.GetUpperBound(0) -1)]
-
-    $HistoryFolder = $HistFileDirs -join '\'
-
-    
-    If (!(Test-Path $HistoryFolder) -and (!($CreatePath.IsPresent))){throw "Directory path $HistoryFolder does not exist. Please specify -CreatePath parameter."}
-    ElseIf (Test-path $HistoryFolder){Write-Verbose "Folder path $HistoryFolder exists, path creation not necessary"}
-    else {
-        $PresentDir = (Get-Location).Path
-
-        $Drive = $HistFileDirs[0]
-        
-        try {&$Drive}
-        catch {throw "Drive $Drive is not valid or accessible"}
-
-        Set-Location -Path $PresentDir | Out-Null
-
-        (1..($HistFileDirs.GetUpperBound(0))) | Foreach-Object {
-
-            $Index = $_
-
-            $SubDir = $HistFileDirs[$Index]
-
-            $FullSubDirPath = $HistFileDirs[0..$Index] -join '\'
-
-            If (!(Test-Path $FullSubDirPath)){
-
-                try {$CreateDirectory = mkdir -Path $FullSubDirPath -ErrorAction Stop}
-                catch {throw "Error creating $SubDir : $($_.Exception.Message)"}
-
-            }
-
-
-        }  #Close (1..) | foreachObject
-        
-    } #Close Else
-
-    return $True
-  
 }
 
 #This function imports the content of an existing history file, for either use or to verify the format is correct
@@ -1190,7 +1075,7 @@ function Search-LMChatDialog { #NOT STARTED
 
 }
 
-#This function invokes Windows Forms Open and SaveAs:
+#This function invokes Windows Forms Open and SaveAs for files:
 function Invoke-LMSaveOrOpenUI {
     [CmdletBinding()]
     param (
@@ -1309,6 +1194,51 @@ function Invoke-LMSaveOrOpenUI {
             {$_ -eq "Cancel"}{throw "User canceled $Action prompt"}
 
             {$_ -eq "OK"}{return $UI.FileName}
+
+        }
+
+    }
+
+}
+
+#This function invokes Windows Forms Open, for selecting a directory path:
+function Invoke-LMOpenFolderUI {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$false)]
+        [string]$StartPath
+
+    )
+
+    begin {
+
+        try {Add-Type -AssemblyName PresentationCore,PresentationFramework,System.Windows.Forms -ErrorAction Stop}
+        catch {throw "Unable to load UI assemblies"}
+
+        If ($null -eq $StartPath -or $StartPath.Length -eq 0 -or (!(Test-Path $StartPath))){
+         
+            If (Test-Path "$Env:USERPROFILE\Documents\LMStudio-PSClient"){$StartPath = "$Env:USERPROFILE\Documents\LMStudio-PSClient"}
+            Else {$StartPath = "$Env:USERPROFILE\Documents"}
+
+        }
+
+    }
+    process {
+
+        $UI = New-Object System.Windows.Forms.FolderBrowserDialog
+
+        $UI.InitialDirectory = $StartPath
+        $UIResult = $UI.ShowDialog()
+
+    }
+
+    end {
+
+        switch ($UIResult){
+
+            {$_ -eq "Cancel"}{throw "Folder selection cancelled"}
+
+            {$_ -eq "OK"}{return $UI.SelectedPath}
 
         }
 
@@ -2301,8 +2231,15 @@ process {
     #The magic is here:
 :main do { 
 
-        Write-Host "You: " -ForegroundColor Green -NoNewline;
-        $UserInput = Read-Host
+        #region Prevent empty responses
+        do {
+
+            Write-Host "You: " -ForegroundColor Green -NoNewline
+            $UserInput = Read-Host 
+        
+        }
+        until ($UserInput.Length -gt 0)
+        #endregion
 
         #region Construct the user Dialog Message and append to the Dialog:
         $UserMessage = Get-LMTemplate -Type DialogMessage

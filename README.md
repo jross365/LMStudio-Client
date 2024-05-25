@@ -39,6 +39,16 @@ This project isn't complete, and as of this writing the module isn't anywhere cl
 
 ---
 
+### 05/25/2024
+
+Needed a break.
+
+**✅** I gutted the validation and complexity in **New-LMConfig** in favor of a single-path approach: define -**BasePath** and everything else is created under this.
+
+This gutting also enabled me to get rid of the **Set-LMHistoryFilePath** function, which was nothing more than a recursive directory creator.
+
+---
+
 ### 05/22/2024
 
 **✅** Fixed problem with fragmentation in **Invoke-LMStream**: if the line fragmented twice, the second fragment wasn't caught.
@@ -66,6 +76,10 @@ Plus everything above.
 I forgot to add something to the list below: ⬜️ Export the System Prompt file in **New-LMConfig.**
 
 That's all for now.
+
+**Edit:** I forgot some things:
+
+**🚧**I need an empty "Return" in **Start-LMChat** to do nothing (erase current line, don't run). There's a way to erase the current written line, I should experiment with it to make it "transparent".
 
 ---
 
