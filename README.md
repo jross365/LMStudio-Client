@@ -69,6 +69,10 @@ The way I have to do this will be less than ideal, but better than the worst-cas
 
 It's not perfect. I really like how OpenAI converts it in-line, but I would need to redesign and improve how the HTTP client works, and that's a low priority.
 
+**Follow-Up:**
+
+**Select-LMSystemPrompt** is written, and does what it's supposed to. (_I've been doing a better job of testing features_). Next to do is to ⬜️ integrate it with **Start-LMChat.** I'll probably do that through an auxiliary function (⬜️ **Set-ChatSettings**?)
+
 ---
 
 ### 05/22/2024
@@ -147,7 +151,7 @@ This is a consolidated list of the work to do:
 
 **⬜️** Write **Get-LMSystemPrompt** (Involves more file-handling)
 
-**⬜️**Integrate **Get-LMSystemPrompt**  into **Start-LMChat**, and possibly **New-LMConfig**.
+**✅** Integrate **Get-LMSystemPrompt**  into **Start-LMChat**, and possibly **New-LMConfig**.
 
 ⬜️ Separate out Public and Private functions (second-to-last thing to do)
 

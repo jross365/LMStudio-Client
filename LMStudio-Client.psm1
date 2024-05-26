@@ -1781,7 +1781,26 @@ end {
 }
 
 #This function presents a selection prompt (Out-Gridview) for the system prompt
-function Get-LMSystemPrompt {} #Not started
+function Select-LMSystemPrompt ([switch]$Pin) {
+    
+    If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "Config file variables not loaded. Run [Import-ConfigFile] to load them"}
+    Else {$SysPromptFile = $global:LMStudioVars.FilePaths.SystemPromptPath}
+
+    try {$SystemPrompts = Import-Csv $SysPromptFile -ErrorAction Stop}
+    catch {throw "Unable to import system.prompts file [$SysPromptFile]"}
+
+    $SystemPrompts += ([pscustomobject]@{"Name"="Cancel"; "Prompt"="Select this prompt to cancel"})
+
+    $SelectedPrompt = $SystemPrompts | Out-GridView -Title "Please Select a Prompt" -OutputMode Single
+
+    # This isn't generic error checking: $SelectedPrompt really does return null
+    If ($SelectedPrompt.Name -eq 'Cancel' -or $null -eq $SelectedPrompt){throw "System Prompt selection cancelled"}
+
+    if ($Pin.IsPresent){Set-LMConfigOptions -Branch ChatSettings -Options @{"SystemPrompt"=$($SelectedPrompt.Prompt)}}
+
+    return ($SelectedPrompt.Prompt)
+
+} #Not started
 
 
 #This function consumes a Dialog, and returns a fully-furnished $Body object
@@ -1934,9 +1953,8 @@ function Select-LMHistoryEntry {
 
         If (!$PSBoundParameters.ContainsKey('HistoryFile')){
 
-            If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "-HistoryFile was not specified, and config file variables not loaded. Run [Import-ConfigFile] to load them"}
-            Else {$HistoryFile = $global:LMStudioVars.FilePaths.HistoryFilePath}
-    
+            If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "Config file variables not loaded. Run [Import-ConfigFile] to load them"}
+            Else {$HistoryFile = $global:LMStudioVars.FilePaths.HistoryFilePath}    
         }
 
         If (!(Test-Path $HistoryFile)){throw "History file not found - path invalid [$HistoryFile]"}
