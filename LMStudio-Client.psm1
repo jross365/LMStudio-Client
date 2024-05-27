@@ -1992,6 +1992,97 @@ function Select-LMHistoryEntry {
 
 }
 
+#This function converts Dialog Messages to Markdown output
+function Show-LMDialog {
+
+    [CmdletBinding(DefaultParameterSetName="Auto")]
+    param (
+        [Parameter(Mandatory=$false, ParameterSetName='Display')]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [array]$DialogMessages,
+        
+        [Parameter(Mandatory=$false, ParameterSetName='Display')]
+        [switch]$AsMarkdown,
+        
+        [Parameter(Mandatory=$false, ParameterSetName='Test')]
+        [switch]$CheckMarkdown
+    )
+    begin {
+
+        If (!($PSBoundParameters.ContainsKey('DialogMessages')) -and !($PSBoundParameters.ContainsKey('CheckMarkDown'))){throw "No parameters provided: please specify parameter [-DialogMessages or -Check]"}
+
+        $MessageBuffer = New-Object System.Collections.ArrayList
+
+        If ($AsMarkdown.IsPresent -or $CheckMarkdown.IsPresent){
+
+            If (($PSversionTable.PSVersion.Major -ge 7) -and ($null -ne (Get-Command Show-Markdown -ErrorAction SilentlyContinue))){$MarkDownAvailable = $True}
+            Else {$MarkDownAvailable = $False}
+
+            If (!($MarkDownAvailable) -and !($CheckMarkdown.IsPresent)){throw "MarkDown not available in this Powershell session"}
+
+        }
+
+    }
+    process {
+
+            if (!($CheckMarkDown.IsPresent)){
+
+                Foreach ($Message in $DialogMessages.Where({$_.role -match 'user|assistant'})){
+
+                    switch ($Message.role){
+
+                        {$_ -eq 'user'}{
+                            $Title = "You: "
+                            $Color = "Green"
+                        }
+                        {$_ -eq 'assistant'}{
+                            $Title = "AI: "
+                            $Color = "Magenta"
+                        }
+
+                    }
+
+                switch ($AsMarkdown.IsPresent){
+
+                    $True {$MessageBuffer.Add(([pscustomobject]@{"Title" = $Title; "Color" = $Color; "Message" = $(($Message.Content -replace "`n","`n`n") | Show-Markdown)})) | Out-Null}
+
+                    $False {$MessageBuffer.Add(([pscustomobject]@{"Title" = $Title; "Color" = $Color; "Message" = $($Message.Content)})) | Out-Null}
+
+                }
+
+            }
+
+        }
+
+    }
+    end {
+
+        if ($CheckMarkdown.IsPresent){return $MarkDownAvailable}
+        else {
+
+            If ($AsMarkdown.IsPresent){Clear-Host}
+
+            $MessageBuffer.Foreach({
+            
+                $Message = $_
+
+                Write-Host "$($Message.Title)" -ForegroundColor "$($Message.Color)" -NoNewline
+
+                switch ($AsMarkdown.IsPresent){ #.Replace("`n`n`n`n","`n`n")
+                    $True {Write-Host $($Message.Message.TrimEnd("`r`n"))}
+                    $False {Write-Host "$($Message.Message)"}
+                }
+
+                Write-Host ""
+
+            })
+
+        }
+
+    }
+
+}
+
 function Start-LMChat {
     [CmdletBinding(DefaultParameterSetName="Auto")]
     param (
@@ -2092,6 +2183,11 @@ begin {
     catch {throw $_.Exception.Message}
     #endregion
 
+    #region Check/set if we can use markdown
+    $MarkDownAvailable = Show-LMDialog -CheckMarkdown
+    $UseMarkDown = ([bool]($MarkDown -and $MarkDownAvailable))
+    #endregion
+    
     #region -ResumeChat Selector
     switch ($ResumeChat.IsPresent){ #Not Yet Tested
 
@@ -2179,7 +2275,6 @@ begin {
                 } #Close Case $False
             
             } #Close Switch
-
     #endregion
     
     #region -ChooseSystemPrompt triggers System Prompt selector (FUNCTION NOT BUILT YET)
@@ -2209,6 +2304,7 @@ process {
     
     $BreakDialog = $False
     $OpenerSet = ([boolean](($Dialog.Info.Opener.Length -ne 0) -and ($null -ne $Dialog.Info.Opener) -and ($Dialog.Info.Opener -ne "dummyvalue")))
+    
 
     #Set $BodySettings for use with Convert-LMDialogToBody:
     $BodySettings = @{}
@@ -2220,29 +2316,12 @@ process {
 
     If ($ResumeChat.IsPresent){ #Play the previous conversation back to the 
 
-        $Dialog.Messages.Foreach({
+        switch ($UseMarkDown){
 
-            $Message = $_
+            $True {Show-LMDialog -DialogMessages ($Dialog.Messages) -AsMarkdown}
 
-            If ($Message.Role -match 'user|assistant'){
-            
-                If ($Message.Role -eq "user"){
-                    $Color = "Green"
-                    $Title = "You: "
-                }
-                
-                If ($Message.Role -eq "assistant"){
-                    $Color = "Magenta"
-                    $Title = "AI: "
-                }
-
-                Write-Host "$Title" -ForegroundColor $Color -NoNewline
-                Write-Host "$($Message.Content)" #Opportunity for Markdown here
-                Write-Host ""
-
-            }
-
-        })
+            $False {Show-LMDialog -DialogMessages ($Dialog.Messages)} #Close False
+        }
 
     }
 
@@ -2311,6 +2390,10 @@ process {
 
         #region Update Dialog Object
         $Dialog.Info.Modified = $AssistantMessage.TimeStamp
+        #endregion
+
+        #region Apply Markdown, if enabled
+        If ($UseMarkDown){Show-LMDialog -DialogMessages $Dialog.Messages -AsMarkdown}
         #endregion
 
         #region Update Dialog File, History File

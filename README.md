@@ -41,6 +41,14 @@ This project isn't complete, and as of this writing the module isn't anywhere cl
 
 ### 05/25/2024
 
+Busy day yesterday, and took another break.
+
+**✅** Instead of integrating markdown into the web client functions (**Invoke-LMBlob/Invoke-LMStream**), I built **Show-LMDialog** to handle Markdown/non-markdown output. It appears to be working pretty well.
+
+---
+
+### 05/25/2024
+
 I needed a break.
 
 **✅** I gutted the validation and complexity in **New-LMConfig** in favor of a single-path approach: define -**BasePath** and everything else is created under this.
@@ -147,9 +155,9 @@ This is a consolidated list of the work to do:
 
 **🚧**Add the following variables to the Config File: \[**Moved**\]
 
-⬜️ Implement MarkDown into **Invoke-LMStream** and **Invoke-LMBlob**
+**❌** Implement MarkDown into **Invoke-LMStream** and **Invoke-LMBlob**
 
-**⬜️** Write **Get-LMSystemPrompt** (Involves more file-handling)
+**✅** Write **Get-LMSystemPrompt** (Involves more file-handling)
 
 **✅** Integrate **Get-LMSystemPrompt**  into **Start-LMChat**, and possibly **New-LMConfig**.
 
@@ -161,13 +169,13 @@ This is a consolidated list of the work to do:
 
 ⬜️ Get a start on how the **Start-LMChat** prompt is going to handle option (**:**) inputs. Maybe this should be an auxiliary function
 
-⬜️ Write a small console script that prompts for a "y/N" answer. (_Or a message box)_
+**✅** Write a small console script that prompts for a "y/N" answer. (_Or a message box)_
 
 ⬜️ Go through my functions list and add/strike things off of the list.
 
 ⬜️ Better prompts and questions for the greeting generator.
 
-⬜️ I can add parameters to **Show-LMHelp** to give details for each parameter
+💡 I can add parameters to **Show-LMHelp** to give details for each parameter
 
 ⬜️ Write **Get-LMResponse** (single-response query, no console output).
 
@@ -270,8 +278,8 @@ And tah-duh! **\-ResumeChat** will be fully integrated into the **:main** loop a
 Today, I built the **Invoke-LMSaveOrOpenUI** function, which presents an Open/Save Windows dialog. This will _really_ help me cut down on validation code, in cases where the user provides no path or an invalid path.
 
 - I need to integrate the function into every case where I open or save a CFG, INDEX, GREETING or DIALOG file
-  - \[Moved\] **New-Config**
-  - \[Moved\] **Import-Config**
+  - \[Moved\] **New-LMConfig**
+  - \[Moved\] **Import-LMConfig**
   - \[Moved\] **Get-LMGreeting**
   - \[Moved\] **Start-LMChat**
 - This will significantly simplify the History File selection in **Start-LMChat**.
