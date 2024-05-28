@@ -2044,7 +2044,7 @@ function Show-LMDialog {
 
                 switch ($AsMarkdown.IsPresent){
 
-                    $True {$MessageBuffer.Add(([pscustomobject]@{"Title" = $Title; "Color" = $Color; "Message" = $(($Message.Content -replace "`n","`n`n") | Show-Markdown)})) | Out-Null}
+                    $True {$MessageBuffer.Add(([pscustomobject]@{"Title" = $Title; "Color" = $Color; "Message" = $((($Message.Content) | Show-Markdown)).TrimEnd("`n")})) | Out-Null}
 
                     $False {$MessageBuffer.Add(([pscustomobject]@{"Title" = $Title; "Color" = $Color; "Message" = $($Message.Content)})) | Out-Null}
 

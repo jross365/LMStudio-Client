@@ -39,11 +39,50 @@ This project isn't complete, and as of this writing the module isn't anywhere cl
 
 ---
 
-### 05/25/2024
+### 05/27/2024
 
 Busy day yesterday, and took another break.
 
 **✅** Instead of integrating markdown into the web client functions (**Invoke-LMBlob/Invoke-LMStream**), I built **Show-LMDialog** to handle Markdown/non-markdown output. It appears to be working pretty well.
+
+🐛 The markdown integration isn't perfect. This time it's not my fault. **Show-Markdown** has some problems that I spent a few hours trying to circumvent but was unable to.
+
+It has a problem with adding extra new-lines, which are not easily stripped out; and it has a problem removing some new-lines, which are not easily put back in.
+
+I fought with a lot of different approaches to solving the problem, but I'm going to call it: for the time-being, it must remain imperfect.
+
+**The list is getting shorter:**
+
+⬜️ Integrate **Invoke-LMSaveOrOpenUI** into **Import-LMConfig** (_when opening the file without specifying the path_)
+
+⬜️Write how the **Start-LMChat** prompt is going to handle option (**:**) inputs. Maybe this should be an auxiliary function
+
+💡 I can add parameters to **Show-LMHelp** to give details for each parameter
+
+...
+
+**These are functions I need to write:**
+
+⬜️ Write a **Modify-LMSystemPrompts** function (to add to/remove from the list)
+
+⬜️ Write the **Search-LMHistory** function
+
+⬜️ Write **Get-LMResponse** (single-response query, no console output).  
+...
+
+**And these are "admin" tasks:**
+
+⬜️ Better prompts and questions for the greeting generator
+
+**⬜️ Check my functions, and identify which have never been used by any other function**
+
+⬜️ Separate out Public and Private functions (second-to-last thing to do)
+
+⬜️ Build the **psd1** file out
+
+⬜️ Documentation: this one is so important. I need to be very clear that this is built and designed to be easy to use, and is records-oriented: titling, tagging discussions, and searching for them, is what I built.
+
+That's enough for now.
 
 ---
 
@@ -107,13 +146,13 @@ I fixed a problem with how I determined the default **MarkDown** property.
 
 Plus everything above.
 
-I forgot to add something to the list below: ⬜️ Export the System Prompt file in **New-LMConfig.**
+I forgot to add something to the list below: **✅** Export the System Prompt file in **New-LMConfig.**
 
 That's all for now.
 
 **Edit:** I forgot some things:
 
-**🚧**I need an empty "Return" in **Start-LMChat** to do nothing (erase current line, don't run). There's a way to erase the current written line, I should experiment with it to make it "transparent".
+**❌**I need an empty "Return" in **Start-LMChat** to do nothing (erase current line, don't run). There's a way to erase the current written line, I should experiment with it to make it "transparent".
 
 ---
 
@@ -161,23 +200,23 @@ This is a consolidated list of the work to do:
 
 **✅** Integrate **Get-LMSystemPrompt**  into **Start-LMChat**, and possibly **New-LMConfig**.
 
-⬜️ Separate out Public and Private functions (second-to-last thing to do)
+**\[Moved\]** Separate out Public and Private functions (second-to-last thing to do)
 
-⬜️ Integrate **Invoke-LMSaveOrOpenUI** where-ever files are being saved or opened (for name/path validation)
+**\[Moved\]** Integrate **Invoke-LMSaveOrOpenUI** where-ever files are being saved or opened (for name/path validation)
 
-⬜️ Check my functions, and identify which have never been used by any other function.
+**\[Moved\]** Check my functions, and identify which have never been used by any other function.
 
-⬜️ Get a start on how the **Start-LMChat** prompt is going to handle option (**:**) inputs. Maybe this should be an auxiliary function
+**\[Moved\]** Get a start on how the **Start-LMChat** prompt is going to handle option (**:**) inputs. Maybe this should be an auxiliary function
 
 **✅** Write a small console script that prompts for a "y/N" answer. (_Or a message box)_
 
-⬜️ Go through my functions list and add/strike things off of the list.
+**\[Moved\]** Go through my functions list and add/strike things off of the list.
 
-⬜️ Better prompts and questions for the greeting generator.
+**\[Moved\]** Better prompts and questions for the greeting generator.
 
 💡 I can add parameters to **Show-LMHelp** to give details for each parameter
 
-⬜️ Write **Get-LMResponse** (single-response query, no console output).
+**\[Moved\]** Write **Get-LMResponse** (single-response query, no console output).
 
 My work's cut out for me. If I can complete one or two of these a day, I'll be a pretty closed to ready to make it public.
 
