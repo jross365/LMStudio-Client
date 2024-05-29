@@ -41,6 +41,30 @@ This project isn't complete, and as of this writing the module isn't anywhere cl
 
 ### 05/27/2024
 
+I had to do some design thinking today, and I realized that to prevent the options system from becoming a cluttered, complicated mess, I'm going to have to do away with the "extensibility" I've maintained.
+
+The extensibility I'm speaking of is the use of certain functions without requiring the config file, or the configuration being loaded.
+
+I've maintained certain parameters to ensure a user could use the program without depending on the config, if they wanted the freedom to use them in a way other than what I designed.
+
+I don't like the idea of forcing people into doing the way I think is best, because what I think is best may not be the best use of the application. By removing that extensibility, I run the risk of forcing users to use the application in a way they don't like.
+
+Or it might not matter at all. Users may really enjoy the "plug and play", relatively uninvolved way I've built it.
+
+I'm hesitant, but I think I'm going to remove the extensibility. I have to make a decision and live with it, but there are other benefits to removing it:
+
+- The code becomes shorter and more compact
+- It eliminates a great deal of ways errors can be introduced
+- It removes a lot of required validation
+- It will simplify the featureset
+- The simplified featureset will simplify the documentation (_which is very important to me_)
+
+That's all for now, no coding today.
+
+---
+
+### 05/27/2024
+
 Busy day yesterday, and took another break.
 
 **✅** Instead of integrating markdown into the web client functions (**Invoke-LMBlob/Invoke-LMStream**), I built **Show-LMDialog** to handle Markdown/non-markdown output. It appears to be working pretty well.
@@ -102,7 +126,7 @@ I sorted out more bugs out today. Most notably, I fixed the index selection for 
 
 I did some thinking about how to implement Markdown. Doing it in-line will be impossible because of the way the async stream works: the output is directly to console, and the console pipeline can't be intercepted.
 
-I did some experimenting, and the way **Show-Markdown** works is it converts string text into a series of meta-commands available to PS7 that is also displayed as string text. This means text converted to markdown only needs to be converted once.
+I did some experimenting, and the way **Show-Markdown** works is it converts string text into a series of meta-commands \[_edit:_ "_for serial text output emulation_") available to PS7 that is also displayed as string text. This means text converted to markdown only needs to be converted once.
 
 The way I have to do this will be less than ideal, but better than the worst-case:
 
@@ -126,7 +150,7 @@ It's not perfect. I really like how OpenAI converts it in-line, but I would need
 
 **✅** Fixed problem with fragmentation in **Invoke-LMStream**: if the line fragmented twice, the second fragment wasn't caught.
 
-**💡** I need to "go deep" on the **Do/Until** loop for **Invoke-LMStream**. There looks like a lot of room for optimization, and it's cludgy at present. I bet I can improve performance.
+**✅** I need to "go deep" on the **Do/Until** loop for **Invoke-LMStream**. There looks like a lot of room for optimization, and it's cludgy at present. I bet I can improve performance.
 
 💡 I need to come up with a "Pacing" system to detect stuttering from a slow LLM response, and output console text so it's slower but smoother.
 
