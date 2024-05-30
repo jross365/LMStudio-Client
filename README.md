@@ -39,6 +39,40 @@ This project isn't complete, and as of this writing the module isn't anywhere cl
 
 ---
 
+### 05/28/2024
+
+Back at it! I've cut out all of the non-config file input and validation in **Start-LMChat** and converted every variable to use the **Global:LMConfigVars**.
+
+I've done some cursory validation, and it works without a hitch. It's also much shorter.
+
+I've put the "Old" version of the function in the "_Scraps_" folder. It won't ever be completed, but it's there if people want the extensibility.
+
+Here's some code I might need later:
+
+`#region Moving this out of the way: -ChooseSystemPrompt triggers System Prompt selector (FUNCTION NOT BUILT YET)`
+
+`If ($ChooseSystemPrompt.IsPresent){`
+
+`$CurrentSysPrompt = $Global:LMStudioVars.ChatSettings.SystemPrompt`
+
+`$Global:LMStudioVars.ChatSettings.SystemPrompt = Select-LMSystemPrompt -Pin`
+
+`` If ($Global:LMStudioVars.ChatSettings.SystemPrompt -eq "Cancelled" -or `  ``
+
+`` $null -eq $Global:LMStudioVars.ChatSettings.SystemPrompt -or `  ``
+
+`$Global:LMStudioVars.ChatSettings.SystemPrompt.Length -eq 0){$Global:LMStudioVars.ChatSettings.SystemPrompt = "$CurrentSysPrompt"}`
+
+`}`
+
+`Else {$Global:LMStudioVars.ChatSettings.SystemPrompt = "Please be polite, concise and informative."}`
+
+`#endregion`
+
+**💡** I need to add a switch to **Start-LMChat**: **\-NoSave**. This will give the ability for a user to not record a chat if they don't want to.
+
+---
+
 ### 05/27/2024
 
 I had to do some design thinking today, and I realized that to prevent the options system from becoming a cluttered, complicated mess, I'm going to have to do away with the "extensibility" I've maintained.
@@ -51,7 +85,7 @@ I don't like the idea of forcing people into doing the way I think is best, beca
 
 Or it might not matter at all. Users may really enjoy the "plug and play", relatively uninvolved way I've built it.
 
-I'm hesitant, but I think I'm going to remove the extensibility. I have to make a decision and live with it, but there are other benefits to removing it:
+I'm hesitant, but I think I'm going to **✅** remove the extensibility. I have to make a decision and live with it, but there are other benefits to removing it:
 
 - The code becomes shorter and more compact
 - It eliminates a great deal of ways errors can be introduced
