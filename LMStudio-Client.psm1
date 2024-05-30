@@ -1463,9 +1463,14 @@ namespace LMStudio
     catch {throw $_.Exception.Message}
 
      try {Get-Content $File -Tail 10 -Wait}
-    catch {return "HALT: ERROR File is not readable"}
- 
-    $JobOutput.Close()
+    catch {
+    
+        #$JobOutput.Close() Dispose closes, apparently
+        $jobOutput.Dispose()
+        return "HALT: ERROR File is not readable"
+    
+    }
+    #$JobOutput.Close() See above
     $jobOutput.Dispose()
       
     } #Close $StreamJob

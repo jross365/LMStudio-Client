@@ -71,6 +71,8 @@ Here's some code I might need later:
 
 **💡** I need to add a switch to **Start-LMChat**: **\-NoSave**. This will give the ability for a user to not record a chat if they don't want to.
 
+**✅** I also included **$JobOutput.Dispose()** in the **Invoke-LMStream** function's **Get-Content -Wait** try/catch block. I wonder if some longer term instability I was seeing was because I wasn't properly closing my streamwriters. (_It could also be because I'm always running LMStudio locally when testing_).
+
 ---
 
 ### 05/27/2024
