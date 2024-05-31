@@ -1057,10 +1057,6 @@ function Get-LMModel {
 
 }
 
-#This function saves a chat dialog to a dialog file, and updates the history file
-#Can probably get rid of this
-function Update-LMChatDialog {}
-
 #Searches the HistoryFile for strings and provides multiple ways to output the contents
 function Search-LMChatDialog { #NOT STARTED
 
@@ -1786,7 +1782,7 @@ end {
 }
 
 #This function presents a selection prompt (Out-Gridview) for the system prompt
-function Select-LMSystemPrompt ([switch]$Pin) {
+function Select-LMSystemPrompt ([switch]$Pin, [switch]$AsObject) {
     
     If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "Config file variables not loaded. Run [Import-ConfigFile] to load them"}
     Else {$SysPromptFile = $global:LMStudioVars.FilePaths.SystemPromptPath}
@@ -1803,10 +1799,87 @@ function Select-LMSystemPrompt ([switch]$Pin) {
 
     if ($Pin.IsPresent){Set-LMConfigOptions -Branch ChatSettings -Options @{"SystemPrompt"=$($SelectedPrompt.Prompt)}}
 
-    return ($SelectedPrompt.Prompt)
+    switch ($AsObject.IsPresent){
+
+        $True {return $SelectedPrompt}
+
+        $False {$SelectedPrompt.Prompt}
+
+    }
 
 } #Not started
 
+#This function allows you to add or remove system prompt entries
+function Edit-LMSystemPrompt {
+    [CmdletBinding(DefaultParameterSetName="Auto")]
+    param (
+        [Parameter(Mandatory=$false, ParameterSetName='Add')]
+        [switch]$Add,
+        [Parameter(Mandatory=$false, ParameterSetName='Remove')]
+        [switch]$Remove,
+        [Parameter(Mandatory=$false, ParameterSetName='Add')]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [string]$Name,
+        [Parameter(Mandatory=$false, ParameterSetName='Add')]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [string]$Prompt
+    )
+    begin {
+
+        If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "Config file variables not loaded. Run [Import-ConfigFile] to load them"}
+        Else {$SysPromptFile = $global:LMStudioVars.FilePaths.SystemPromptPath}
+    
+        if (!(Test-Path $Global:LMStudioVars.FilePaths.SystemPromptPath)){throw "System prompt file does not exist [$($Global:LMStudioVars.FilePaths.SystemPromptPath)]"}
+
+        If (!($Add.IsPresent) -and !($Remove.IsPresent)){throw "You must specify -Add or -Remove"}
+
+        try {$SystemPrompts = Import-Csv $SysPromptFile -ErrorAction Stop}
+        catch {throw "Unable to import system.prompts file [$SysPromptFile]"}
+
+    }
+
+    process {
+        
+        If ($Add.IsPresent){
+
+            If (!$PSBoundParameters.ContainsKey('Name')){
+
+                $Name = Read-Host "Please enter a Name"
+
+                if ($null -eq $Name -or $Name.Length -eq 0){throw "Invalid name provided"}
+
+            }
+
+            If (!$PSBoundParameters.ContainsKey('Prompt')){
+
+                $Prompt = Read-Host "Please enter a Prompt"
+
+                if ($null -eq $Prompt -or $Prompt.Length -eq 0){throw "Invalid prompt provided"}
+
+            }
+
+            $SystemPrompts += ([pscustomobject]@{"Name" = $Name; "Prompt" = $Prompt})
+
+        }
+
+        if ($Remove.IsPresent){
+
+            try {$RemovePrompt = Select-LMSystemPrompt -AsObject}
+            catch {throw $_.Exception.Message}
+
+            $SystemPrompts = $SystemPrompts | Where-Object {$_.Name -ne $RemovePrompt.Name -and $_.Prompt -ne $RemovePrompt.Prompt}
+
+        }
+
+    }
+
+    end {
+
+        try {$SystemPrompts | Export-csv -Path $SysPromptFile -ErrorAction Stop}
+        catch {throw "Unable to save system prompt file [$SysPromptFile]"}
+
+    }
+}
 
 #This function consumes a Dialog, and returns a fully-furnished $Body object
 #Maybe I should make one of these for the Greetings, as well :-)
@@ -1996,6 +2069,8 @@ function Select-LMHistoryEntry {
     }
 
 }
+
+
 
 #This function converts Dialog Messages to Markdown output
 function Show-LMDialog {

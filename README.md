@@ -39,6 +39,20 @@ This project isn't complete, and as of this writing the module isn't anywhere cl
 
 ---
 
+### 05/30/2024
+
+I put together **✅** **Edit-LMSystemPrompt**. It takes an **\-Add** or an **\-Remove** parameter. It's pretty simple, actually.
+
+I've been slowing down a bit, but I'm still making myself work on this. I'm determined to "finish" it and make this journal public. It's one of the coolest things I've built in Powershell, and by far the most mature module I've ever written.
+
+Perhaps tomorrow, I'll work on **Search-LMHistory**. If I want an easy day, I'll write **Get-LMResponse**.
+
+**💡** With **Get-LMResponse**, I may integrate Dialog File generation. I'm not sure yet.
+
+That's all for now.
+
+---
+
 ### 05/28/2024
 
 Back at it! I've cut out all of the non-config file input and validation in **Start-LMChat** and converted every variable to use the **Global:LMConfigVars**.
@@ -123,7 +137,7 @@ I fought with a lot of different approaches to solving the problem, but I'm goin
 
 **These are functions I need to write:**
 
-⬜️ Write a **Modify-LMSystemPrompts** function (to add to/remove from the list)
+**✅** Write a **Modify-LMSystemPrompts** function (to add to/remove from the list)
 
 ⬜️ Write the **Search-LMHistory** function
 
@@ -242,7 +256,7 @@ The variables are now fully integrated. Now the fun part, building the functions
 💡 I should probably be tracking the models and when they change. This could be done with **$Dialog.Info.Models** being an array/list containing two fields ("Model", "Timestamp") If the model changes, it gets updated there, and any "replay" will show the correct models for each prompt.
 
 This is a bit much to bite off right now though, there's some time/order logic I'd need to implement, and that's much lower priority than putting the functions and aesthetic into place.  
-💡 In the **Set-LMSystemPrompt** function, I should permit a "manual" entry (as a hashtable, of course).
+**❌** In the **Set-LMSystemPrompt** function, I should permit a "manual" entry (as a hashtable, of course).
 
 ---
 
