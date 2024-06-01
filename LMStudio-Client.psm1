@@ -256,14 +256,23 @@ function New-LMConfig { #Complete
 function Import-LMConfig { #Complete
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$true)]
-        [ValidateScript({ if (!(Test-Path -Path $_)) { throw "Greeting file path does not exist" } else { $true } })]
+        [Parameter(Mandatory=$false)]
+        [ValidateScript({ if (!(Test-Path -Path $_)) { throw "Config file path does not exist" } else { $true } })]
         [string]$ConfigFile,
 
         [Parameter(Mandatory=$false)]
         [switch]$Verify        
     )
 begin {
+
+    #region If we don't have a config file specified, try to open one
+    If (!($PSBoundParameters.ContainsKey('ConfigFile'))){
+        
+        try {$ConfigFile = Invoke-LMSaveOrOpenUI -Action Open -Extension cfg -StartPath "$Env:USERPROFILE\Documents\LMStudio-PSClient" -FileName "lmsc.cfg"}
+        catch {throw $_.Exception.Message}
+
+    }
+    #endregion
     
     #region Import config file
     try {$ConfigData = Get-Content $ConfigFile -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop}
@@ -2459,7 +2468,10 @@ function Get-LMResponse {
 
     begin {}
 
-    process {}
+    process {
+
+        
+    }
 
     end {}
 

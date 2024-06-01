@@ -39,6 +39,20 @@ This project isn't complete, and as of this writing the module isn't anywhere cl
 
 ---
 
+### 05/31/2024
+
+I incorporated **Invoke-LMSaveOrOpenUI** into **Import-LMConfig**. 'Twas a simple task.
+
+I thought hard about the **Get-LMResponse** function. I'm going to have to move over a lot of code from **Start-LMChat**.
+
+The parameters could get ugly, **💡** I may force the function to use the "**ManualChatSettings**" template, which I'll need to tweak and reshape for its repurposing. (_It was originally for **Start-LMChat**_)
+
+**💡** In **Get-LMResponse**, it would be very useful to generate a Dialog File, and I'm now committed to putting it in. I will use the Dialog File tags field to tag dialogs generated in this way.
+
+That's all for now!
+
+---
+
 ### 05/30/2024
 
 I put together **✅** **Edit-LMSystemPrompt**. It takes an **\-Add** or an **\-Remove** parameter. It's pretty simple, actually.
@@ -127,7 +141,7 @@ I fought with a lot of different approaches to solving the problem, but I'm goin
 
 **The list is getting shorter:**
 
-⬜️ Integrate **Invoke-LMSaveOrOpenUI** into **Import-LMConfig** (_when opening the file without specifying the path_)
+**✅** Integrate **Invoke-LMSaveOrOpenUI** into **Import-LMConfig** (_when opening the file without specifying the path_)
 
 ⬜️Write how the **Start-LMChat** prompt is going to handle option (**:**) inputs. Maybe this should be an auxiliary function
 
