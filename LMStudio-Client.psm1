@@ -389,7 +389,7 @@ function Get-LMTemplate { #Complete
     param(
         # Param1 help description
         [Parameter(Mandatory=$true)]
-        [ValidateSet('ConfigFile', 'HistoryEntry', 'ChatGreeting', 'ChatDialog','DialogMessage', 'Body', 'ManualChatSettings','SystemPrompts')]
+        [ValidateSet('ConfigFile', 'HistoryEntry', 'ChatGreeting', 'ChatDialog','DialogMessage', 'Body', 'ManualSettings','SystemPrompts')]
         [string]$Type
     )
 
@@ -540,17 +540,18 @@ function Get-LMTemplate { #Complete
                 $Object = $Object | ConvertFrom-Json
 
         }
-        {$_ -ieq "ManualChatSettings"}{
+        {$_ -ieq "ManualSettings"}{
 
             $Object = @{}
+            $Object.Add("server", "localhost")
+            $Object.Add("port", 1234)
             $Object.Add("temperature", 0.7)
             $Object.Add("max_tokens", -1)
             $Object.Add("ContextDepth", 10)
-            $Object.Add("Stream", $True)
-            $Object.Add("Greeting", $True)
-            $Object.Add("ShowSavePrompt", $True)
-            $Object.Add("SystemPrompt", "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability.")
-            $Object.Add("MarkDown", $(&{If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False}}))
+            $Object.Add("SystemPrompt", $Global:LMStudioVars.ChatSettings.SystemPrompt)
+            $Object.Add("UserPrompt", "")
+            $Object.Add("DialogFile", $null)
+
 
         }
 
@@ -2447,26 +2448,25 @@ end {
 }
 
 function Get-LMResponse {
-    [CmdletBinding(DefaultParameterSetName="Auto")]
+    [CmdletBinding()]
     param (
+        [Parameter(Mandatory=$true)]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [hashtable]$Settings
+        )
 
-    [Parameter(Mandatory=$true)]
-    [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
-    [string]$Server,
-    
-    [Parameter(Mandatory=$true)]
-    [ValidateRange(1, 65535)]
-    [int]$Port, 
+    begin {
 
-    [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
-    [string]$UserPrompt, 
-    
-    [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
-    [string]$SystemPrompt
+        $SettingsFields = (Get-LMTemplate -Type ManualSettings).GetEnumerator().Name
+        try {$ProvidedFields =$Settings.GetEnumerator().Name}
+        catch {throw "[Get-LMResponse] -Settings object is missing requisite properties and methods"}
 
-    )
+        $FieldComparison = Compare-Object -ReferenceObject $SettingsFields -DifferenceObject $ProvidedFields
 
-    begin {}
+        If ($FieldComparison.Count -gt 0){throw "[Get-LMResponse] properties on -Settings object is missing properties ($($FieldComparison.InputObject -join ', '))"}
+
+
+    }
 
     process {
 

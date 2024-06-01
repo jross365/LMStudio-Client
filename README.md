@@ -39,6 +39,14 @@ This project isn't complete, and as of this writing the module isn't anywhere cl
 
 ---
 
+### 06/01/2024
+
+Got a decent steart on the  **Get-LMResponse** function.
+
+Today's a beautiful day with non-computer things to do, but I'll probably work more on it tonight.
+
+---
+
 ### 05/31/2024
 
 I incorporated **Invoke-LMSaveOrOpenUI** into **Import-LMConfig**. 'Twas a simple task.
