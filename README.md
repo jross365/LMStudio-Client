@@ -25,23 +25,65 @@ This project isn't complete, and as of this writing the module isn't anywhere cl
 
 ### **Key:**
 
-⬜️ **\- Feature/Improvement Incomplete**
+⬜️ **\- Feature/Improvement Incomplete  ❌ - Cancelled/Removed  🚧 - Feature/Improvement In Progress  ✅ - Feature/Improvement Complete**
 
-**❌ - Cancelled/Removed**
+\*\*💡 - Idea \*\* 🐛 - **Bug**
 
-**🚧 - Feature/Improvement In Progress**
+---
 
-**✅ - Feature/Improvement Complete**
+### 06/02/2024
 
-**💡 - Idea**
+✅ I finished a strong draft version of **Get-LMResponse.** In the process of testing it now.
 
-🐛 **Bug**
+There are two ways to use **Get-LMResponse**:
+
+**-Settings** input: requires a "ManualSettings" template, filled out:
+
+```
+Name                           Value
+----                           -----
+ContextDepth                   2
+max_tokens                     -1
+DialogFile                     test2.dialog
+port                           1234
+UserPrompt                     Please list five species of botanical peppers
+SystemPrompt                   You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability.
+server                         localhost
+temperature                    0.2
+```
+
+* For any missing parameters (besides DialogFile, UserPrompt), Defaults (independent of **Config** variables) are used
+* You **must** use the **ManualSettings** template for **DialogFile** and **UserPrompt** inputs
+  * A script that uses the **-Settings** parameter should "key" off of the Settings hashtable
+
+Without **-Settings** input:
+
+* Uses the **Config** variables (**Global:LMStudioVars**) to pull settings (ContextDepth, MaxTokens, Port, Server, Temperature, SystemPrompt)
+* Requires **-UserPrompt** parameter for the input question
+* Requires **-DialogFile** parameter to save the Dialog
+
+**I designed it this way with the following use-case in mind:**
+
+* If not specifying **-Settings**, more than likely you're just getting a one-time response from the server.
+* If specifying **-Settings**, you're more than likely reading/interpreting output to generate a series of dialogs programmatically
+  * This is my use-case:
+    * *Start with a query and excess text stripped out*
+    * *For each item in a response, parse out the keyword and generate a new question*
+    * Repeat recursively
+
+The new function is not intended to be a strictly user-facing client. Use **Start-LMChat** for a user-interfacing chat di8alog.
+
+Some other benefits of building this function:
+
+🐛 I fixed a bug in **Invoke-LMBlob**, stemming from sloppy/quick variable definitions and not thinking the process through.
+
+🐛 I also fixed a bug in **Select-LMSystemPrompt**, where the **\-Pin** parameter wasn't working properly.
 
 ---
 
 ### 06/01/2024
 
-Got a decent steart on the  **Get-LMResponse** function.
+Got a decent start on the  **Get-LMResponse** function.
 
 Today's a beautiful day with non-computer things to do, but I'll probably work more on it tonight.
 
@@ -49,11 +91,11 @@ Today's a beautiful day with non-computer things to do, but I'll probably work m
 
 I've gotten deeper into **Get-LMResponse**. There are a few key features I would like to implement:
 
-⬜️ Error/warning accumulators, instantiating either a throw (errors) or **Write-Warning** (warnings) - needs to be disablable (**\-SuppressWarnings** switch)
+✅ Error/warning accumulators, instantiating either a throw (errors) or **Write-Warning** (warnings) - needs to be disablable (**\-SuppressWarnings** switch)
 
-⬜️**\-SkipConnectionCheck** to disable checking the _/v1/models_ endpoint as a test
+❌**\-SkipConnectionCheck** to disable checking the _/v1/models_ endpoint as a test
 
-⬜️ Dialog File handling
+✅ Dialog File handling
 
 **✅** Allow independent submission of values (temperature, system prompt, etc)
 
@@ -64,14 +106,14 @@ It's coming along, slowly but surely.
 The way that I've implemented Settings with **Get-LMResponse** is that:
 
 - If you **don't** specify **\-Settings**, the function uses the Config settings
-- If you **do** specify **\-Settings**, the function uses internally-defined defaults.
+- If you **do** specify **\-Settings** but a particular variable doesn't pass validation, the function uses internally-defined defaults.
 
 My reason for doing this is that the **\-Settings** parameter exists to explicitly override the Config File. If settings provided don't pass validation, falling back to the Config File defaults would negate the whole reason for using **\-Settings**: to apply something other than what is configured.
 
-I need to work through the following two sections:  
+I need to work through the following two sections:
 **✅** User Prompt Checking for **$LMStudioVars** and **\-Settings** configs, respectively.
 
-⬜️ Dialog File generation for the above two conditions.
+✅ Dialog File generation for the above two conditions.
 
 I've made decent enough progress, I'll pick up the Dialog Folder/File management and creation (via template) tomorrow.w
 
@@ -83,9 +125,9 @@ I incorporated **Invoke-LMSaveOrOpenUI** into **Import-LMConfig**. 'Twas a simpl
 
 I thought hard about the **Get-LMResponse** function. I'm going to have to move over a lot of code from **Start-LMChat**.
 
-The parameters could get ugly, **💡** I may force the function to use the "**ManualChatSettings**" template, which I'll need to tweak and reshape for its repurposing. (_It was originally for **Start-LMChat**_)
+The parameters could get ugly, **✅** I may force the function to use the "**ManualChatSettings**" template, which I'll need to tweak and reshape for its repurposing. (_It was originally for **Start-LMChat**_)
 
-**💡** In **Get-LMResponse**, it would be very useful to generate a Dialog File, and I'm now committed to putting it in. I will use the Dialog File tags field to tag dialogs generated in this way.
+**✅** In **Get-LMResponse**, it would be very useful to generate a Dialog File, and I'm now committed to putting it in. I will use the Dialog File tags field to tag dialogs generated in this way.
 
 That's all for now!
 
@@ -99,7 +141,7 @@ I've been slowing down a bit, but I'm still making myself work on this. I'm dete
 
 Perhaps tomorrow, I'll work on **Search-LMHistory**. If I want an easy day, I'll write **Get-LMResponse**.
 
-**💡** With **Get-LMResponse**, I may integrate Dialog File generation. I'm not sure yet.
+**✅** With **Get-LMResponse**, I may integrate Dialog File generation. I'm not sure yet.
 
 That's all for now.
 
@@ -123,9 +165,9 @@ Here's some code I might need later:
 
 `$Global:LMStudioVars.ChatSettings.SystemPrompt = Select-LMSystemPrompt -Pin`
 
-`` If ($Global:LMStudioVars.ChatSettings.SystemPrompt -eq "Cancelled" -or `  ``
+``If ($Global:LMStudioVars.ChatSettings.SystemPrompt -eq "Cancelled" -or ` ``
 
-`` $null -eq $Global:LMStudioVars.ChatSettings.SystemPrompt -or `  ``
+``$null -eq $Global:LMStudioVars.ChatSettings.SystemPrompt -or ` ``
 
 `$Global:LMStudioVars.ChatSettings.SystemPrompt.Length -eq 0){$Global:LMStudioVars.ChatSettings.SystemPrompt = "$CurrentSysPrompt"}`
 
@@ -193,7 +235,7 @@ I fought with a lot of different approaches to solving the problem, but I'm goin
 
 ⬜️ Write the **Search-LMHistory** function
 
-⬜️ Write **Get-LMResponse** (single-response query, no console output).  
+⬜️ Write **Get-LMResponse** (single-response query, no console output).
 ...
 
 **And these are "admin" tasks:**
@@ -307,7 +349,7 @@ The variables are now fully integrated. Now the fun part, building the functions
 
 💡 I should probably be tracking the models and when they change. This could be done with **$Dialog.Info.Models** being an array/list containing two fields ("Model", "Timestamp") If the model changes, it gets updated there, and any "replay" will show the correct models for each prompt.
 
-This is a bit much to bite off right now though, there's some time/order logic I'd need to implement, and that's much lower priority than putting the functions and aesthetic into place.  
+This is a bit much to bite off right now though, there's some time/order logic I'd need to implement, and that's much lower priority than putting the functions and aesthetic into place.
 **❌** In the **Set-LMSystemPrompt** function, I should permit a "manual" entry (as a hashtable, of course).
 
 ---
@@ -394,10 +436,10 @@ It's causing a problem here:
 
 Resulting in **this error:**
 
-`MethodInvocationException:`  
-`Line |`  
-`2101 |          $Dialog.Messages.Add($UserMessage) | out-null`  
-`|          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`  
+`MethodInvocationException:`
+`Line |`
+`2101 |          $Dialog.Messages.Add($UserMessage) | out-null`
+`|          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`
 `| Exception calling "Add" with "1" argument(s): "Collection was of a fixed size."`
 
 **The solution**: I don't need to understand exactly how this error is manifesting (_getting into the **Convert-LMDialogToBody** function, and how it works)_ to solve this problem.
@@ -645,16 +687,16 @@ I have much of the Config File (object) formatting done. **✅** **Confirm-LMGlo
 
 **✅** Finished the **New-LMTemplate** function; added **temperature,max_tokens,stream,ContextDepth** to Config file and to global settings incorporation.
 
-**TO DO TOMORROW:**  
-**✅** Move functions over to the New-LMTemplate  
-**✅** Remove the old standalone template functions  
+**TO DO TOMORROW:**
+**✅** Move functions over to the New-LMTemplate
+**✅** Remove the old standalone template functions
 **✅** Evaluate whether I can remove functions I've labeled as such
 
 #### **Follow-Up:**
 
 Had another thought:
 
-**✅** I need to convert all "New-LMHistoryFile" calls to the new Template function.  
+**✅** I need to convert all "New-LMHistoryFile" calls to the new Template function.
 **✅**  **New-LMHistoryFile** does nothing but save an arbitrary file, it's a pointless function. I just have to do:
 
 ```
@@ -665,7 +707,7 @@ I need to do this URGENTLY, because it's one of those small modifications that c
 
 Also, getting rid of an extra function gets rid of the ability and utility to omit "dummy values". For the history file, when I need a template I'll simply re-fill in the dummy fields.
 
-This also simplifies the way History Files are created and appended to.  
+This also simplifies the way History Files are created and appended to.
    (It also suggests that, since the data is flat, I should be using a CSV!)
 
 #### **Follow-Up:**
@@ -719,9 +761,9 @@ I have many of the important pieces together now. I REALLY want to build a funct
 
 **\[Moved\]** Update Show-LMHelp to include changing the Title/Tags, Change the context message count, Save (without qutting)
 
-**\[Moved\]** I can add parameters to Show-LMHelp to give details for each parameter  
-✅ Make an official list of functions, and their purpose  
-**✅**Update the Client to use the complete functions I have (should shorten the code substantially)  
+**\[Moved\]** I can add parameters to Show-LMHelp to give details for each parameter
+✅ Make an official list of functions, and their purpose
+**✅**Update the Client to use the complete functions I have (should shorten the code substantially)
 Review this, and likely simplify/replace it (Client):\`
 
 ✅ Need to check if this is still valid:
@@ -734,8 +776,7 @@ If ($null -eq $HistoryFile -or $HistoryFile.Length -eq 0){$Hist...
 
 ### 05/10/2024
 
-Finished **Import-LMConfigFile**, which required parameterizing a whole bunch of functions and fixing various checks/validations. New-LMConfigFile comes next.  
-✅ **Create-LMConfigFile** will have the following parameters:
+Finished **Import-LMConfigFile**, which required parameterizing a whole bunch of functions and fixing various checks/validations. New-LMConfigFile comes next.✅ **Create-LMConfigFile** will have the following parameters:
 
 - Server
 - Port
@@ -766,8 +807,7 @@ Re-ordered functions according to the dependencies and processes. Built shells f
 
 Have decided to "fragment" Dialogs from the History File:
 
-✅ History File will keep an index of Dialog files and some information about them (Date, opening line, model, Dialog (array))  
-✅ Dialogs themselves will be stored as either random or sequentially named files, with the following columns:
+✅ History File will keep an index of Dialog files and some information about them (Date, opening line, model, Dialog (array))✅ Dialogs themselves will be stored as either random or sequentially named files, with the following columns:
 
 - Index, prompt type \[system, assistant, user\], body (statement/response)
 - Dialog files will be colocated in a folder next to the history file
@@ -828,7 +868,7 @@ _**\[/edit\]**_
 
 ### 05/06/2024
 
-✅ Found a way to simulate asynchronous HTTP stream, built a working "streaming" response system; converted over to Powershell 7 standards; began functionalizing the code.  
+✅ Found a way to simulate asynchronous HTTP stream, built a working "streaming" response system; converted over to Powershell 7 standards; began functionalizing the code.
 **✅ Left off:** Moving all inputs for $HistoryFile over to $Global:LMStudioServer.HistoryFilepath, with checks for the path's validity
 
 ---

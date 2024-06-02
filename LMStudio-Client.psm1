@@ -1306,6 +1306,7 @@ function Invoke-LMBlob {
     param (
         [Parameter(Mandatory=$true)][string]$CompletionURI,
         [Parameter(Mandatory=$true)][pscustomobject]$Body,
+        [Parameter(Mandatory=$False)][switch]$NoConsoleOut,
         [Parameter(Mandatory=$False)][switch]$StreamSim
         )
 
@@ -1317,17 +1318,21 @@ function Invoke-LMBlob {
         if ($null -eq ($Output.choices[0].message.content)){throw "Webserver response did not contain the expected data: property 'choices[0].message.content' is empty"}
         $Response = $Output.choices[0].message.content
 
-        switch ($StreamSim.IsPresent){
+        If (!($NoConsoleOut.IsPresent)){
 
-            $True {$Response.Split(' ').ForEach({Write-Host "$_ " -NoNewline; start-sleep -Milliseconds (Get-Random -Minimum 5 -Maximum 20)})}
+            switch ($StreamSim.IsPresent){
 
-            $False {Write-Host "$Message"}
+                $True {$Response.Split(' ').ForEach({Write-Host "$_ " -NoNewline; start-sleep -Milliseconds (Get-Random -Minimum 5 -Maximum 20)})}
+
+                $False {Write-Host "$Response" -NoNewline}
+
+            }
+            
+            Write-Host ""
 
         }
-        
-        Write-Host ""
 
-        return $Message
+        return $Response
 }
 
 #This function establishes an asynchronous connection to "stream" chat output to the console
@@ -1807,7 +1812,13 @@ function Select-LMSystemPrompt ([switch]$Pin, [switch]$AsObject) {
     # This isn't generic error checking: $SelectedPrompt really does return null
     If ($SelectedPrompt.Name -eq 'Cancel' -or $null -eq $SelectedPrompt){throw "System Prompt selection cancelled"}
 
-    if ($Pin.IsPresent){Set-LMConfigOptions -Branch ChatSettings -Options @{"SystemPrompt"=$($SelectedPrompt.Prompt)}}
+    switch ($Pin.IsPresent){
+        
+        $True {Set-LMConfigOptions -Branch ChatSettings -Options @{"SystemPrompt"=$($SelectedPrompt.Prompt)} -Commit}
+
+        $False {Set-LMConfigOptions -Branch ChatSettings -Options @{"SystemPrompt"=$($SelectedPrompt.Prompt)}}
+
+    }
 
     switch ($AsObject.IsPresent){
 
@@ -2081,7 +2092,6 @@ function Select-LMHistoryEntry {
 }
 
 
-
 #This function converts Dialog Messages to Markdown output
 function Show-LMDialog {
 
@@ -2172,299 +2182,297 @@ function Show-LMDialog {
     }
 
 }
+
 function Start-LMChat {
     [CmdletBinding(DefaultParameterSetName="Auto")]
     param (
-        #Use $Global:LMGlobalVars
-        #Signals a prompt to select an entry from the History File
         [Parameter(Mandatory=$False, ParameterSetName='Auto')]
         [switch]$ResumeChat
         )
 
-begin {
+    begin {
 
 
-    #region Evaluate variables Variables
-    If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "Config file variables not loaded, run [Import-ConfigFile] to load them"}
-    
-    #endregion
-
-    #region Get Model (Connection Test)
-    try {$Model = Get-LMModel -Server $Global:LMStudioVars.ServerInfo.Server -Port $Global:LMStudioVars.ServerInfo.Port}
-    catch {throw $_.Exception.Message}
-    #endregion
-
-    #region Check/set if we can use markdown
-    $MarkDownAvailable = Show-LMDialog -CheckMarkdown
-    $UseMarkDown = ([bool]($Global:LMStudioVars.ChatSettings.Markdown -and $MarkDownAvailable))
-    #endregion
-    
-    #region -ResumeChat Selector
-    switch ($ResumeChat.IsPresent){ #Not Yet Tested
-
-        #This section requires everything goes right (terminates with [throw] if it doesn't)
-        $true { 
-                #If the history file doesn't exist, find it:
-                If (!(Test-Path $Global:LMStudioVars.FilePaths.HistoryFilePath)){
+        #region Evaluate variables Variables
+        If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "Config file variables not loaded, run [Import-ConfigFile] to load them"}
         
-                    #Prompt to browse and "open" it
-                    try {$Global:LMStudioVars.FilePaths.HistoryFilePath = Invoke-LMSaveOrOpenUI -Action Open -Extension index -StartPath "$env:Userprofile\Documents"}
+        #endregion
+
+        #region Get Model (Connection Test)
+        try {$Model = Get-LMModel -Server $Global:LMStudioVars.ServerInfo.Server -Port $Global:LMStudioVars.ServerInfo.Port}
+        catch {throw $_.Exception.Message}
+        #endregion
+
+        #region Check/set if we can use markdown
+        $MarkDownAvailable = Show-LMDialog -CheckMarkdown
+        $UseMarkDown = ([bool]($Global:LMStudioVars.ChatSettings.Markdown -and $MarkDownAvailable))
+        #endregion
+        
+        #region -ResumeChat Selector
+        switch ($ResumeChat.IsPresent){ #Not Yet Tested
+
+            #This section requires everything goes right (terminates with [throw] if it doesn't)
+            $true { 
+                    #If the history file doesn't exist, find it:
+                    If (!(Test-Path $Global:LMStudioVars.FilePaths.HistoryFilePath)){
+            
+                        #Prompt to browse and "open" it
+                        try {$Global:LMStudioVars.FilePaths.HistoryFilePath = Invoke-LMSaveOrOpenUI -Action Open -Extension index -StartPath "$env:Userprofile\Documents"}
+                        catch {throw $_.Exception.Message}
+            
+                    }
+                    
+                    #Open a GridView selector from the history file
+                    try {$DialogFilePath = Select-LMHistoryEntry -HistoryFile $Global:LMStudioVars.FilePaths.HistoryFilePath}
+                    catch {
+                        If ($_.Exception.Message -match 'selection cancelled'){throw "Selection cancelled"}
+                        else {Write-Warning "$($_.Exception.Message)"; return}
+
+                    }
+
+                    #Otherwise: Read the contents of the chosen Dialog file
+                    try {$Dialog = Import-LMDialogFile -FilePath $DialogFilePath -ErrorAction Stop}
                     catch {throw $_.Exception.Message}
-        
-                }
-                
-                #Open a GridView selector from the history file
-                try {$DialogFilePath = Select-LMHistoryEntry -HistoryFile $Global:LMStudioVars.FilePaths.HistoryFilePath}
-                catch {
-                    If ($_.Exception.Message -match 'selection cancelled'){throw "Selection cancelled"}
-                    else {Write-Warning "$($_.Exception.Message)"; return}
 
-                }
+                    #If we made it this far, Let's set $Global:LMStudioVars.ChatSettings.Greeting and $DialogFIleExists
+                    $Global:LMStudioVars.ChatSettings.Greeting = $False
+                    $DialogFileExists = $True
 
-                #Otherwise: Read the contents of the chosen Dialog file
-                try {$Dialog = Import-LMDialogFile -FilePath $DialogFilePath -ErrorAction Stop}
-                catch {throw $_.Exception.Message}
+            } #Close Case $True
 
-                #If we made it this far, Let's set $Global:LMStudioVars.ChatSettings.Greeting and $DialogFIleExists
-                $Global:LMStudioVars.ChatSettings.Greeting = $False
-                $DialogFileExists = $True
+            #This section can accommodate a failure to create a new Dialog file
+            $false { #If not Resume Chat, then Create New Dialog File
 
-        } #Close Case $True
+                    $Dialog = Get-LMTemplate -Type ChatDialog
+                    
+                    $Dialog.Info.Model = $Model
+                    $Dialog.Info.Modified = "$((Get-Date).ToString())"
+                    $Dialog.Messages[0].temperature = $Global:LMStudioVars.ChatSettings.temperature
+                    $Dialog.Messages[0].max_tokens = $Global:LMStudioVars.ChatSettings.max_tokens
+                    $Dialog.Messages[0].stream = $Global:LMStudioVars.ChatSettings.stream
+                    $Dialog.Messages[0].ContextDepth = $ContextDepth
+                    $Dialog.Messages[0].Content = $Global:LMStudioVars.ChatSettings.SystemPrompt
 
-        #This section can accommodate a failure to create a new Dialog file
-        $false { #If not Resume Chat, then Create New Dialog File
+                    # Set the directory path for the chat file:
+                    #
+                    # We need this set even if we skip the save prompt,
+                    # in case we decide to save during the prompt (:s to save?)
+                    # This is why it's outside of (!($SkipSavePrompt.IsPresent))
 
-                $Dialog = Get-LMTemplate -Type ChatDialog
-                
-                $Dialog.Info.Model = $Model
-                $Dialog.Info.Modified = "$((Get-Date).ToString())"
-                $Dialog.Messages[0].temperature = $Global:LMStudioVars.ChatSettings.temperature
-                $Dialog.Messages[0].max_tokens = $Global:LMStudioVars.ChatSettings.max_tokens
-                $Dialog.Messages[0].stream = $Global:LMStudioVars.ChatSettings.stream
-                $Dialog.Messages[0].ContextDepth = $ContextDepth
-                $Dialog.Messages[0].Content = $Global:LMStudioVars.ChatSettings.SystemPrompt
+                    #If we didn't opt to skip this prompt:
+                    switch ($Global:LMStudioVars.ChatSettings.SavePrompt){
 
-                # Set the directory path for the chat file:
-                #
-                # We need this set even if we skip the save prompt,
-                # in case we decide to save during the prompt (:s to save?)
-                # This is why it's outside of (!($SkipSavePrompt.IsPresent))
+                        $True {
 
-                #If we didn't opt to skip this prompt:
-                switch ($Global:LMStudioVars.ChatSettings.SavePrompt){
+                            try { # Prompt to create the full file path
+                                $DialogFilePath = Invoke-LMSaveOrOpenUI -Action Save -Extension dialog -StartPath $Global:LMStudioVars.FilePaths.DialogFolderPath
+                                $DialogFileExists = $True #It doesn't actually exist, UI doesn't create anything
+                            }
+                            catch {
+                                Write-Warning "$($_.Exception.Message)"
+                                $DialogFileExists = $False
+                            }
 
-                    $True {
-
-                        try { # Prompt to create the full file path
-                            $DialogFilePath = Invoke-LMSaveOrOpenUI -Action Save -Extension dialog -StartPath $Global:LMStudioVars.FilePaths.DialogFolderPath
-                            $DialogFileExists = $True #It doesn't actually exist, UI doesn't create anything
                         }
+
+                        $False {
+
+                            $DialogFilePath = "$($Global:LMStudioVars.FilePaths.DialogFolderPath)" + "\$(get-date -format 'MMddyyyy_hhmm')_lmchat.dialog"
+                            $DialogFileExists = $True
+
+                        }
+
+                    }
+
+                    If ($DialogFileExists){
+
+                        try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
                         catch {
                             Write-Warning "$($_.Exception.Message)"
                             $DialogFileExists = $False
                         }
-
                     }
 
-                    $False {
-
-                        $DialogFilePath = "$($Global:LMStudioVars.FilePaths.DialogFolderPath)" + "\$(get-date -format 'MMddyyyy_hhmm')_lmchat.dialog"
-                        $DialogFileExists = $True
-
+                    Else {
+                        $DialogFileExists = Test-Path $DialogFilePath
+                        Write-Warning "Dialog file not saved to file. In the User prompt, enter ':Save' to save."
                     }
 
-                }
-
-                If ($DialogFileExists){
-
-                    try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
-                    catch {
-                        Write-Warning "$($_.Exception.Message)"
-                        $DialogFileExists = $False
-                    }
-                }
-
-                Else {
-                    $DialogFileExists = Test-Path $DialogFilePath
-                    Write-Warning "Dialog file not saved to file. In the User prompt, enter ':Save' to save."
-                }
-
-                } #Close Case $False
-            
-            } #Close Switch
-    #endregion
-    
-    #region Initiate Greeting
-    If ($Global:LMStudioVars.ChatSettings.Greeting){Get-LMGreeting -UseConfig}
-    #endregion
- 
-} #begin
-
-process {
-    
-    $BreakDialog = $False
-    $OpenerSet = ([boolean](($Dialog.Info.Opener.Length -ne 0) -and ($null -ne $Dialog.Info.Opener) -and ($Dialog.Info.Opener -ne "dummyvalue")))
-    
-
-    #Set $BodySettings for use with Convert-LMDialogToBody:
-    $BodySettings = @{}
-    $BodySettings.Add('model',$Model)
-    $BodySettings.Add('temperature', $Global:LMStudioVars.ChatSettings.temperature)
-    $BodySettings.Add('max_tokens', $Global:LMStudioVars.ChatSettings.max_tokens)
-    $BodySettings.Add('stream', $Global:LMStudioVars.ChatSettings.stream)
-    $BodySettings.Add('SystemPrompt', $Global:LMStudioVars.ChatSettings.SystemPrompt)
-
-    If ($ResumeChat.IsPresent){ #Play the previous conversation back to the 
-
-        switch ($UseMarkDown){
-
-            $True {Show-LMDialog -DialogMessages ($Dialog.Messages) -AsMarkdown}
-
-            $False {Show-LMDialog -DialogMessages ($Dialog.Messages)} #Close False
-        }
-
-    }
-
-    #The magic is here:
-:main do { 
-
-        #region Prevent empty responses
-        do {
-
-            Write-Host "You: " -ForegroundColor Green -NoNewline
-            $UserInput = Read-Host 
-        
-        }
-        until ($UserInput.Length -gt 0)
-        #endregion
-
-        #region Construct the user Dialog Message and append to the Dialog:
-        $UserMessage = Get-LMTemplate -Type DialogMessage
-      
-        $UserMessage.TimeStamp = (Get-Date).ToString()
-        $UserMessage.temperature = $Global:LMStudioVars.ChatSettings.temperature
-        $UserMessage.max_tokens = $Global:LMStudioVars.ChatSettings.max_tokens
-        $UserMessage.stream = $Global:LMStudioVars.ChatSettings.stream
-        $UserMessage.ContextDepth = $ContextDepth
-        $UserMessage.Role = "user"
-        $UserMessage.Content = "$UserInput"
-
-        $Dialog.Messages.Add($UserMessage) | out-null
-        #endregion
-
-
-        #region Send $Dialog.Messages to Convert-DialogToBody:
-        $Body = Convert-LMDialogToBody -DialogMessages ($Dialog.Messages) -ContextDepth $ContextDepth -Settings $BodySettings
-        #endregion
-
-        Write-Host ""
-        Write-Host "AI: " -ForegroundColor Magenta -NoNewline
-
-        switch ($Global:LMStudioVars.ChatSettings.stream){
-
-            $True {$LMOutput = Invoke-LMStream -Body $Body -CompletionURI $Global:LMStudioVars.URIs.CompletionURI -File $Global:LMStudioVars.FilePaths.StreamCachePath}
-            $False {$LMOutput = Invoke-LMBlob -Body $Body -CompletionURI $Global:LMStudioVars.URIs.CompletionURI -StreamSim}
-
-        }
-
-        Write-Host ""
-
-        If ($LMOutput -eq "[stream_interrupted]"){continue main}
-
-        #region Construct the assistant Dialog message and append to the Dialog:
-        $AssistantMessage = Get-LMTemplate -Type DialogMessage
-        
-        $AssistantMessage.TimeStamp = (Get-Date).ToString()
-        $AssistantMessage.temperature = $Global:LMStudioVars.ChatSettings.temperature
-        $AssistantMessage.max_tokens = $Global:LMStudioVars.ChatSettings.max_tokens
-        $AssistantMessage.stream = $Global:LMStudioVars.ChatSettings.stream
-        $AssistantMessage.ContextDepth = $ContextDepth
-        $AssistantMessage.Role = "assistant"
-        $AssistantMessage.Content = "$LMOutput"
+                    } #Close Case $False
+                
+                } #Close Switch
         #endregion
         
-        #region Append the response to the Dialog::
-        $Dialog.Messages.Add($AssistantMessage) | out-null
+        #region Initiate Greeting
+        If ($Global:LMStudioVars.ChatSettings.Greeting){Get-LMGreeting -UseConfig}
         #endregion
+    
+    } #begin
 
-        #region Update Dialog Object
-        $Dialog.Info.Modified = $AssistantMessage.TimeStamp
-        #endregion
+    process {
+        
+        $BreakDialog = $False
+        $OpenerSet = ([boolean](($Dialog.Info.Opener.Length -ne 0) -and ($null -ne $Dialog.Info.Opener) -and ($Dialog.Info.Opener -ne "dummyvalue")))
+        
 
-        #region Apply Markdown, if enabled
-        If ($UseMarkDown){Show-LMDialog -DialogMessages $Dialog.Messages -AsMarkdown}
-        #endregion
+        #Set $BodySettings for use with Convert-LMDialogToBody:
+        $BodySettings = @{}
+        $BodySettings.Add('model',$Model)
+        $BodySettings.Add('temperature', $Global:LMStudioVars.ChatSettings.temperature)
+        $BodySettings.Add('max_tokens', $Global:LMStudioVars.ChatSettings.max_tokens)
+        $BodySettings.Add('stream', $Global:LMStudioVars.ChatSettings.stream)
+        $BodySettings.Add('SystemPrompt', $Global:LMStudioVars.ChatSettings.SystemPrompt)
 
-        #region Update Dialog File, History File
-        If ($DialogFileExists){
+        If ($ResumeChat.IsPresent){ #Play the previous conversation back to the 
 
-             #region Set Opener
-            If (!($OpenerSet)){
-                $Dialog.Info.Opener = (($Dialog.Messages | Sort-Object TimeStamp) | Where-Object {$_.role -eq "user"})[0].Content
-                $OpenerSet = $False
+            switch ($UseMarkDown){
+
+                $True {Show-LMDialog -DialogMessages ($Dialog.Messages) -AsMarkdown}
+
+                $False {Show-LMDialog -DialogMessages ($Dialog.Messages)} #Close False
             }
+
+        }
+
+        #The magic is here:
+    :main do { 
+
+            #region Prevent empty responses
+            do {
+
+                Write-Host "You: " -ForegroundColor Green -NoNewline
+                $UserInput = Read-Host 
+            
+            }
+            until ($UserInput.Length -gt 0)
             #endregion
 
-            # Save the Dialog File
-            try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
-            catch {
-                Write-Warning "Dialog file save failed; Disabling file saving (:Save to recreate a Dialog file)"
-                $DialogFileExists = $False
+            #region Construct the user Dialog Message and append to the Dialog:
+            $UserMessage = Get-LMTemplate -Type DialogMessage
+        
+            $UserMessage.TimeStamp = (Get-Date).ToString()
+            $UserMessage.temperature = $Global:LMStudioVars.ChatSettings.temperature
+            $UserMessage.max_tokens = $Global:LMStudioVars.ChatSettings.max_tokens
+            $UserMessage.stream = $Global:LMStudioVars.ChatSettings.stream
+            $UserMessage.ContextDepth = $ContextDepth
+            $UserMessage.Role = "user"
+            $UserMessage.Content = "$UserInput"
+
+            $Dialog.Messages.Add($UserMessage) | out-null
+            #endregion
+
+
+            #region Send $Dialog.Messages to Convert-DialogToBody:
+            $Body = Convert-LMDialogToBody -DialogMessages ($Dialog.Messages) -ContextDepth $ContextDepth -Settings $BodySettings
+            #endregion
+
+            Write-Host ""
+            Write-Host "AI: " -ForegroundColor Magenta -NoNewline
+
+            switch ($Global:LMStudioVars.ChatSettings.stream){
+
+                $True {$LMOutput = Invoke-LMStream -Body $Body -CompletionURI $Global:LMStudioVars.URIs.CompletionURI -File $Global:LMStudioVars.FilePaths.StreamCachePath}
+                $False {$LMOutput = Invoke-LMBlob -Body $Body -CompletionURI $Global:LMStudioVars.URIs.CompletionURI -StreamSim}
+
             }
 
-            # Update the History File
-            If ($DialogFileExists){ 
-            
-                try {Update-LMHistoryFile -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
-                catch { #Sleep and then try once more, in case we're stepping on our own feet (multiple)
-                    
-                    Start-Sleep -Seconds 2
+            Write-Host ""
 
+            If ($LMOutput -eq "[stream_interrupted]"){continue main}
+
+            #region Construct the assistant Dialog message and append to the Dialog:
+            $AssistantMessage = Get-LMTemplate -Type DialogMessage
+            
+            $AssistantMessage.TimeStamp = (Get-Date).ToString()
+            $AssistantMessage.temperature = $Global:LMStudioVars.ChatSettings.temperature
+            $AssistantMessage.max_tokens = $Global:LMStudioVars.ChatSettings.max_tokens
+            $AssistantMessage.stream = $Global:LMStudioVars.ChatSettings.stream
+            $AssistantMessage.ContextDepth = $ContextDepth
+            $AssistantMessage.Role = "assistant"
+            $AssistantMessage.Content = "$LMOutput"
+            #endregion
+            
+            #region Append the response to the Dialog::
+            $Dialog.Messages.Add($AssistantMessage) | out-null
+            #endregion
+
+            #region Update Dialog Object
+            $Dialog.Info.Modified = $AssistantMessage.TimeStamp
+            #endregion
+
+            #region Apply Markdown, if enabled
+            If ($UseMarkDown){Show-LMDialog -DialogMessages $Dialog.Messages -AsMarkdown}
+            #endregion
+
+            #region Update Dialog File, History File
+            If ($DialogFileExists){
+
+                #region Set Opener
+                If (!($OpenerSet)){
+                    $Dialog.Info.Opener = (($Dialog.Messages | Sort-Object TimeStamp) | Where-Object {$_.role -eq "user"})[0].Content
+                    $OpenerSet = $False
+                }
+                #endregion
+
+                # Save the Dialog File
+                try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
+                catch {
+                    Write-Warning "Dialog file save failed; Disabling file saving (:Save to recreate a Dialog file)"
+                    $DialogFileExists = $False
+                }
+
+                # Update the History File
+                If ($DialogFileExists){ 
+                
                     try {Update-LMHistoryFile -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
-                    catch {
-                    
-                        Write-Warning "Unable to append Dialog updates to History file; Disabling file-saving (:Save to recreate a Dialog file)"
-                        $DialogFileExists = $False
+                    catch { #Sleep and then try once more, in case we're stepping on our own feet (multiple)
+                        
+                        Start-Sleep -Seconds 2
+
+                        try {Update-LMHistoryFile -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
+                        catch {
+                        
+                            Write-Warning "Unable to append Dialog updates to History file; Disabling file-saving (:Save to recreate a Dialog file)"
+                            $DialogFileExists = $False
+                        }
                     }
+
                 }
 
             }
+            #endregion       
+            
+        }
+        until ($BreakDialog -eq $True)
+    }
+
+    end {
+
+        #HERE:
+            # - Need to Update the "opener" line for the Dialog object
+            # - Need to update the History File with the new Dialog object information
 
         }
-        #endregion       
-        
-    }
-    until ($BreakDialog -eq $True)
-}
-
-end {
-
-    #HERE:
-        # - Need to Update the "opener" line for the Dialog object
-        # - Need to update the History File with the new Dialog object information
-
-    }
 
 }
 
 function Get-LMResponse {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false, ParameterSetName='NoSettings')]
         [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
         [string]$UserPrompt,
 
-        [Parameter(Mandatory=$false)]
-        [ValidateScript({ if (!(Test-Path -Path $_)) { throw "File path does not exist" } else { $true } })]
-        [string]$DialogFIle,
+        [Parameter(Mandatory=$false, ParameterSetName='NoSettings')]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [string]$DialogFile,
         
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false, ParameterSetName='Settings')]
         [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
         [hashtable]$Settings,
         
         [Parameter(Mandatory=$false)]
         [switch]$IgnoreWarnings
-        
         )
 
     begin {
@@ -2473,7 +2481,7 @@ function Get-LMResponse {
         If ((!($PSBoundParameters.ContainsKey('UserPrompt')))-and (!($PSBoundParameters.ContainsKey('Settings')))){throw "-UserPrompt and -Settings were missing. One of these two must be used."}
         #endregion
 
-        If (!($PSBoundParameters.ContainsKey('Settings'))){
+        If (($PSBoundParameters.ContainsKey('Settings'))){
 
             #region Validate Settings structure
             $SettingsFields = (Get-LMTemplate -Type ManualSettings).GetEnumerator().Name
@@ -2486,28 +2494,27 @@ function Get-LMResponse {
             #endregion
 
             #region Evaluate the provided settings
-            $Errors = New-Object System.Collections.ArrayList
             $Warnings = New-Object System.Collections.ArrayList
 
             #region Check Server
-            If ($Null -eq $Server -or $Server.Length -eq 0){$Errors.Add("Server is null or empty") | Out-Null}
+            If ($Null -eq $Settings.server -or $Settings.server.Length -eq 0){$Errors.Add("Server is null or empty") | Out-Null}
             #endregion
 
             #region Check Port
-            If ($Null -eq $Port -or $Port.Length -eq 0){$Errors.Add("Port is null or empty") | Out-Null}
+            If ($Null -eq $Settings.port -or $Settings.port.Length -eq 0){$Errors.Add("Port is null or empty") | Out-Null}
             Else {
             
-                try {$PortAsInt = [int]$Port}
-                catch {$Errors.Add("Port is not convertable to integer") | Out-Null; continue}
+                try {$PortAsInt = [int]$Settings.port}
+                catch {throw "Port is not convertable to integer"}
                 
                 If ($PortAsInt -le 0 -or $PortAsInt -gt 65535){
-                    $Errors.Add("Port not 1-65536 ($($PortAsInt))")
+                    throw "Port not 1-65536 ($($PortAsInt))"
                 }
             }
             #endregion
 
             #region Check UserPrompt
-            If ($Null -eq $Settings.UserPrompt -or $Settings.UserPrompt.Length -eq 0){$Errors.Add("Server is null or empty") | Out-Null}
+            If ($Null -eq $Settings.UserPrompt -or $Settings.UserPrompt.Length -eq 0){throw "Server is null or empty"}
             #endregion
 
             #region Check Max_Tokens
@@ -2559,7 +2566,7 @@ function Get-LMResponse {
             }
             Else {
             
-                try {$TempAsDouble = [system.math]::Truncate([double]$Settings.temperature, 1)}
+                try {$TempAsDouble = [system.math]::Round([double]$Settings.temperature, 1)}
                 catch {
                     $Warnings.Add("Temperature isn't convertable to a double") | Out-Null
                     $Settings.temperature = 0.7
@@ -2580,12 +2587,22 @@ function Get-LMResponse {
             }
             #endregion
 
+            #region Check Dialog File
+            If ($Settings.DialogFile.Length -gt 0){
+                $DialogFile = $Settings.DialogFile
+                $SaveDialog = $True
+            }
+            Else {$SaveDialog = $False}
+            #endregion
+
             #endregion Evaluate the provided settings
 
         } #Close If PSBoundParameters contains settings
 
-        #region If we don't have a Settings Hashtable, use the Config (super easy)
+        #region If we don't have a Settings Hashtable, use the Config
         Else {
+
+            If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "Config file variables not loaded, run [Import-ConfigFile] to load them"}
 
             $Settings = Get-LMTemplate -Type ManualSettings
             $Settings.max_tokens = $Global:LMStudioVars.ChatSettings.max_tokens
@@ -2595,21 +2612,130 @@ function Get-LMResponse {
             $Settings.server = $Global:LMStudioVars.ServerInfo.Server            
             $Settings.SystemPrompt = $Global:LMStudioVars.ChatSettings.SystemPrompt            
             $Settings.UserPrompt = $UserPrompt
-            
-            #Left off here (06/01/2024)
-            If (!($PSBoundParameters.ContainsKey('DialogFIle'))){}
-            
+
+            If ($PSBoundParameters.ContainsKey('DialogFile')){
+                $Settings.DialogFile = $DialogFile
+                $SaveDialog = $true
+            }
+            Else {$SaveDialog = $False}
+                        
         }
 
-    }
+        #region Get Model (Connection Test)
+        try {$Model = Get-LMModel -Server $Settings.server -Port $Settings.port}
+        catch {throw "$($_.Exception.Message)"}
+        #endregion
 
+        #region Import or create Dialog File
+        If ($SaveDialog -and (Test-Path $DialogFile)){
+            
+            try {$Dialog = Import-LMDialogFile -FilePath $DialogFile -ErrorAction Stop}
+            catch {throw "Dialog file import failed: $($_.Exception.Message)"}
+
+            $OpenerSet = ([boolean]($Dialog.Info.Opener.Length -gt 0 -and $Dialog.Info.Opener -ne "dummyvalue"))              
+          
+        } 
+        Else {
+            #Create Dialog
+            $Dialog = Get-LMTemplate -Type ChatDialog
+            $Dialog.Info.Model = $Model
+            $Dialog.Info.Modified = "$((Get-Date).ToString())"
+            $Dialog.Messages[0].temperature = $Settings.temperature
+            $Dialog.Messages[0].max_tokens = $Settings.max_tokens
+            $Dialog.Messages[0].stream = $False
+            $Dialog.Messages[0].ContextDepth = $Settings.ContextDepth
+            $Dialog.Messages[0].Content = $SystemPrompt
+
+            $OpenerSet = $False
+        }
+
+        #region Report warnings, throw errors
+        If ($Warnings.Count -gt 0){
+
+            if (!($IgnoreWarnings.IsPresent)){Foreach ($Warning in $Warnings){Write-warning "$Warning"}}
+
+        }
+
+        #endregion
+
+        #region Define the CompletionURI endpoint
+        $CompletionURI = "http://" + "$($Settings.server)" + ':' + "$($Settings.port)" + "/v1/chat/completions"
+        #endregion
+    }
     process {
 
+        #region Construct the user Dialog Message and append to the Dialog:
+        $UserMessage = Get-LMTemplate -Type DialogMessage
+      
+        $UserMessage.TimeStamp = (Get-Date).ToString()
+        $UserMessage.temperature = $Settings.temperature
+        $UserMessage.max_tokens = $Settings.max_tokens
+        $UserMessage.stream = $False
+        $UserMessage.ContextDepth = $Settings.ContextDepth
+        $UserMessage.Role = "user"
+        $UserMessage.Content = $Settings.UserPrompt
+
+        $Dialog.Messages.Add($UserMessage) | out-null
+        #endregion
+
+        #region Create $BodySettings for Invoke-LMBlob
+        $BodySettings = @{}
+        $BodySettings.Add('model',$Model)
+        $BodySettings.Add('temperature', $Settings.temperature)
+        $BodySettings.Add('max_tokens', $Settings.max_tokens)
+        $BodySettings.Add('stream', $False)
+        $BodySettings.Add('SystemPrompt', $Settings.SystemPrompt)
+        #endregion
+
+        #region Set Opener
+
+        #endregion
+
+        #region Send $Dialog.Messages to Convert-DialogToBody:
+        $Body = Convert-LMDialogToBody -DialogMessages ($Dialog.Messages) -ContextDepth $ContextDepth -Settings $BodySettings
+        #endregion
+
+        #region send request
+        try {$LMOutput = Invoke-LMBlob -Body $Body -CompletionURI $CompletionURI -NoConsoleOut}
+        catch {throw $_.Exception.Message}
+        #endregion
+
+        #region Construct the assistant Dialog message and append to the Dialog:
+        $AssistantMessage = Get-LMTemplate -Type DialogMessage
+        
+        $AssistantMessage.TimeStamp = (Get-Date).ToString()
+        $AssistantMessage.temperature = $Settings.temperature
+        $AssistantMessage.max_tokens = $Settings.max_tokens
+        $AssistantMessage.stream = $False
+        $AssistantMessage.ContextDepth = $Settings.ContextDepth
+        $AssistantMessage.Role = "assistant"
+        $AssistantMessage.Content = "$LMOutput"
+        #endregion
+
+        
+        #region Append the response to the Dialog::
+        $Dialog.Messages.Add($AssistantMessage) | out-null
+        #endregion
+
+        #region Update Dialog Object
+        $Dialog.Info.Modified = $AssistantMessage.TimeStamp
+        #endregion
         
     }
 
-    end {}
+    end {
 
+        If ($SaveDialog){
+            # Set the opener
+            If (!($OpenerSet)){$Dialog.Info.Opener = (($Dialog.Messages | Sort-Object TimeStamp) | Where-Object {$_.role -eq "user"})[0].Content}
 
+            try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFile -ErrorAction Stop}
+            catch {Write-Warning "Dialog file save failed"}
+
+            }
+
+            return $LMOutput
+
+        }
 
 }
