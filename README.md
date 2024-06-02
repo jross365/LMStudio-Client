@@ -45,6 +45,36 @@ Got a decent steart on the  **Get-LMResponse** function.
 
 Today's a beautiful day with non-computer things to do, but I'll probably work more on it tonight.
 
+**Follow-Up:**
+
+I've gotten deeper into **Get-LMResponse**. There are a few key features I would like to implement:
+
+⬜️ Error/warning accumulators, instantiating either a throw (errors) or **Write-Warning** (warnings) - needs to be disablable (**\-SuppressWarnings** switch)
+
+⬜️**\-SkipConnectionCheck** to disable checking the _/v1/models_ endpoint as a test
+
+⬜️ Dialog File handling
+
+**✅** Allow independent submission of values (temperature, system prompt, etc)
+
+It's coming along, slowly but surely.
+
+**Follow-Up:**
+
+The way that I've implemented Settings with **Get-LMResponse** is that:
+
+- If you **don't** specify **\-Settings**, the function uses the Config settings
+- If you **do** specify **\-Settings**, the function uses internally-defined defaults.
+
+My reason for doing this is that the **\-Settings** parameter exists to explicitly override the Config File. If settings provided don't pass validation, falling back to the Config File defaults would negate the whole reason for using **\-Settings**: to apply something other than what is configured.
+
+I need to work through the following two sections:  
+**✅** User Prompt Checking for **$LMStudioVars** and **\-Settings** configs, respectively.
+
+⬜️ Dialog File generation for the above two conditions.
+
+I've made decent enough progress, I'll pick up the Dialog Folder/File management and creation (via template) tomorrow.w
+
 ---
 
 ### 05/31/2024

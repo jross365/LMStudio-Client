@@ -2450,21 +2450,156 @@ end {
 function Get-LMResponse {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
         [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
-        [hashtable]$Settings
+        [string]$UserPrompt,
+
+        [Parameter(Mandatory=$false)]
+        [ValidateScript({ if (!(Test-Path -Path $_)) { throw "File path does not exist" } else { $true } })]
+        [string]$DialogFIle,
+        
+        [Parameter(Mandatory=$false)]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [hashtable]$Settings,
+        
+        [Parameter(Mandatory=$false)]
+        [switch]$IgnoreWarnings
+        
         )
 
     begin {
+        
+        #region Ensure either UserPrompt or Settings is used
+        If ((!($PSBoundParameters.ContainsKey('UserPrompt')))-and (!($PSBoundParameters.ContainsKey('Settings')))){throw "-UserPrompt and -Settings were missing. One of these two must be used."}
+        #endregion
 
-        $SettingsFields = (Get-LMTemplate -Type ManualSettings).GetEnumerator().Name
-        try {$ProvidedFields =$Settings.GetEnumerator().Name}
-        catch {throw "[Get-LMResponse] -Settings object is missing requisite properties and methods"}
+        If (!($PSBoundParameters.ContainsKey('Settings'))){
 
-        $FieldComparison = Compare-Object -ReferenceObject $SettingsFields -DifferenceObject $ProvidedFields
+            #region Validate Settings structure
+            $SettingsFields = (Get-LMTemplate -Type ManualSettings).GetEnumerator().Name
+            try {$ProvidedFields =$Settings.GetEnumerator().Name}
+            catch {throw "[Get-LMResponse] -Settings object is missing requisite properties and methods"}
 
-        If ($FieldComparison.Count -gt 0){throw "[Get-LMResponse] properties on -Settings object is missing properties ($($FieldComparison.InputObject -join ', '))"}
+            $FieldComparison = Compare-Object -ReferenceObject $SettingsFields -DifferenceObject $ProvidedFields
 
+            If ($FieldComparison.Count -gt 0){throw "[Get-LMResponse] properties on -Settings object is missing properties ($($FieldComparison.InputObject -join ', '))"}
+            #endregion
+
+            #region Evaluate the provided settings
+            $Errors = New-Object System.Collections.ArrayList
+            $Warnings = New-Object System.Collections.ArrayList
+
+            #region Check Server
+            If ($Null -eq $Server -or $Server.Length -eq 0){$Errors.Add("Server is null or empty") | Out-Null}
+            #endregion
+
+            #region Check Port
+            If ($Null -eq $Port -or $Port.Length -eq 0){$Errors.Add("Port is null or empty") | Out-Null}
+            Else {
+            
+                try {$PortAsInt = [int]$Port}
+                catch {$Errors.Add("Port is not convertable to integer") | Out-Null; continue}
+                
+                If ($PortAsInt -le 0 -or $PortAsInt -gt 65535){
+                    $Errors.Add("Port not 1-65536 ($($PortAsInt))")
+                }
+            }
+            #endregion
+
+            #region Check UserPrompt
+            If ($Null -eq $Settings.UserPrompt -or $Settings.UserPrompt.Length -eq 0){$Errors.Add("Server is null or empty") | Out-Null}
+            #endregion
+
+            #region Check Max_Tokens
+            If ($Settings.max_tokens.Length -eq 0 -or $null -eq $Settings.max_tokens){
+                $Settings.max_tokens = -1
+                $Warnings.Add("Max_Tokens is null or empty") | Out-Null
+            }
+            Else {
+            
+                try {$TokensAsInt = [int]$Settings.max_tokens}
+                catch {
+                    $Warnings.Add("Port is not convertable to integer") | Out-Null
+                    $Settings.max_tokens = -1
+                    continue
+                }
+                
+                If ($TokensAsInt -le -2){
+                    $Warnings.Add("Max_Tokens is less than or equal to -2 ($($TokensAsIntAsInt))")
+                    $Settings.max_tokens = -1
+                }
+            }
+            #endregion
+
+            #region Check ContextDepth
+            If ($Settings.ContextDepth.Length -eq 0 -or $null -eq $Settings.ContextDepth){
+                $Settings.ContextDepth = 10
+                $Warnings.Add("ContextDepth is null or empty") | Out-Null
+            }
+            Else {
+            
+                try {$ContextDepthAsInt = [int]$Settings.ContextDepth}
+                catch {
+                    $Warnings.Add("ContextDepth is not convertable to integer") | Out-Null
+                    $Settings.ContextDepth = 10
+                    continue
+                }
+                
+                If ($ContextDepthAsInt -le 0){
+                    $Warnings.Add("ContextDepth is less than or equal to 0 ($($TokensAsIntAsInt))")
+                    $Settings.ContextDepth = 10
+                }
+            }
+            #endregion
+            
+            #region Check Temperature
+            If ($Settings.temperature.Length -eq 0 -or $null -eq $Settings.temperature){
+                $Settings.temperature = 0.7
+                $Warnings.Add("Temperature is null or empty") | Out-Null
+            }
+            Else {
+            
+                try {$TempAsDouble = [system.math]::Truncate([double]$Settings.temperature, 1)}
+                catch {
+                    $Warnings.Add("Temperature isn't convertable to a double") | Out-Null
+                    $Settings.temperature = 0.7
+                    continue
+                }
+                
+                If ($TempAsDouble -lt 0 -or $TempAsDouble -gt 2){
+                    $Warnings.Add("Temperature isn't in a range of 0-2 ($($TempAsDouble))")
+                    $Settings.temperature = 0.7
+                }
+            }
+            #endregion
+
+            #region Check System Prompt
+            If ($Settings.SystemPrompt.Length -eq 0 -or $null -eq $Settings.SystemPrompt){
+                $Settings.SystemPrompt = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
+                $Warnings.Add("System Prompt is null or empty") | Out-Null
+            }
+            #endregion
+
+            #endregion Evaluate the provided settings
+
+        } #Close If PSBoundParameters contains settings
+
+        #region If we don't have a Settings Hashtable, use the Config (super easy)
+        Else {
+
+            $Settings = Get-LMTemplate -Type ManualSettings
+            $Settings.max_tokens = $Global:LMStudioVars.ChatSettings.max_tokens
+            $Settings.ContextDepth = $Global:LMStudioVars.ChatSettings.ContextDepth
+            $Settings.temperature = $Global:LMStudioVars.ChatSettings.temperature
+            $Settings.port = $Global:LMStudioVars.ServerInfo.Port            
+            $Settings.server = $Global:LMStudioVars.ServerInfo.Server            
+            $Settings.SystemPrompt = $Global:LMStudioVars.ChatSettings.SystemPrompt            
+            $Settings.UserPrompt = $UserPrompt
+            
+            #Left off here (06/01/2024)
+            If (!($PSBoundParameters.ContainsKey('DialogFIle'))){}
+            
+        }
 
     }
 
