@@ -83,12 +83,16 @@ Some other benefits of building this function:
 
 **Follow-Up:**
 
-**✅** Added and implemented a switch to **Start-LMChat**: **\-PrivateMode**. This will give the ability for a user to not record a chat if they don't want to.
+✅ Added and implemented a switch to **Start-LMChat**: **\-PrivateMode**. This will give the ability for a user to not record a chat if they don't want to.
 
-⬜️ **Remove-LMHistoryEntry** is a new function I need to write. This will come with a few options:
+✅ **Remove-LMHistoryEntry** is a new function I need to write. This will come with a few options:
 
-* **-DeleteDialogsToo** will delete the corresponding file
-* **-Bulk** will allow the removal of multiple entries (using the **Out-Gridview** option to return multiple)
+* ✅**-DeleteDialogsToo** will delete the corresponding file
+* ✅**-Bulk** will allow the removal of multiple entries (using the **Out-Gridview** option to return multiple)
+
+**Follow-Up:**
+
+**Remove-LMHistoryEntry** is done.
 
 ---
 

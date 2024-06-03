@@ -925,9 +925,99 @@ function Update-LMHistoryFile { #Complete, requires testing
 
 #This function allows the removal and/or deletion of History Entries and their dialogs (Incomplete)
 function Remove-LMHistoryEntry {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$False)]
+        [ValidateScript({ if (!(Test-Path -Path $_)) { throw "History file path does not exist" } else { $true } })]
+        [string]$FilePath,
+
+        [Parameter(Mandatory=$false)]
+        [switch]$BulkRemoval,
+    
+        [Parameter(Mandatory=$false)]
+        [switch]$DeleteDialogFiles
+    
+    )
+
+    begin {
+
+        #region Check history file location in global variables, or use provided FilePath
+        If ((Confirm-LMGlobalVariables -ReturnBoolean) -ne $True){throw "Something went wrong when running Confirm-LMGlobalVariables (didn't return True)"}
+        
+            $FilePath = $Global:LMStudioVars.FilePaths.HistoryFilePath
+
+             If (!(Test-Path $FilePath)){throw "Provided history file path is not valid or accessible ($FilePath)"}
+        #endregion
+
+        #region Import History File as Array List
+        $History = New-Object System.Collections.ArrayList
+
+        #Create "Cancel" entry
+        $CancelEntry = Get-LMTemplate -Type HistoryEntry 
+        $CancelEntry.Title = "Select This Entry To Cancel"
+        ("Created", "Modified", "Opener","Model","FilePath").ForEach({$CancelEntry.$_ = ""})
+        $History.Add($CancelEntry) | Out-Null
+
+        try {Get-Content $FilePath -ErrorAction Stop | ConvertFrom-Json -ErrorAction stop | Foreach-Object {$History.Add($_) | Out-Null}}
+        catch {throw "Couldn't import History File: $($_.Exception.Message)"}
+        #endregion
+
+        }
+
+    process {
+
+        switch ($BulkRemoval.IsPresent){
+
+            $True {
+
+                $RemoveEntries = $History | Out-GridView -Title "Select History Entries for Removal/Deletion" -OutputMode Multiple
+
+                $CancelEntries = $RemoveEntries | Where-Object {$_.Title -eq "Select This Entry To Cancel"}
+
+                If ($CancelEntries.Count -gt 0){return "Cancelled."}
+
+                Foreach ($Entry in $RemoveEntries){
+
+                    $History.Remove($Entry) | Out-Null
+
+                    If ($DeleteDialogFiles.IsPresent){
+
+                        $DialogFilePath = $Global:LMStudioVars.FilePaths.HistoryFilePath.TrimEnd('.index') + ($Entry.FilePath)
+
+                        If (Test-Path $DialogFilePath){Remove-Item -Path $DialogFilePath -Confirm:$true} #side of caution                        
+                    }
+
+                }
+
+            }
+
+            $False {
+
+                $Entry = $History | Out-GridView -Title "Select History Entry for Removal/Deletion" -OutputMode Single
+
+                If ($Entry.Title -eq "Select This Entry To Cancel"){return "Cancelled."}
+                $History.Remove($Entry) | Out-Null
+
+                If ($DeleteDialogFiles.IsPresent){
+
+                    $DialogFilePath = $Global:LMStudioVars.FilePaths.HistoryFilePath.TrimEnd('.index') + ($Entry.FilePath)
+
+                    If (Test-Path $DialogFilePath){Remove-Item -Path $DialogFilePath -Confirm:$true} #side of caution                        
+                }
+            }
 
 
+        }
+    }
 
+    end {
+
+        $History = $History | Where-Object {$_.Title -ne "Select This Entry To Cancel"}
+        
+        try {$History | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -ErrorAction Stop}
+        catch {throw "Unable to save History file modifications: $($_.Exception.Message)"}
+
+    }
 
 }
 
