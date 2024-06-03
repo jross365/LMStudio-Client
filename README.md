@@ -17,7 +17,7 @@ This client interfaces with the LMStudio Web Server, allowing a user to use LMSt
 
 This module is being built and improved upon, and features are implemented as they're discovered.
 
-This project isn't complete, and as of this writing the module isn't anywhere close to complete (_05/21/2024_). Please see my **development journal** below to follow my progress!
+This project isn't complete, and as of this writing ~~the module isn't anywhere close to complete (_05/21/2024_)~~ we're getting close (*06/02/2024*). Please see my **development journal** below to follow my progress!
 
 ---
 
@@ -25,9 +25,11 @@ This project isn't complete, and as of this writing the module isn't anywhere cl
 
 ### **Key:**
 
-⬜️ **\- Feature/Improvement Incomplete  ❌ - Cancelled/Removed  🚧 - Feature/Improvement In Progress  ✅ - Feature/Improvement Complete**
+**❌ - Cancelled/Removed  🚧 - Feature/Improvement In Progress**
 
-\*\*💡 - Idea \*\* 🐛 - **Bug**
+**⬜️ **\- Feature/Improvement Incomplete**  ✅ - Feature/Improvement Complete**
+
+💡 **- Idea  🐛 - Bug**
 
 ---
 
@@ -78,6 +80,15 @@ Some other benefits of building this function:
 🐛 I fixed a bug in **Invoke-LMBlob**, stemming from sloppy/quick variable definitions and not thinking the process through.
 
 🐛 I also fixed a bug in **Select-LMSystemPrompt**, where the **\-Pin** parameter wasn't working properly.
+
+**Follow-Up:**
+
+**✅** Added and implemented a switch to **Start-LMChat**: **\-PrivateMode**. This will give the ability for a user to not record a chat if they don't want to.
+
+⬜️ **Remove-LMHistoryEntry** is a new function I need to write. This will come with a few options:
+
+* **-DeleteDialogsToo** will delete the corresponding file
+* **-Bulk** will allow the removal of multiple entries (using the **Out-Gridview** option to return multiple)
 
 ---
 
@@ -177,7 +188,7 @@ Here's some code I might need later:
 
 `#endregion`
 
-**💡** I need to add a switch to **Start-LMChat**: **\-NoSave**. This will give the ability for a user to not record a chat if they don't want to.
+**✅** I need to add a switch to **Start-LMChat**: **\-NoSave**. This will give the ability for a user to not record a chat if they don't want to.
 
 **✅** I also included **$JobOutput.Dispose()** in the **Invoke-LMStream** function's **Get-Content -Wait** try/catch block. I wonder if some longer term instability I was seeing was because I wasn't properly closing my streamwriters. (_It could also be because I'm always running LMStudio locally when testing_).
 
@@ -235,7 +246,7 @@ I fought with a lot of different approaches to solving the problem, but I'm goin
 
 ⬜️ Write the **Search-LMHistory** function
 
-⬜️ Write **Get-LMResponse** (single-response query, no console output).
+**✅** Write **Get-LMResponse** (single-response query, no console output).
 ...
 
 **And these are "admin" tasks:**
@@ -320,7 +331,7 @@ That's all for now.
 
 **Edit:** I forgot some things:
 
-**❌**I need an empty "Return" in **Start-LMChat** to do nothing (erase current line, don't run). There's a way to erase the current written line, I should experiment with it to make it "transparent".
+❌ I need an empty "Return" in **Start-LMChat** to do nothing (erase current line, don't run). There's a way to erase the current written line, I should experiment with it to make it "transparent".
 
 ---
 
@@ -360,7 +371,7 @@ This is a bit much to bite off right now though, there's some time/order logic I
 
 This is a consolidated list of the work to do:
 
-**🚧**Add the following variables to the Config File: \[**Moved**\]
+🚧 Add the following variables to the Config File: \[**Moved**\]
 
 **❌** Implement MarkDown into **Invoke-LMStream** and **Invoke-LMBlob**
 

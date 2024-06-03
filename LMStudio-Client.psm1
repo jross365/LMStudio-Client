@@ -923,6 +923,14 @@ function Update-LMHistoryFile { #Complete, requires testing
 
 }
 
+#This function allows the removal and/or deletion of History Entries and their dialogs (Incomplete)
+function Remove-LMHistoryEntry {
+
+
+
+
+}
+
 #$This function imports a dialog file, converts it to a non-fixed sized format [array => arraylist], and then returns it
 function Import-LMDialogFile {
     [CmdletBinding()]
@@ -2184,10 +2192,13 @@ function Show-LMDialog {
 }
 
 function Start-LMChat {
-    [CmdletBinding(DefaultParameterSetName="Auto")]
+    [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$False, ParameterSetName='Auto')]
-        [switch]$ResumeChat
+        [Parameter(Mandatory=$False)]
+        [switch]$ResumeChat,
+
+        [Parameter(Mandatory=$False)]
+        [switch]$PrivateMode
         )
 
     begin {
@@ -2284,7 +2295,7 @@ function Start-LMChat {
 
                     }
 
-                    If ($DialogFileExists){
+                    If ($DialogFileExists -and !($PrivateMode.IsPresent)){
 
                         try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
                         catch {
@@ -2295,7 +2306,7 @@ function Start-LMChat {
 
                     Else {
                         $DialogFileExists = Test-Path $DialogFilePath
-                        Write-Warning "Dialog file not saved to file. In the User prompt, enter ':Save' to save."
+                        If (!($PrivateMode.IsPresent)){Write-Warning "Dialog file not saved to file. In the User prompt, enter ':Save' to save."}
                     }
 
                     } #Close Case $False
@@ -2404,15 +2415,15 @@ function Start-LMChat {
             If ($UseMarkDown){Show-LMDialog -DialogMessages $Dialog.Messages -AsMarkdown}
             #endregion
 
-            #region Update Dialog File, History File
-            If ($DialogFileExists){
+            #region Set Opener
+            If (!($OpenerSet)){
+                $Dialog.Info.Opener = (($Dialog.Messages | Sort-Object TimeStamp) | Where-Object {$_.role -eq "user"})[0].Content
+                $OpenerSet = $False
+            }
+            #endregion
 
-                #region Set Opener
-                If (!($OpenerSet)){
-                    $Dialog.Info.Opener = (($Dialog.Messages | Sort-Object TimeStamp) | Where-Object {$_.role -eq "user"})[0].Content
-                    $OpenerSet = $False
-                }
-                #endregion
+            #region Update Dialog File, History File
+            If ($DialogFileExists -and !($PrivateMode.IsPresent)){
 
                 # Save the Dialog File
                 try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
