@@ -1895,8 +1895,21 @@ end {
 }
 
 #This function presents a selection prompt (Out-Gridview) for the system prompt
-function Select-LMSystemPrompt ([switch]$Pin, [switch]$AsObject) {
-    
+function Select-LMSystemPrompt {
+    [CmdletBinding(DefaultParameterSetName="Set")]
+    param (
+        [Parameter(Mandatory=$false, ParameterSetName='Set')]
+        [switch]$Pin,
+        
+        [Parameter(Mandatory=$false, ParameterSetName='Return')]
+        [Parameter(Mandatory=$false, ParameterSetName='Bulk')]
+            [switch]$AsObject,
+        
+            [Parameter(Mandatory=$true, ParameterSetName='Bulk')]
+                [switch]$Bulk
+    )
+
+    #region Prereqs
     If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "Config file variables not loaded. Run [Import-ConfigFile] to load them"}
     Else {$SysPromptFile = $global:LMStudioVars.FilePaths.SystemPromptPath}
 
@@ -1904,23 +1917,45 @@ function Select-LMSystemPrompt ([switch]$Pin, [switch]$AsObject) {
     catch {throw "Unable to import system.prompts file [$SysPromptFile]"}
 
     $SystemPrompts += ([pscustomobject]@{"Name"="Cancel"; "Prompt"="Select this prompt to cancel"})
+    #endregion
 
-    $SelectedPrompt = $SystemPrompts | Out-GridView -Title "Please Select a Prompt" -OutputMode Single
 
-    # This isn't generic error checking: $SelectedPrompt really does return null
-    If ($SelectedPrompt.Name -eq 'Cancel' -or $null -eq $SelectedPrompt){throw "System Prompt selection cancelled"}
+    #region <None> and -Pin
+    If (!($AsObject.IsPresent) -or !($Bulk.IsPresent)){
 
-    switch ($Pin.IsPresent){
+        $SelectedPrompt = $SystemPrompts | Out-GridView -Title "Please Select a Prompt" -OutputMode Single
+
+        # This isn't generic error checking: $SelectedPrompt really does return null
+        If ($SelectedPrompt.Name -eq 'Cancel' -or $null -eq $SelectedPrompt){throw "System Prompt selection cancelled"}
+    
+        switch ($Pin.IsPresent){
         
-        $True {Set-LMConfigOptions -Branch ChatSettings -Options @{"SystemPrompt"=$($SelectedPrompt.Prompt)} -Commit}
-
-        $False {Set-LMConfigOptions -Branch ChatSettings -Options @{"SystemPrompt"=$($SelectedPrompt.Prompt)}}
-
+            $True {Set-LMConfigOptions -Branch ChatSettings -Options @{"SystemPrompt"=$($SelectedPrompt.Prompt)} -Commit}
+    
+            $False {Set-LMConfigOptions -Branch ChatSettings -Options @{"SystemPrompt"=$($SelectedPrompt.Prompt)}}
+    
+        }
     }
+    #endregion
+
+    #region -AsObject and -Bulk
+    ElseIf ($AsObject.IsPresent){
+
+        switch ($Bulk.IsPresent){
+
+            $True {$SelectedPrompt = $SystemPrompts | Out-GridView -Title "Please Select a Prompt" -OutputMode Multiple}
+
+            $False {$SelectedPrompt = $SystemPrompts | Out-GridView -Title "Please Select a Prompt" -OutputMode Single}
+
+        }
+        If ($SelectedPrompt.Name -eq 'Cancel' -or $SelectedPrompt -contains 'Cancel' -or $null -eq $SelectedPrompt){throw "System Prompt selection cancelled"}
+        Else {return $SelectedPrompt}
+
+    } 
 
     switch ($AsObject.IsPresent){
 
-        $True {return $SelectedPrompt}
+        $True {}
 
         $False {$SelectedPrompt.Prompt}
 
@@ -1936,6 +1971,8 @@ function Edit-LMSystemPrompt {
         [switch]$Add,
         [Parameter(Mandatory=$false, ParameterSetName='Remove')]
         [switch]$Remove,
+        [Parameter(Mandatory=$false, ParameterSetName='Remove')]
+        [switch]$Bulk,
         [Parameter(Mandatory=$false, ParameterSetName='Add')]
         [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
         [string]$Name,
@@ -1983,10 +2020,27 @@ function Edit-LMSystemPrompt {
 
         if ($Remove.IsPresent){
 
-            try {$RemovePrompt = Select-LMSystemPrompt -AsObject}
-            catch {throw $_.Exception.Message}
+            switch ($Bulk.IsPresent){
 
-            $SystemPrompts = $SystemPrompts | Where-Object {$_.Name -ne $RemovePrompt.Name -and $_.Prompt -ne $RemovePrompt.Prompt}
+                $True {
+                    try {$RemovePrompts = Select-LMSystemPrompt -AsObject -Bulk}
+                    catch {throw $_.Exception.Message}
+    
+                    
+                    Foreach ($Prompt in $RemovePrompts){$SystemPrompts = $SystemPrompts | Where-Object {$_.Name -ne $RemovePrompts.Name -and $_.Prompt -ne $RemovePrompts.Prompt}}    
+
+                }
+
+                $False {
+
+                    try {$RemovePrompt = Select-LMSystemPrompt -AsObject}
+                    catch {throw $_.Exception.Message}
+
+                    $SystemPrompts = $SystemPrompts | Where-Object {$_.Name -ne $RemovePrompt.Name -and $_.Prompt -ne $RemovePrompt.Prompt}
+
+                }
+
+            }
 
         }
 

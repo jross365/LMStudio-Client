@@ -25,13 +25,49 @@ This project isn't complete, and as of this writing ~~the module isn't anywhere 
 
 ### **Key:**
 
-**❌ - Cancelled/Removed  🚧 - Feature/Improvement In Progress**
+**❌ - Cancelled/Removed**  🚧 **- Feature/Improvement In Progress**
 
-**⬜️ **\- Feature/Improvement Incomplete**  ✅ - Feature/Improvement Complete**
+⬜️ **- Feature/Improvement Incomplete**  ✅ **- Feature/Improvement Complete**
 
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 06/04/2024
+
+Had a day off. Now, I must tackle the settings system.
+
+I've got to make some design decisions about:
+* Syntax
+* return/error output
+
+For **Syntax**, I think I'll go with:
+```
+:q - quit
+:temp [double]<0.0 - 2.0>             - temperature
+:mtoken - [int]<-1+>                  - max_tokens
+:stream - [boolean]<$True or $False>  - Stream
+:save - [boolean]<$True or $False>    - Save
+:mark - [boolean]<$True or $False>    - Markdown
+:depth - [int]<2+>                    - Context Depth
+:svsys - [switch]                      - Select System Prompt
+:wrsys - [string]<[1] - [512]>         - Write System Prompt
+:priv - [boolean]<$True or $False>    - Privacy Mode (Deletes Dialog file and disables saving)
+
+```
+A decision has been made. I'll start tomorrow.
+
+I also made improvements to **Select-LMSystemPrompt**, which now enables bulk selection and segments parameters into two sets:
+```
+    # <none> and -Pin: Sets System Prompt, and commits it to the Config File
+    # -AsObject and -Bulk: returns a system prompt, or multiple system prompts as objects
+```
+
+This in turn has allowed me to augment **Edit-LMSystemPrompt** with a corresponding **-Remove -Bulk** parameters.
+This allows for the deletion of multiple System Prompts from list, i.e, if you're playing around with system prompts and need to clean up the file.
+
+Oh yeah, ⬜️ **I need to test, fix and validate these two functions.**
+
+That's all for now!
 
 ### 06/02/2024
 
