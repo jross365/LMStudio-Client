@@ -382,7 +382,6 @@ function Set-LMConfigOptions {
 
     }
 
-
 #This function returns different kinds of objects needed by various functions
 function Get-LMTemplate { #Complete
     [CmdletBinding()]
@@ -923,7 +922,7 @@ function Update-LMHistoryFile { #Complete, requires testing
 
 }
 
-#This function allows the removal and/or deletion of History Entries and their dialogs (Incomplete)
+#This function allows the removal and/or deletion of History Entries and their dialogs
 function Remove-LMHistoryEntry {
     [CmdletBinding()]
     param (
@@ -2240,6 +2239,86 @@ function Select-LMHistoryEntry {
 
 }
 
+#This function intakes a user prompt, interprets an option and executes a command
+function Set-LMCLIOption{
+[CmdletBinding()]
+param (
+    [Parameter(Mandatory=$false)]
+    [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+    [string]$UserInput
+)
+
+begin {
+
+    $ResultObj = [pscustomobject]@{"Result" = $False; "Message" = ""}
+
+    $Fault = $False
+
+    try {$Setting = $UserInput.Substring(0,5)}
+    catch {
+        $ResultObj.Message = "Option input is invalid. Try ':help' for more information."
+        $Fault = $True
+    }
+
+}
+process {
+    
+If (!$Fault){
+    
+    switch ($Setting){
+
+        {$_ -ieq ":temp"}{
+
+            If (($UserInput.Length -ne 9) -or ($UserInput.SubString(7,3) -notmatch '(\d[.]\d)')){
+                $ResultObj.Message = "Incorrect syntax: expected :temp #.#"
+                $Fault = $True
+            }
+
+            If (!$Fault){
+
+                try {$NewTemp = [double]($UserInput.Substring(7,3))}
+                catch {
+                    $ResultObj.Message = "Incorrect syntax: expected :temp #.#"
+                    $Fault = $True
+                }
+
+            }
+
+            If (!$Fault){
+                
+                If ($NewTemp -lt 0 -or $NewTemp -gt 2){
+                    $ResultObj.Message = "Temperature must be within the range of 0.0 to 2.0"
+                    $Fault = $True
+                }
+
+            }
+
+            If (!$Fault){
+            
+                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"Temperature" = $NewTemp} -Commit}
+                catch {
+                    $ResultObj.Message = "$($_.Exception.Message)"
+                    $Fault = $True
+                }
+
+            }
+            
+        } #:temp
+
+    } #Close Switch $Setting
+
+} #Close !$Fault
+
+}
+
+end {
+
+    $ResultObj.Result = !$Fault
+    return $ResultObj
+
+}
+
+} #Close function
 
 #This function converts Dialog Messages to Markdown output
 function Show-LMDialog {
@@ -2339,7 +2418,7 @@ function Start-LMChat {
         [switch]$ResumeChat,
 
         [Parameter(Mandatory=$False)]
-        [switch]$PrivateMode
+        [switch]$PrivacyMode
         )
 
     begin {
