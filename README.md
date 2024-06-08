@@ -30,6 +30,62 @@ This project isn't complete, and as of this writing ~~the module isn't anywhere 
 ⬜️ **- Feature/Improvement Incomplete**  ✅ **- Feature/Improvement Complete**
 
 💡 **- Idea  🐛 - Bug**
+---
+### 06/07/2024
+
+Personal life got very busy, and then I needed a day off. The break did me good, I was forced to go back into this with a fresh set of eyes.
+
+🐛 I fixed some bugs in the **-LMSystemPrompt** functions. I restructured a few things as well, that were poorly written.
+
+I also started the options handling code for **Start-LMChat**, and it looks like this:
+
+```
+try {$InputOption = Confirm-LMCLIOption -Input $UserInput}
+catch {Write-Host "Option failed: $($_.Exception.Message)"}
+
+switch ($InputOption.Run){
+
+  $True {
+
+          try {
+              $OptionOutput = &(Invoke-Expression -Command ($InputOption.Command) -ErrorAction Stop)
+              $OptionSet = $True
+          }
+          catch {
+              Write-Host "Option failed: $($_.Exception.Message)" -ForegroundColor Yellow
+              $OptionSet = $False
+              continue
+          }
+
+          If ($OptionSet){Write-Host "Option succeeded" -ForegroundColor Green}
+
+          continue main
+
+  }
+
+  $False {Write-Host "$($InputOption.Command)" -ForegroundColor Blue}
+
+}
+
+
+```
+
+**Confirm-LMCLIOption** doesn't exist yet, but we can see from this code that it will do a few specific things:
+
+* It returns an object with properties "Run" (boolean) and "Command" (string)
+* The "Run" property contains a value of $True or $False, which signals whether "Command" contains a string (of code)
+* The "Command" property contains a string intended to be interpreted and executed (**Invoke-Expression**)
+
+The **$InputOption** Variable receives the result from **Confirm-LMCLIOption**.
+
+If ".Run" is set to $False, then we pass along the result from the object to the console via the ".Command" contents (**Write-Host**).
+If it is set to $True, we try to execute, and pass the result to the console via try/catch.
+
+The *purpose* of this structure is to provide a "lean" way to use options to execution functions from within the **Start-LMChat** function. Using Invoke-Expression is frowned upon (it's easy to use to obfuscate malicious code), but in this case it makes it much easier to keep my options parsing and selection code to a minimum in **Start-LMChat**, and mostly residing outside of it.
+
+💡 I need to write duplicates detection and handling in the **Edit-LMSystemPrompt -Remove** function. It's not the highest priority, but it's a bit of a hassle if you have two entries (it deletes both of them.)
+
+That's all for now.
 
 ---
 ### 06/04/2024
@@ -46,7 +102,7 @@ For **Syntax**, I think I'll go with:
 :temp [double]<0.0 - 2.0>             - temperature
 :mtoken - [int]<-1+>                  - max_tokens
 :stream - [boolean]<$True or $False>  - Stream
-:save - [boolean]<$True or $False>    - Save
+:save - [boolean]<$True or $False>    - Save Toggle
 :mark - [boolean]<$True or $False>    - Markdown
 :depth - [int]<2+>                    - Context Depth
 :svsys - [switch]                      - Select System Prompt

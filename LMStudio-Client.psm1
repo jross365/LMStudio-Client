@@ -1919,49 +1919,46 @@ function Select-LMSystemPrompt {
     $SystemPrompts += ([pscustomobject]@{"Name"="Cancel"; "Prompt"="Select this prompt to cancel"})
     #endregion
 
-
     #region <None> and -Pin
-    If (!($AsObject.IsPresent) -or !($Bulk.IsPresent)){
+    switch ($AsObject.IsPresent){
 
-        $SelectedPrompt = $SystemPrompts | Out-GridView -Title "Please Select a Prompt" -OutputMode Single
+        $True {
 
-        # This isn't generic error checking: $SelectedPrompt really does return null
-        If ($SelectedPrompt.Name -eq 'Cancel' -or $null -eq $SelectedPrompt){throw "System Prompt selection cancelled"}
-    
-        switch ($Pin.IsPresent){
+                switch ($Bulk.IsPresent){
+
+                    $True {$SelectedPrompt = $SystemPrompts | Out-GridView -Title "Please Select a Prompt" -OutputMode Multiple}
         
-            $True {Set-LMConfigOptions -Branch ChatSettings -Options @{"SystemPrompt"=$($SelectedPrompt.Prompt)} -Commit}
-    
-            $False {Set-LMConfigOptions -Branch ChatSettings -Options @{"SystemPrompt"=$($SelectedPrompt.Prompt)}}
-    
+                    $False {$SelectedPrompt = $SystemPrompts | Out-GridView -Title "Please Select a Prompt" -OutputMode Single}
+        
+                }
+                
+                If ($SelectedPrompt.Name -eq 'Cancel' -or $SelectedPrompt -contains 'Cancel' -or $null -eq $SelectedPrompt){throw "System Prompt selection cancelled"}
+                
+                return $SelectedPrompt
+
         }
+
+        $False {
+            
+                $SelectedPrompt = $SystemPrompts | Out-GridView -Title "Please Select a Prompt" -OutputMode Single
+
+                # This isn't generic error checking: $SelectedPrompt really does return null
+                If ($SelectedPrompt.Name -eq 'Cancel' -or $null -eq $SelectedPrompt){throw "System Prompt selection cancelled"}
+            
+                    switch ($Pin.IsPresent){
+                    
+                        $True {Set-LMConfigOptions -Branch ChatSettings -Options @{"SystemPrompt"=$($SelectedPrompt.Prompt)} -Commit}
+                
+                        $False {Set-LMConfigOptions -Branch ChatSettings -Options @{"SystemPrompt"=$($SelectedPrompt.Prompt)}}
+                
+                    }
+
+        }
+
     }
     #endregion
 
-    #region -AsObject and -Bulk
-    ElseIf ($AsObject.IsPresent){
-
-        switch ($Bulk.IsPresent){
-
-            $True {$SelectedPrompt = $SystemPrompts | Out-GridView -Title "Please Select a Prompt" -OutputMode Multiple}
-
-            $False {$SelectedPrompt = $SystemPrompts | Out-GridView -Title "Please Select a Prompt" -OutputMode Single}
-
-        }
-        If ($SelectedPrompt.Name -eq 'Cancel' -or $SelectedPrompt -contains 'Cancel' -or $null -eq $SelectedPrompt){throw "System Prompt selection cancelled"}
-        Else {return $SelectedPrompt}
-
-    } 
-
-    switch ($AsObject.IsPresent){
-
-        $True {}
-
-        $False {$SelectedPrompt.Prompt}
-
-    }
-
-} #Not started
+}
 
 #This function allows you to add or remove system prompt entries
 function Edit-LMSystemPrompt {
@@ -2027,7 +2024,7 @@ function Edit-LMSystemPrompt {
                     catch {throw $_.Exception.Message}
     
                     
-                    Foreach ($Prompt in $RemovePrompts){$SystemPrompts = $SystemPrompts | Where-Object {$_.Name -ne $RemovePrompts.Name -and $_.Prompt -ne $RemovePrompts.Prompt}}    
+                    Foreach ($Prompt in $RemovePrompts){$SystemPrompts = $SystemPrompts | Where-Object {$_.Name -ne $Prompt.Name -and $_.Prompt -ne $Prompt.Prompt}}    
 
                 }
 
@@ -2500,6 +2497,37 @@ function Start-LMChat {
             
             }
             until ($UserInput.Length -gt 0)
+            #endregion
+
+            #region Check input for option:
+            #<#
+            try {$InputOption = Confirm-LMCLIOption -Input $UserInput}
+            catch {Write-Host "Option failed: $($_.Exception.Message)"}
+
+            switch ($InputOption.Run){
+
+            $True {
+
+                    try {
+                        $OptionOutput = &(Invoke-Expression -Command ($InputOption.Command) -ErrorAction Stop)
+                        $OptionSet = $True
+                    }
+                    catch {
+                        Write-Host "Option failed: $($_.Exception.Message)" -ForegroundColor Yellow
+                        $OptionSet = $False
+                        continue
+                    }
+
+                    If ($OptionSet){Write-Host "Option succeeded" -ForegroundColor Green}
+
+                    continue main
+
+            }
+
+            $False {Write-Host "$($InputOption.Command)" -ForegroundColor Blue}
+
+            }
+            #>
             #endregion
 
             #region Construct the user Dialog Message and append to the Dialog:
