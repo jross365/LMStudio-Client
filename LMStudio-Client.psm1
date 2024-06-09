@@ -2278,7 +2278,7 @@ If (!$Fault){
 
                 try {$NewTemp = [double]($UserInput.Substring(7,3))}
                 catch {
-                    $ResultObj.Message = "Incorrect syntax: expected :temp #.#"
+                    $ResultObj.Message = "Incorrect syntax: expected :temp [0.0 - 2.0]"
                     $Fault = $True
                 }
 
@@ -2295,7 +2295,38 @@ If (!$Fault){
 
             If (!$Fault){
             
-                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"Temperature" = $NewTemp} -Commit}
+                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"temperature" = $NewTemp} -Commit}
+                catch {
+                    $ResultObj.Message = "$($_.Exception.Message)"
+                    $Fault = $True
+                }
+
+            }
+            
+        } #:temp
+
+        {$_ -ieq ":mtok"}{
+
+            If (($UserInput.Length -gt 11) -or ($UserInput.SubString(7,2) -notmatch '([-]\d+|\d)')){
+                $ResultObj.Message = "Incorrect syntax: expected :mtok number of 1 or greater, or -1, expected"
+                $Fault = $True
+            }
+
+            If (!$Fault){
+
+                try {$NewTemp = [int]($UserInput.Substring(7,2))}
+                catch {
+                    $ResultObj.Message = "Incorrect syntax: expected :mtok [int]"
+                    $Fault = $True
+                }
+
+            }
+
+            If (!$Fault){
+
+                $MtokValue = $UserInput.Substring(7,$($UserInput.Length - 1))
+            
+                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"max_tokens" = $MtokValue} -Commit}
                 catch {
                     $ResultObj.Message = "$($_.Exception.Message)"
                     $Fault = $True
@@ -2580,32 +2611,24 @@ function Start-LMChat {
 
             #region Check input for option:
             #<#
-            try {$InputOption = Confirm-LMCLIOption -Input $UserInput}
-            catch {Write-Host "Option failed: $($_.Exception.Message)"}
+            If ($UserInput[0] -eq ':'){
 
-            switch ($InputOption.Run){
+                $Option = Set-LMCLIOption -Input $UserInput
 
-            $True {
+                switch ($Option.Result){
 
-                    try {
-                        $OptionOutput = &(Invoke-Expression -Command ($InputOption.Command) -ErrorAction Stop)
-                        $OptionSet = $True
-                    }
-                    catch {
-                        Write-Host "Option failed: $($_.Exception.Message)" -ForegroundColor Yellow
-                        $OptionSet = $False
-                        continue
-                    }
+                    $True {Write-Host "Set option succeeded" -ForegroundColor Green}
 
-                    If ($OptionSet){Write-Host "Option succeeded" -ForegroundColor Green}
+                    $False {Write-Host "Set option failed: $($Option.Message)" -ForegroundColor Green}
 
-                    continue main
+                    Default {Write-Host "Strange or no result returned from [Set-LMCLIOption]" -ForegroundColor Yellow}
+
+                }
+
+            continue main
 
             }
 
-            $False {Write-Host "$($InputOption.Command)" -ForegroundColor Blue}
-
-            }
             #>
             #endregion
 
