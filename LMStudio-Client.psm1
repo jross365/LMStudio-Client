@@ -2267,6 +2267,16 @@ If (!$Fault){
     
     switch ($Setting){
 
+        {$_ -ieq ":selp"}{
+
+            try {Select-LMSystemPrompt -Pin}
+            catch {
+                $ResultObj.Message = $_.Exception.Message
+                $Fault = $True 
+            }
+
+        }
+
         {$_ -ieq ":temp"}{
 
             If (($UserInput.Length -ne 9) -or ($UserInput.SubString(7,3) -notmatch '(\d[.]\d)')){

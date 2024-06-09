@@ -57,7 +57,7 @@ Got a good start on **Set-LMCLIOption** (renamed). I decided not to use Invoke-E
 
 ✅ :cond - [int]<2+>                    - Context Depth
 
-⬜️ :selp - [switch]                      - Select System Prompt
+✅ :selp - [switch]                      - Select System Prompt
 
 ⬜️ :newp - [string]<[1] - [512]>         - New System Prompt
 
