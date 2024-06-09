@@ -37,15 +37,25 @@ Got a good start on **Set-LMCLIOption** (renamed). I decided not to use Invoke-E
 ":temp" parsing is done, have quite a few more to do:
 
 ⬜️ :q - quit
+
 ⬜️ :h - help
+
 ✅ :temp [double]<0.0 - 2.0>             - temperature
+
 ✅ :mtok - [int]<-1+>                  - max_tokens
+
 ⬜️ :strm - [boolean]<$True or $False>  - Stream
+
 ⬜️ :save - [boolean]<$True or $False>    - Save Toggle
+
 ⬜️ :mark - [boolean]<$True or $False>    - Markdown
+
 ⬜️ :cond - [int]<2+>                    - Context Depth
+
 ⬜️ :selp - [switch]                      - Select System Prompt
+
 ⬜️ :newp - [string]<[1] - [512]>         - New System Prompt
+
 ⬜️ :priv - [boolean]<$True or $False>    - Privacy Mode (Deletes Dialog file and disables saving)
 
 Have some gardening to do, that's all for now.
@@ -54,6 +64,7 @@ Have some gardening to do, that's all for now.
 Finished gardening. Did the **:mtok** option validation and setting in **Set-LMCLIOption**. I also re-wrote the return object handling in **Start-LMChat** to accommodate a simpler approach (no **Invoke-Expression** to worry about.)
 
 It's shaping up.
+
 ---
 ### 06/07/2024
 
