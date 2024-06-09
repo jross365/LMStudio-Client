@@ -2276,7 +2276,7 @@ If (!$Fault){
 
             If (!$Fault){
 
-                try {$NewTemp = [double]($UserInput.Substring(7,3))}
+                try {$TempValue = [double]($UserInput.Substring(6,($UserInput.Length - 6)))}
                 catch {
                     $ResultObj.Message = "Incorrect syntax: expected :temp [0.0 - 2.0]"
                     $Fault = $True
@@ -2286,7 +2286,7 @@ If (!$Fault){
 
             If (!$Fault){
                 
-                If ($NewTemp -lt 0 -or $NewTemp -gt 2){
+                If ($TempValue -lt 0 -or $TempValue -gt 2){
                     $ResultObj.Message = "Temperature must be within the range of 0.0 to 2.0"
                     $Fault = $True
                 }
@@ -2295,7 +2295,7 @@ If (!$Fault){
 
             If (!$Fault){
             
-                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"temperature" = $NewTemp} -Commit}
+                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"temperature" = $TempValue} -Commit}
                 catch {
                     $ResultObj.Message = "$($_.Exception.Message)"
                     $Fault = $True
@@ -2307,14 +2307,14 @@ If (!$Fault){
 
         {$_ -ieq ":mtok"}{
 
-            If (($UserInput.Length -gt 11) -or ($UserInput.SubString(7,2) -notmatch '([-]\d+|\d)')){
+            If (($UserInput.Length -gt 11) -or ($UserInput.SubString(6,(($UserInput.Length) - 6)) -notmatch '([-]\d+|\d)')){
                 $ResultObj.Message = "Incorrect syntax: expected :mtok number of 1 or greater, or -1, expected"
                 $Fault = $True
             }
 
             If (!$Fault){
 
-                try {$NewTemp = [int]($UserInput.Substring(7,2))}
+                try {$MtokValue = [int]($UserInput.Substring(7,$($UserInput.Length - 1)))}
                 catch {
                     $ResultObj.Message = "Incorrect syntax: expected :mtok [int]"
                     $Fault = $True
@@ -2323,13 +2323,149 @@ If (!$Fault){
             }
 
             If (!$Fault){
-
-                $MtokValue = $UserInput.Substring(7,$($UserInput.Length - 1))
             
                 try {Set-LMConfigOptions -Branch ChatSettings -Options @{"max_tokens" = $MtokValue} -Commit}
                 catch {
                     $ResultObj.Message = "$($_.Exception.Message)"
                     $Fault = $True
+                }
+
+            }
+            
+        } #:temp
+
+        {$_ -ieq ":strm"}{
+            
+            If (($UserInput.Length -gt 11) -or ($UserInput -notmatch 'true|false')){
+                $ResultObj.Message = "Incorrect syntax: expected :strm value of True or False"
+                $Fault = $True
+            }
+
+            If (!$Fault){
+                try {$StreamValue = [boolean]($UserInput.Substring(7,($UserInput.Length - 1)))}
+                catch {
+                    $ResultObj.Message = "Incorrect syntax: expected :strm <True|False>"
+                    $Fault = $True                    
+                }
+
+            }
+
+            If (!$Fault){
+
+                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"stream" = $StreamValue} -Commit}
+                catch {
+                    $ResultObj.Message = "$($_.Exception.Message)"
+                    $Fault = $True
+                }
+
+            }
+
+        }
+
+        {$_ -ieq ":save"}{
+            
+            If (($UserInput.Length -gt 11) -or ($UserInput -notmatch 'true|false')){
+                $ResultObj.Message = "Incorrect syntax: expected :save value of True or False"
+                $Fault = $True
+            }
+
+            If (!$Fault){
+                try {$SaveValue = [boolean]($UserInput.Substring(7,($UserInput.Length - 1)))}
+                catch {
+                    $ResultObj.Message = "Incorrect syntax: expected :save <True|False>"
+                    $Fault = $True                    
+                }
+
+            }
+
+            If (!$Fault){
+
+                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"SavePrompt" = $SaveValue} -Commit}
+                catch {
+                    $ResultObj.Message = "$($_.Exception.Message)"
+                    $Fault = $True
+                }
+
+            }
+
+        }
+
+        {$_ -ieq ":mark"}{
+            
+            If (($UserInput.Length -gt 11) -or ($UserInput -notmatch 'true|false')){
+                $ResultObj.Message = "Incorrect syntax: expected :mark value of True or False"
+                $Fault = $True
+            }
+
+            If (!$Fault){
+                try {$MarkdownValue = [boolean]($UserInput.Substring(7,($UserInput.Length - 1)))}
+                catch {
+                    $ResultObj.Message = "Incorrect syntax: expected :mark <True|False>"
+                    $Fault = $True                    
+                }
+
+            }
+
+            If (!$Fault){
+
+                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"Markdown" = $MarkdownValue} -Commit}
+                catch {
+                    $ResultObj.Message = "$($_.Exception.Message)"
+                    $Fault = $True
+                }
+
+            }
+
+        }
+
+        {$_ -ieq ":cond"}{
+
+            If (($UserInput.Length -gt 11) -or ($UserInput.SubString(6,(($UserInput.Length) - 6)) -notmatch '(\d+)')){
+                $ResultObj.Message = "Incorrect syntax: expected :cond number of 2 or greater expected"
+                $Fault = $True
+            }
+
+            If (!$Fault){
+
+                try {$CondValue = [int]($UserInput.SubString(6,(($UserInput.Length) - 6)))}
+                catch {
+                    $ResultObj.Message = "Incorrect syntax: expected :cond [int]"
+                    $Fault = $True
+                }
+                
+            }
+
+            If (!$Fault){
+
+                switch ($CondValue % 2){
+
+                    0 {
+
+                        If ($CondValue -le 0){
+                            
+                            $ResultObj.Message = "Incorrect value: :cond must be greater than or equal to 2"
+                            $Fault = $True
+
+                        }
+                        
+                        Else {
+                        
+                            try {Set-LMConfigOptions -Branch ChatSettings -Options @{"ContextDepth" = $CondValue} -Commit}
+                            catch {
+                                $ResultObj.Message = "$($_.Exception.Message)"
+                                $Fault = $True
+                            }
+
+                        }
+                    }
+
+                    1 {
+
+                        $ResultObj.Message = "Incorrect value: :cond must be an even number"
+                        $Fault = $True
+
+                    }
+
                 }
 
             }

@@ -31,6 +31,11 @@ This project isn't complete, and as of this writing ~~the module isn't anywhere 
 
 💡 **- Idea  🐛 - Bug**
 ---
+### 06/09/2024
+
+Chipping away at validating and setting options. 
+
+---
 ### 06/08/2024
 
 Got a good start on **Set-LMCLIOption** (renamed). I decided not to use Invoke-Expression and all that, it's adding complexity and danger I don't really want in the code.
@@ -44,13 +49,13 @@ Got a good start on **Set-LMCLIOption** (renamed). I decided not to use Invoke-E
 
 ✅ :mtok - [int]<-1+>                  - max_tokens
 
-⬜️ :strm - [boolean]<$True or $False>  - Stream
+✅ :strm - [boolean]<$True or $False>  - Stream
 
-⬜️ :save - [boolean]<$True or $False>    - Save Toggle
+✅ :save - [boolean]<$True or $False>    - Save Toggle
 
-⬜️ :mark - [boolean]<$True or $False>    - Markdown
+✅ :mark - [boolean]<$True or $False>    - Markdown
 
-⬜️ :cond - [int]<2+>                    - Context Depth
+✅ :cond - [int]<2+>                    - Context Depth
 
 ⬜️ :selp - [switch]                      - Select System Prompt
 
