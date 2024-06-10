@@ -35,6 +35,23 @@ This project isn't complete, and as of this writing ~~the module isn't anywhere 
 
 Chipping away at validating and setting options. 
 
+**Follow-Up**
+
+I finished **Set-LMCLIOption**. I haven't tested the function as a whole yet, but I did test each individual condition.
+
+**Follow-Up**
+
+The test failed: I could not get the **:mark** commands to work for the life of me. The errors I was able to generate looked like problems with **.Substring()** not working in the function, and **.ToBoolean()** wasn't working either. So I did the expedient and sensible thing: I found a different way to do it, reliably.
+
+I also updated **Get-LMHelp** to provide far more detail and much better formatting, without making it too busy, complicated or cluttered. 💡 I considered writing a system of prompts to give details on how to use each parameter, and I may still do this. Just not yet.
+
+⬜️ I need to test each remaining option command for **Set-LMCLIOption**. There's enough error checking in it to catch bad input, so at this point I just need to test it for good input.
+
+After I check the parametesr, I need to ⬜️ Integrate **:quit** and **:priv** into the **Start-LMChat** function directly. These two parameters are specific to the chat session.
+
+That's all for now!
+
+
 ---
 ### 06/08/2024
 
@@ -59,7 +76,7 @@ Got a good start on **Set-LMCLIOption** (renamed). I decided not to use Invoke-E
 
 ✅ :selp - [switch]                      - Select System Prompt
 
-⬜️ :newp - [string]<[1] - [512]>         - New System Prompt
+✅ :newp - [string]<[1] - [512]>         - New System Prompt
 
 ⬜️ :priv - [boolean]<$True or $False>    - Privacy Mode (Deletes Dialog file and disables saving)
 

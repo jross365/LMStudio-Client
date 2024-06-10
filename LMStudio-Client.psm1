@@ -355,6 +355,8 @@ function Set-LMConfigOptions {
         [Parameter(Mandatory=$false, ParameterSetName='SaveChanges')][switch]$Commit
     )
 
+    If ((Confirm-LMGlobalVariables -ReturnBoolean) -ne $True){throw "Something went wrong when running Confirm-LMGlobalVariables (didn't return True)"}
+
     $GlobalKeys = $Global:LMStudioVars.$Branch.psobject.Properties.Name
 
     $ConfigFile = $Global:LMConfigFile #Created by Import-Config/Export-Config
@@ -1354,7 +1356,28 @@ function Show-LMHelp { #INCOMPLETE
     Add-Type -AssemblyName PresentationCore,PresentationFramework
     $ButtonType = [System.Windows.MessageBoxButton]::OK
     $MessageboxTitle = “LMStudio-PSClient Help”
-    $Messageboxbody = “!h - Displays this help`r`n!s - Change the system prompt`r`n!t - Change the temperature`r`n!f - Change the history file`r`n!q - Save and Quit”
+$Messageboxbody = @'
+SWITCHES
+:help   - Displays this Help
+:priv   - Enables Privacy Mode
+:quit   - Quits the application
+:selp   - Select a System Prompt
+
+STRINGS
+:newp <[str]>   - Create a System Prompt
+
+TOGGLES
+:strm <true or false>   - Toggles response Streaming
+:save <true or false>   - Toggles Save prompt on launch
+:mark <true or false>   - Toggles Markdown rendering
+
+NUMBERS
+:cond <[int] of 2 or greater>   - Sets the Context Depth
+:mtok <[int] of -1 or greater>  - Sets the Maximum Tokens
+:temp <0.0 to 2.0>   - Sets the Temperature
+
+'@
+    
     $MessageIcon = [System.Windows.MessageBoxImage]::Question
     [System.Windows.MessageBox]::Show($Messageboxbody,$MessageboxTitle,$ButtonType,$messageicon)
 
@@ -2267,6 +2290,8 @@ If (!$Fault){
     
     switch ($Setting){
 
+        {$_ -ieq ":help"}{Show-LMHelp}
+
         {$_ -ieq ":selp"}{
 
             try {Select-LMSystemPrompt -Pin}
@@ -2274,6 +2299,8 @@ If (!$Fault){
                 $ResultObj.Message = $_.Exception.Message
                 $Fault = $True 
             }
+
+        If (!$Fault){$ResultObj.Message = "Prompt successfully selected and pinned"}
 
         }
 
@@ -2312,6 +2339,8 @@ If (!$Fault){
                 }
 
             }
+
+            If (!$Fault){$ResultObj.Message = "Temperature successfully set to $TempValue"}
             
         } #:temp
 
@@ -2341,6 +2370,8 @@ If (!$Fault){
                 }
 
             }
+
+            If (!$Fault){$ResultObj.Message = "Max Tokens successfully set to $MtokValue"}
             
         } #:temp
 
@@ -2370,6 +2401,8 @@ If (!$Fault){
 
             }
 
+            If (!$Fault){$ResultObj.Message = "Stream successfully set to $StreamValue"}
+
         }
 
         {$_ -ieq ":save"}{
@@ -2398,18 +2431,24 @@ If (!$Fault){
 
             }
 
+            If (!$Fault){$ResultObj.Message = "Save prompt successfully set to $SaveValue"}
+
         }
 
         {$_ -ieq ":mark"}{
             
-            If (($UserInput.Length -gt 11) -or ($UserInput -notmatch 'true|false')){
+            If (($UserInput.Length -gt 11) -or ($UserInput -inotmatch 'true|false')){
                 $ResultObj.Message = "Incorrect syntax: expected :mark value of True or False"
                 $Fault = $True
             }
 
             If (!$Fault){
-                try {$MarkdownValue = [boolean]($UserInput.Substring(7,($UserInput.Length - 1)))}
+                
+                try {
+                    $MarkdownValue = ($UserInput[5..$($UserInput.Length - 1)] -join '').Trim()
+            }
                 catch {
+                    $_
                     $ResultObj.Message = "Incorrect syntax: expected :mark <True|False>"
                     $Fault = $True                    
                 }
@@ -2418,13 +2457,35 @@ If (!$Fault){
 
             If (!$Fault){
 
+                switch ($MarkdownValue){
+
+                    {$_ -ieq "true"}{$MarkdownValue = $True}
+
+                    {$_ -ieq "false"}{$MarkdownValue = $False}
+
+                    Default {
+
+                        $ResultObj.Message = "Parsed value for :mark isn't true/false: $Markdownvalue"
+                        $Fault = $True
+
+                    }
+
+
+                }
+
+            }
+
+            If (!$Fault){
+
                 try {Set-LMConfigOptions -Branch ChatSettings -Options @{"Markdown" = $MarkdownValue} -Commit}
                 catch {
-                    $ResultObj.Message = "$($_.Exception.Message)"
+                    $ResultObj.Message = "[Set-LMConfigOptions]: $($_.Exception.Message)"
                     $Fault = $True
                 }
 
             }
+
+            If (!$Fault){$ResultObj.Message = "Markdown successfully set to $MarkdownValue"}
 
         }
 
@@ -2479,6 +2540,35 @@ If (!$Fault){
                 }
 
             }
+
+            If (!$Fault){$Result.Message = ":cond was successfully set to $CondValue"}
+            
+        } #:temp
+
+        {$_ -ieq ":newp"}{
+
+            $PromptValue = $UserInput.Substring(5,($UserInput.Length -5))
+            
+
+            If ($PromptValue.Length -eq 0){
+                $ResultObj.Message = "No string was provided after :selp"
+                $Fault = $True
+
+            }
+
+            If (!$Fault){
+
+                try {Edit-LMSystemPrompt -Add -Name "Generated $((Get-Date).ToString())" -Prompt "$PromptValue"}
+                catch {
+
+                    $ResultObj.Message = "$($_.Exception.Message)"
+                    $Fault = $True
+
+                }
+
+            }
+
+            If (!$Fault){$Result.Message = "New prompt creation succeeded! Select it with :selp"}
             
         } #:temp
 
