@@ -31,6 +31,24 @@ This project isn't complete, and as of this writing ~~the module isn't anywhere 
 
 💡 **- Idea  🐛 - Bug**
 ---
+### 06/10/2024
+
+Finished testing parameters for **Set-LMCLIOption**, and added the **:gret** parameter toggling Greetings.
+
+I optimized a *lot* of the test conditions for allowing the command to go through. Some tests were made less redundant or eliminated; I found smarter ways to combine sets of tests without making the code hard to understand, and I was able to standardize certain validation patterns for different kinds of inputs.
+
+🐛 **Edit-LMSystemPrompt -Remove -Bulk** does not work. Without **-Bulk** it works fine. I figured this out when trying to clean up after testing the **:newp** input.
+⬜️ I need to fix it. I've wanted to build a better way to remove bulk items, and to remove duplicate items in particular without removing the original or "first" one.
+
+I still need to build **:priv** and **:quit** into **Start-LMChat**.
+
+⬜️ I also like the idea of completely moving **Get-LMGreeting** over to only use the Config File. I put it off before, but I think I want to do it to make the module consistent.
+
+💡 I would like to add a cheesy ASCII Art banner on start for **Start-LMChat** as well. Very 90s/2000s.
+
+I'm getting closer to completion!
+
+---
 ### 06/09/2024
 
 Chipping away at validating and setting options. 
@@ -45,7 +63,7 @@ The test failed: I could not get the **:mark** commands to work for the life of 
 
 I also updated **Get-LMHelp** to provide far more detail and much better formatting, without making it too busy, complicated or cluttered. 💡 I considered writing a system of prompts to give details on how to use each parameter, and I may still do this. Just not yet.
 
-⬜️ I need to test each remaining option command for **Set-LMCLIOption**. There's enough error checking in it to catch bad input, so at this point I just need to test it for good input.
+✅ I need to test each remaining option command for **Set-LMCLIOption**. There's enough error checking in it to catch bad input, so at this point I just need to test it for good input.
 
 After I check the parametesr, I need to ⬜️ Integrate **:quit** and **:priv** into the **Start-LMChat** function directly. These two parameters are specific to the chat session.
 

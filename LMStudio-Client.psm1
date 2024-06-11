@@ -1352,7 +1352,7 @@ function Invoke-LMOpenFolderUI {
 }
 
 #Provides a graphical help interface for the LM-Client
-function Show-LMHelp { #INCOMPLETE
+function Show-LMHelp { #Complete
     Add-Type -AssemblyName PresentationCore,PresentationFramework
     $ButtonType = [System.Windows.MessageBoxButton]::OK
     $MessageboxTitle = “LMStudio-PSClient Help”
@@ -1367,6 +1367,7 @@ STRINGS
 :newp <[str]>   - Create a System Prompt
 
 TOGGLES
+:gret <true or false>   - Toggles start-up Greeting
 :strm <true or false>   - Toggles response Streaming
 :save <true or false>   - Toggles Save prompt on launch
 :mark <true or false>   - Toggles Markdown rendering
@@ -2290,9 +2291,9 @@ If (!$Fault){
     
     switch ($Setting){
 
-        {$_ -ieq ":help"}{Show-LMHelp}
+        {$_ -ieq ":help"}{Show-LMHelp} #Test Good
 
-        {$_ -ieq ":selp"}{
+        {$_ -ieq ":selp"}{ #Test Good
 
             try {Select-LMSystemPrompt -Pin}
             catch {
@@ -2304,16 +2305,26 @@ If (!$Fault){
 
         }
 
-        {$_ -ieq ":temp"}{
+        {$_ -ieq ":temp"}{ #Test Good
 
-            If (($UserInput.Length -ne 9) -or ($UserInput.SubString(7,3) -notmatch '(\d[.]\d)')){
-                $ResultObj.Message = "Incorrect syntax: expected :temp #.#"
+            try {$TempValue = $UserInput.Substring(5,($UserInput.Length - 5))}
+            catch {
+                $ResultObj.Message = "Incorrect input: cannot be correctly parsed."
                 $Fault = $True
             }
 
             If (!$Fault){
 
-                try {$TempValue = [double]($UserInput.Substring(6,($UserInput.Length - 6)))}
+                If (($UserInput.Length -ne 9) -or ($TempValue -notmatch '(\d[.]\d)')){
+                    $ResultObj.Message = "Incorrect syntax: expected :temp #.#"
+                    $Fault = $True
+                }
+    
+            }
+            
+            If (!$Fault){
+
+                try {$TempValue = [double]$TempValue}
                 catch {
                     $ResultObj.Message = "Incorrect syntax: expected :temp [0.0 - 2.0]"
                     $Fault = $True
@@ -2344,18 +2355,37 @@ If (!$Fault){
             
         } #:temp
 
-        {$_ -ieq ":mtok"}{
+        {$_ -ieq ":mtok"}{ #Test Good
 
-            If (($UserInput.Length -gt 11) -or ($UserInput.SubString(6,(($UserInput.Length) - 6)) -notmatch '([-]\d+|\d)')){
-                $ResultObj.Message = "Incorrect syntax: expected :mtok number of 1 or greater, or -1, expected"
+            try {$MtokValue = $UserInput.SubString(5,(($UserInput.Length - 5)))}
+            catch {
+                $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
                 $Fault = $True
             }
 
             If (!$Fault){
 
-                try {$MtokValue = [int]($UserInput.Substring(7,$($UserInput.Length - 1)))}
+                If (($UserInput.Length -gt 11) -or ($MtokValue -notmatch '([-]\d+|\d)')){
+                    $ResultObj.Message = "Incorrect syntax: expected :mtok number of 1 or greater, or -1, expected"
+                    $Fault = $True
+                }
+
+            }
+
+            If (!$Fault){
+
+                try {$MtokValue = [int]$MtokValue}
                 catch {
                     $ResultObj.Message = "Incorrect syntax: expected :mtok [int]"
+                    $Fault = $True
+                }
+
+            }
+
+            If (!$Fault){
+
+                If ($MtokValue -le -2){
+                    $ResultObj.Message = "Max tokens must be -1 or greater"
                     $Fault = $True
                 }
 
@@ -2375,18 +2405,26 @@ If (!$Fault){
             
         } #:temp
 
-        {$_ -ieq ":strm"}{
-            
-            If (($UserInput.Length -gt 11) -or ($UserInput -notmatch 'true|false')){
-                $ResultObj.Message = "Incorrect syntax: expected :strm value of True or False"
+        {$_ -ieq ":strm"}{ #Test Good
+
+            try {$StreamValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
+            catch {
+                $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
                 $Fault = $True
             }
 
             If (!$Fault){
-                try {$StreamValue = [boolean]($UserInput.Substring(7,($UserInput.Length - 1)))}
-                catch {
-                    $ResultObj.Message = "Incorrect syntax: expected :strm <True|False>"
-                    $Fault = $True                    
+                
+                switch ($StreamValue){
+                
+                    {$_ -ieq "true"}{$StreamValue = $True}
+                    {$_ -ieq "false"}{$StreamValue = $False}
+
+                    Default {
+                        $ResultObj.Message = "Incorrect syntax: expected :strm value of True or False"
+                        $Fault = $True
+                    }
+
                 }
 
             }
@@ -2405,18 +2443,26 @@ If (!$Fault){
 
         }
 
-        {$_ -ieq ":save"}{
-            
-            If (($UserInput.Length -gt 11) -or ($UserInput -notmatch 'true|false')){
-                $ResultObj.Message = "Incorrect syntax: expected :save value of True or False"
+        {$_ -ieq ":save"}{ #Test Good
+
+            try {$SaveValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
+            catch {
+                $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
                 $Fault = $True
             }
 
             If (!$Fault){
-                try {$SaveValue = [boolean]($UserInput.Substring(7,($UserInput.Length - 1)))}
-                catch {
-                    $ResultObj.Message = "Incorrect syntax: expected :save <True|False>"
-                    $Fault = $True                    
+                
+                switch ($SaveValue){
+                
+                    {$_ -ieq "true"}{$SaveValue = $True}
+                    {$_ -ieq "false"}{$SaveValue = $False}
+
+                    Default {
+                        $ResultObj.Message = "Incorrect syntax: expected :save value of True or False"
+                        $Fault = $True
+                    }
+
                 }
 
             }
@@ -2431,45 +2477,29 @@ If (!$Fault){
 
             }
 
-            If (!$Fault){$ResultObj.Message = "Save prompt successfully set to $SaveValue"}
+            If (!$Fault){$ResultObj.Message = "Stream successfully set to $SaveValue"}
 
         }
 
-        {$_ -ieq ":mark"}{
-            
-            If (($UserInput.Length -gt 11) -or ($UserInput -inotmatch 'true|false')){
-                $ResultObj.Message = "Incorrect syntax: expected :mark value of True or False"
+        {$_ -ieq ":mark"}{ #Test Good
+
+            try {$MarkValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
+            catch {
+                $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
                 $Fault = $True
             }
 
             If (!$Fault){
                 
-                try {
-                    $MarkdownValue = ($UserInput[5..$($UserInput.Length - 1)] -join '').Trim()
-            }
-                catch {
-                    $_
-                    $ResultObj.Message = "Incorrect syntax: expected :mark <True|False>"
-                    $Fault = $True                    
-                }
-
-            }
-
-            If (!$Fault){
-
-                switch ($MarkdownValue){
-
-                    {$_ -ieq "true"}{$MarkdownValue = $True}
-
-                    {$_ -ieq "false"}{$MarkdownValue = $False}
+                switch ($MarkValue){
+                
+                    {$_ -ieq "true"}{$MarkValue = $True}
+                    {$_ -ieq "false"}{$MarkValue = $False}
 
                     Default {
-
-                        $ResultObj.Message = "Parsed value for :mark isn't true/false: $Markdownvalue"
+                        $ResultObj.Message = "Incorrect syntax: expected :mark value of True or False"
                         $Fault = $True
-
                     }
-
 
                 }
 
@@ -2477,33 +2507,71 @@ If (!$Fault){
 
             If (!$Fault){
 
-                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"Markdown" = $MarkdownValue} -Commit}
+                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"Markdown" = $MarkValue} -Commit}
                 catch {
-                    $ResultObj.Message = "[Set-LMConfigOptions]: $($_.Exception.Message)"
+                    $ResultObj.Message = "$($_.Exception.Message)"
                     $Fault = $True
                 }
 
             }
 
-            If (!$Fault){$ResultObj.Message = "Markdown successfully set to $MarkdownValue"}
+            If (!$Fault){$ResultObj.Message = "Stream successfully set to $MarkValue"}
 
         }
 
-        {$_ -ieq ":cond"}{
+        {$_ -ieq ":gret"}{ #Test Good
 
-            If (($UserInput.Length -gt 11) -or ($UserInput.SubString(6,(($UserInput.Length) - 6)) -notmatch '(\d+)')){
-                $ResultObj.Message = "Incorrect syntax: expected :cond number of 2 or greater expected"
+            try {$GreetValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
+            catch {
+                $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
+                $Fault = $True
+            }
+
+            If (!$Fault){
+                
+                switch ($GreetValue){
+                
+                    {$_ -ieq "true"}{$MarkValue = $True}
+                    {$_ -ieq "false"}{$MarkValue = $False}
+
+                    Default {
+                        $ResultObj.Message = "Incorrect syntax: expected :gret value of True or False"
+                        $Fault = $True
+                    }
+
+                }
+
+            }
+
+            If (!$Fault){
+
+                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"Greeting" = $GreetValue} -Commit}
+                catch {
+                    $ResultObj.Message = "$($_.Exception.Message)"
+                    $Fault = $True
+                }
+
+            }
+
+            If (!$Fault){$ResultObj.Message = "Greeting successfully set to $GreetValue"}
+
+        }
+
+        {$_ -ieq ":cond"}{ #Test Good
+
+            try {$CondValue = ([int]($UserInput.SubString(5,($UserInput.Length - 5))))}
+            catch {
+                $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
                 $Fault = $True
             }
 
             If (!$Fault){
 
-                try {$CondValue = [int]($UserInput.SubString(6,(($UserInput.Length) - 6)))}
-                catch {
-                    $ResultObj.Message = "Incorrect syntax: expected :cond [int]"
+                If (($UserInput.Length -gt 11) -or ($CondValue -notmatch '(\d+)')){
+                    $ResultObj.Message = "Incorrect syntax: expected :cond number of 2 or greater expected"
                     $Fault = $True
                 }
-                
+
             }
 
             If (!$Fault){
@@ -2541,17 +2609,16 @@ If (!$Fault){
 
             }
 
-            If (!$Fault){$Result.Message = ":cond was successfully set to $CondValue"}
+            If (!$Fault){$ResultObj.Message = ":cond was successfully set to $CondValue"}
             
         } #:temp
 
-        {$_ -ieq ":newp"}{
+        {$_ -ieq ":newp"}{ #Test Good
 
             $PromptValue = $UserInput.Substring(5,($UserInput.Length -5))
-            
 
             If ($PromptValue.Length -eq 0){
-                $ResultObj.Message = "No string was provided after :selp"
+                $ResultObj.Message = "No string was provided after :newp"
                 $Fault = $True
 
             }
@@ -2568,9 +2635,16 @@ If (!$Fault){
 
             }
 
-            If (!$Fault){$Result.Message = "New prompt creation succeeded! Select it with :selp"}
+            If (!$Fault){$ResultObj.Message = "New prompt creation succeeded! Select it with :selp"}
             
         } #:temp
+
+        Default {
+
+            $ResultObj.Message = "Command not recognized. Run :help for Help"
+            $Fault = $True
+
+        }
 
     } #Close Switch $Setting
 
