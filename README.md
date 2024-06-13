@@ -31,6 +31,17 @@ This project isn't complete, and as of this writing ~~the module isn't anywhere 
 
 💡 **- Idea  🐛 - Bug**
 ---
+### 06/12/2024
+
+✅ I fully integrated the **:priv** (Privacy Mode) option into **Start-LMChat**.  ⬜️ I need to test the options system now.
+
+💡 I also need to find some use for the **Start-LMChat** end {} block (*if any*). 
+
+✅ A function to show the current relevant settings as a pop-up would also be very useful (**Show-LMSettings**, integrated as "**:show**).
+
+I need to test the options, and then do a thorough feature test for the chat client.
+
+---
 ### 06/10/2024
 
 Finished testing parameters for **Set-LMCLIOption**, and added the **:gret** parameter toggling Greetings.
@@ -47,7 +58,6 @@ I still need to build **:priv** and **:quit** into **Start-LMChat**.
 💡 I would like to add a cheesy ASCII Art banner on start for **Start-LMChat** as well. Very 90s/2000s.
 
 I'm getting closer to completion!
-
 ---
 ### 06/09/2024
 

@@ -241,7 +241,7 @@ function New-LMConfig { #Complete
 
     If ($Import.IsPresent){
 
-        try {$Imported = Import-LMConfig -ConfigFile $ConfigFile}
+        try {$null = Import-LMConfig -ConfigFile $ConfigFile}
         catch {throw "Unable to import configuration: $($_.Exception.Message)"}
 
         $Global:LMConfigFile = $ConfigFile
@@ -1360,6 +1360,7 @@ $Messageboxbody = @'
 SWITCHES
 :help   - Displays this Help
 :priv   - Enables Privacy Mode
+:show   - Shows the current Chat Settings
 :quit   - Quits the application
 :selp   - Select a System Prompt
 
@@ -1384,6 +1385,35 @@ NUMBERS
 
 }
 
+#provides a graphical display of the Client chat settings
+function Show-LMSettings { #Complete
+    Add-Type -AssemblyName PresentationCore,PresentationFramework
+    $ButtonType = [System.Windows.MessageBoxButton]::OK
+    $MessageboxTitle = “LMStudio-PSClient Settings”
+$Messageboxbody = @"
+SERVER INFORMATION
+Server: $($Global:LMStudioVars.ServerInfo.Server)
+Port: $($Global:LMStudioVars.ServerInfo.Port)
+
+CHAT SETTINGS
+Temperature (0.0 - 2.0):         $($Global:LMStudioVars.ChatSettings.temperature)
+Max Tokens (-1 or above):      $($Global:LMStudioVars.ChatSettings.max_tokens)
+Context Depth:                        $($Global:LMStudioVars.ChatSettings.ContextDepth)
+Interpret Markdown:               $($Global:LMStudioVars.ChatSettings.Markdown)
+Stream Console Output:          $($Global:LMStudioVars.ChatSettings.stream)
+
+Prompt for Initial Save:            $($Global:LMStudioVars.ChatSettings.SavePrompt)
+Greeting on Start:                     $($Global:LMStudioVars.ChatSettings.Greeting)
+
+System Prompt:
+$($Global:LMStudioVars.ChatSettings.SystemPrompt)
+
+"@
+    
+    $MessageIcon = [System.Windows.MessageBoxImage]::Information
+    [System.Windows.MessageBox]::Show($Messageboxbody,$MessageboxTitle,$ButtonType,$MessageIcon)
+
+}
 #This function generates a greeting prompt for an LLM, for load in the LMChatClient
 function New-LMGreetingPrompt { #Complete
     
@@ -2779,9 +2809,12 @@ function Start-LMChat {
         $MarkDownAvailable = Show-LMDialog -CheckMarkdown
         $UseMarkDown = ([bool]($Global:LMStudioVars.ChatSettings.Markdown -and $MarkDownAvailable))
         #endregion
+
+        If ($PrivacyMode.IsPresent){$PrivacyOn = $True}
+        Else {$PrivacyOn = $False}
         
         #region -ResumeChat Selector
-        switch ($ResumeChat.IsPresent){ #Not Yet Tested
+        switch ($ResumeChat.IsPresent){ 
 
             #This section requires everything goes right (terminates with [throw] if it doesn't)
             $true { 
@@ -2856,7 +2889,7 @@ function Start-LMChat {
 
                     }
 
-                    If ($DialogFileExists -and !($PrivateMode.IsPresent)){
+                    If ($DialogFileExists -and $PrivacyOn -eq $False){
 
                         try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
                         catch {
@@ -2867,7 +2900,7 @@ function Start-LMChat {
 
                     Else {
                         $DialogFileExists = Test-Path $DialogFilePath
-                        If (!($PrivateMode.IsPresent)){Write-Warning "Dialog file not saved to file. In the User prompt, enter ':Save' to save."}
+                        If ($PrivacyOn -eq $True){Write-Warning "Dialog file not saved to file. In the User prompt, enter ':Save' to save."}
                     }
 
                     } #Close Case $False
@@ -2920,8 +2953,55 @@ function Start-LMChat {
             #endregion
 
             #region Check input for option:
-            #<#
-            If ($UserInput[0] -eq ':'){
+            $OptTriggered = $False
+
+            try {
+                $OptionKey = $UserInput.Substring(0,6).TrimEnd()
+                # If ':wxyz ', trimmed at the end (':wxyz') has a length of 5 characters:
+                If ($OptionKey.Length -eq 5){$OptTriggered = $True}
+            }
+            catch {} #Error suppression: I know this is a "bad practice", but I don't like the clunkiness or lack of control for toggling the ErrorActionPreference
+
+            If ($OptTriggered -and $OptionKey -ieq ':quit'){break main}
+            ElseIf ($OptTriggered -and $OptionKey -ieq ':priv'){
+                
+                Write-Warning "Privacy Mode can't be turned back off for the duration of this session."
+                Write-Host "NOTICE: " -ForegroundColor Green -NoNewline
+                Write-Host "The dialog file will also be deleted. " -NoNewline
+
+                $ConfirmPriv = Confirm-LMYesNo
+
+                switch ($ConfirmPriv){
+
+                    $True {
+
+                        If ($DialogFileExists -and !($ResumeChat.IsPresent)){
+                            
+                            try {Remove-Item -Path ($Global:LMStudioVars.FilePaths.HistoryFilePath)}
+                            catch {Write-Warning "Unable to delete history file $($Global:LMStudioVars.FilePaths.HistoryFilePath)"}
+
+                            $PrivacyOn = $True
+
+                            }
+                    }
+
+                    $False {
+                        
+                        Write-Host "NOTICE: " -ForegroundColor Green -NoNewline
+                        Write-Host "Privacy Mode cancelled."
+                        continue main
+                    
+                    }
+
+                }
+            }
+            ElseIf ($OptTriggered -and $OptionKey -ieq ':show'){
+
+                Show-LMSettings
+                continue main
+
+            }
+            Else { 
 
                 $Option = Set-LMCLIOption -Input $UserInput
 
@@ -2935,7 +3015,7 @@ function Start-LMChat {
 
                 }
 
-            continue main
+                continue main
 
             }
 
@@ -3007,7 +3087,7 @@ function Start-LMChat {
             #endregion
 
             #region Update Dialog File, History File
-            If ($DialogFileExists -and !($PrivateMode.IsPresent)){
+            If ($DialogFileExists -and $PrivacyOn -eq $False){
 
                 # Save the Dialog File
                 try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
