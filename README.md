@@ -53,6 +53,14 @@ I'm going to commit and sync this, do some testing, and perhaps drop in an updat
 
 I need to test the options, and then do a thorough feature test for the chat client.
 
+**Follow-Up**
+
+Fixed a bunch of small issues with command option interpretation.
+
+🐛 I need to fix sorting in the **-ResumeChat** selection prompt.
+
+💡  I *also* forgot the very first ideas I had about the options: the capacity to set tags (**:tags**). I need to include this.
+
 ---
 ### 06/10/2024
 

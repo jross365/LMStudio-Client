@@ -2330,7 +2330,7 @@ function Set-LMCLIOption {
     
             {$_ -ieq ":show"}{
                 
-                Show-LMHelp
+                Show-LMSettings
                 break
     
             } #Test Good
@@ -2585,8 +2585,8 @@ function Set-LMCLIOption {
                     
                     switch ($GreetValue){
                     
-                        {$_ -ieq "true"}{$MarkValue = $True}
-                        {$_ -ieq "false"}{$MarkValue = $False}
+                        {$_ -ieq "true"}{$GreetValue = $True}
+                        {$_ -ieq "false"}{$GreetValue = $False}
     
                         Default {
                             $ResultObj.Message = "Incorrect syntax: expected :gret value of True or False"
@@ -2972,6 +2972,8 @@ function Start-LMChat {
         #The magic is here:
     :main do { 
 
+            $UseMarkDown = $global:LMStudioVars.ChatSettings.MarkDown
+
             #region Prevent empty responses
             do {
 
@@ -2985,14 +2987,14 @@ function Start-LMChat {
             #region Check input for option:
             $OptTriggered = $False
 
-            try {
-                $OptionKey = $UserInput.Substring(0,6).TrimEnd()
-                # If ':wxyz ', trimmed at the end (':wxyz') has a length of 5 characters:
-                If ($OptionKey.Length -eq 5){$OptTriggered = $True}
-            }
-            catch {} #Error suppression: I know this is a "bad practice", but I don't like the clunkiness or lack of control for toggling the ErrorActionPreference
+            try {$OptionKey = $UserInput.Substring(0,5).TrimEnd()}
+            catch {$OptionKey = "X"} #Error suppression: I know this is a "bad practice", but I don't like the clunkiness or lack of control for toggling the ErrorActionPreference
+
+            # If ':wxyz ', trimmed at the end (':wxyz') has a length of 5 characters:
+            If ($OptionKey.Length -eq 5 -and $OptionKey[0] -eq ':'){$OptTriggered = $True}
 
             If ($OptTriggered -and $OptionKey -ieq ':quit'){break main}
+            
             ElseIf ($OptTriggered -and $OptionKey -ieq ':priv'){
                 
                 Write-Warning "Privacy Mode can't be turned back off for the duration of this session."
@@ -3027,19 +3029,23 @@ function Start-LMChat {
 
             Else { 
 
-                $Option = Set-LMCLIOption -Input $UserInput
+                If ($OptTriggered){
 
-                switch ($Option.Result){
+                    $Option = Set-LMCLIOption -UserInput $UserInput
 
-                    $True {Write-Host "Set option succeeded" -ForegroundColor Green}
+                    switch ($Option.Result){
 
-                    $False {Write-Host "Set option failed: $($Option.Message)" -ForegroundColor Green}
+                        $True {Write-Host "Set option succeeded" -ForegroundColor Green}
 
-                    Default {Write-Host "Strange or no result returned from [Set-LMCLIOption]" -ForegroundColor Yellow}
+                        $False {Write-Host "Set option failed: $($Option.Message)" -ForegroundColor Green}
+
+                        Default {Write-Host "Strange or no result returned from [Set-LMCLIOption]" -ForegroundColor Yellow}
+
+                    }
+
+                    continue main
 
                 }
-
-                continue main
 
             }
 
