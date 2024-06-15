@@ -30,6 +30,18 @@ This project isn't complete, and as of this writing ~~the module isn't anywhere 
 ⬜️ **- Feature/Improvement Incomplete**  ✅ **- Feature/Improvement Complete**
 
 💡 **- Idea  🐛 - Bug**
+
+### 06/14/2024
+
+I had a strange de-sync issue with the repo where my commit and push worked, but the data in my local repository was out of date at the time that I launched VSCode. I'm not sure how that happened, perhaps a failing drive, failing memory, a VSCode bug, and/or something else. Very strange.
+
+For some reason, I had kept **:show** in **Start-LMChat**, where I'd fully intended for it to be launched via **Set-LMCLIOption**. I moved that into the external function as well.
+
+I put breaks in **Set-LMCLIOption**'s selection switch. Just in case.
+
+I'm going to commit and sync this, do some testing, and perhaps drop in an update.
+---
+
 ---
 ### 06/12/2024
 

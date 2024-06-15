@@ -2294,402 +2294,432 @@ function Select-LMHistoryEntry {
 }
 
 #This function intakes a user prompt, interprets an option and executes a command
-function Set-LMCLIOption{
-[CmdletBinding()]
-param (
-    [Parameter(Mandatory=$false)]
-    [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
-    [string]$UserInput
-)
-
-begin {
-
-    $ResultObj = [pscustomobject]@{"Result" = $False; "Message" = ""}
-
-    $Fault = $False
-
-    try {$Setting = $UserInput.Substring(0,5)}
-    catch {
-        $ResultObj.Message = "Option input is invalid. Try ':help' for more information."
-        $Fault = $True
-    }
-
-}
-process {
+function Set-LMCLIOption {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$false)]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [string]$UserInput
+    )
     
-If (!$Fault){
+    begin {
     
-    switch ($Setting){
-
-        {$_ -ieq ":help"}{Show-LMHelp} #Test Good
-
-        {$_ -ieq ":selp"}{ #Test Good
-
-            try {Select-LMSystemPrompt -Pin}
-            catch {
-                $ResultObj.Message = $_.Exception.Message
-                $Fault = $True 
-            }
-
-        If (!$Fault){$ResultObj.Message = "Prompt successfully selected and pinned"}
-
-        }
-
-        {$_ -ieq ":temp"}{ #Test Good
-
-            try {$TempValue = $UserInput.Substring(5,($UserInput.Length - 5))}
-            catch {
-                $ResultObj.Message = "Incorrect input: cannot be correctly parsed."
-                $Fault = $True
-            }
-
-            If (!$Fault){
-
-                If (($UserInput.Length -ne 9) -or ($TempValue -notmatch '(\d[.]\d)')){
-                    $ResultObj.Message = "Incorrect syntax: expected :temp #.#"
-                    $Fault = $True
-                }
+        $ResultObj = [pscustomobject]@{"Result" = $False; "Message" = ""}
     
-            }
-            
-            If (!$Fault){
-
-                try {$TempValue = [double]$TempValue}
-                catch {
-                    $ResultObj.Message = "Incorrect syntax: expected :temp [0.0 - 2.0]"
-                    $Fault = $True
-                }
-
-            }
-
-            If (!$Fault){
-                
-                If ($TempValue -lt 0 -or $TempValue -gt 2){
-                    $ResultObj.Message = "Temperature must be within the range of 0.0 to 2.0"
-                    $Fault = $True
-                }
-
-            }
-
-            If (!$Fault){
-            
-                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"temperature" = $TempValue} -Commit}
-                catch {
-                    $ResultObj.Message = "$($_.Exception.Message)"
-                    $Fault = $True
-                }
-
-            }
-
-            If (!$Fault){$ResultObj.Message = "Temperature successfully set to $TempValue"}
-            
-        } #:temp
-
-        {$_ -ieq ":mtok"}{ #Test Good
-
-            try {$MtokValue = $UserInput.SubString(5,(($UserInput.Length - 5)))}
-            catch {
-                $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
-                $Fault = $True
-            }
-
-            If (!$Fault){
-
-                If (($UserInput.Length -gt 11) -or ($MtokValue -notmatch '([-]\d+|\d)')){
-                    $ResultObj.Message = "Incorrect syntax: expected :mtok number of 1 or greater, or -1, expected"
-                    $Fault = $True
-                }
-
-            }
-
-            If (!$Fault){
-
-                try {$MtokValue = [int]$MtokValue}
-                catch {
-                    $ResultObj.Message = "Incorrect syntax: expected :mtok [int]"
-                    $Fault = $True
-                }
-
-            }
-
-            If (!$Fault){
-
-                If ($MtokValue -le -2){
-                    $ResultObj.Message = "Max tokens must be -1 or greater"
-                    $Fault = $True
-                }
-
-            }
-
-            If (!$Fault){
-            
-                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"max_tokens" = $MtokValue} -Commit}
-                catch {
-                    $ResultObj.Message = "$($_.Exception.Message)"
-                    $Fault = $True
-                }
-
-            }
-
-            If (!$Fault){$ResultObj.Message = "Max Tokens successfully set to $MtokValue"}
-            
-        } #:temp
-
-        {$_ -ieq ":strm"}{ #Test Good
-
-            try {$StreamValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
-            catch {
-                $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
-                $Fault = $True
-            }
-
-            If (!$Fault){
-                
-                switch ($StreamValue){
-                
-                    {$_ -ieq "true"}{$StreamValue = $True}
-                    {$_ -ieq "false"}{$StreamValue = $False}
-
-                    Default {
-                        $ResultObj.Message = "Incorrect syntax: expected :strm value of True or False"
-                        $Fault = $True
-                    }
-
-                }
-
-            }
-
-            If (!$Fault){
-
-                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"stream" = $StreamValue} -Commit}
-                catch {
-                    $ResultObj.Message = "$($_.Exception.Message)"
-                    $Fault = $True
-                }
-
-            }
-
-            If (!$Fault){$ResultObj.Message = "Stream successfully set to $StreamValue"}
-
-        }
-
-        {$_ -ieq ":save"}{ #Test Good
-
-            try {$SaveValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
-            catch {
-                $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
-                $Fault = $True
-            }
-
-            If (!$Fault){
-                
-                switch ($SaveValue){
-                
-                    {$_ -ieq "true"}{$SaveValue = $True}
-                    {$_ -ieq "false"}{$SaveValue = $False}
-
-                    Default {
-                        $ResultObj.Message = "Incorrect syntax: expected :save value of True or False"
-                        $Fault = $True
-                    }
-
-                }
-
-            }
-
-            If (!$Fault){
-
-                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"SavePrompt" = $SaveValue} -Commit}
-                catch {
-                    $ResultObj.Message = "$($_.Exception.Message)"
-                    $Fault = $True
-                }
-
-            }
-
-            If (!$Fault){$ResultObj.Message = "Stream successfully set to $SaveValue"}
-
-        }
-
-        {$_ -ieq ":mark"}{ #Test Good
-
-            try {$MarkValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
-            catch {
-                $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
-                $Fault = $True
-            }
-
-            If (!$Fault){
-                
-                switch ($MarkValue){
-                
-                    {$_ -ieq "true"}{$MarkValue = $True}
-                    {$_ -ieq "false"}{$MarkValue = $False}
-
-                    Default {
-                        $ResultObj.Message = "Incorrect syntax: expected :mark value of True or False"
-                        $Fault = $True
-                    }
-
-                }
-
-            }
-
-            If (!$Fault){
-
-                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"Markdown" = $MarkValue} -Commit}
-                catch {
-                    $ResultObj.Message = "$($_.Exception.Message)"
-                    $Fault = $True
-                }
-
-            }
-
-            If (!$Fault){$ResultObj.Message = "Stream successfully set to $MarkValue"}
-
-        }
-
-        {$_ -ieq ":gret"}{ #Test Good
-
-            try {$GreetValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
-            catch {
-                $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
-                $Fault = $True
-            }
-
-            If (!$Fault){
-                
-                switch ($GreetValue){
-                
-                    {$_ -ieq "true"}{$MarkValue = $True}
-                    {$_ -ieq "false"}{$MarkValue = $False}
-
-                    Default {
-                        $ResultObj.Message = "Incorrect syntax: expected :gret value of True or False"
-                        $Fault = $True
-                    }
-
-                }
-
-            }
-
-            If (!$Fault){
-
-                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"Greeting" = $GreetValue} -Commit}
-                catch {
-                    $ResultObj.Message = "$($_.Exception.Message)"
-                    $Fault = $True
-                }
-
-            }
-
-            If (!$Fault){$ResultObj.Message = "Greeting successfully set to $GreetValue"}
-
-        }
-
-        {$_ -ieq ":cond"}{ #Test Good
-
-            try {$CondValue = ([int]($UserInput.SubString(5,($UserInput.Length - 5))))}
-            catch {
-                $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
-                $Fault = $True
-            }
-
-            If (!$Fault){
-
-                If (($UserInput.Length -gt 11) -or ($CondValue -notmatch '(\d+)')){
-                    $ResultObj.Message = "Incorrect syntax: expected :cond number of 2 or greater expected"
-                    $Fault = $True
-                }
-
-            }
-
-            If (!$Fault){
-
-                switch ($CondValue % 2){
-
-                    0 {
-
-                        If ($CondValue -le 0){
-                            
-                            $ResultObj.Message = "Incorrect value: :cond must be greater than or equal to 2"
-                            $Fault = $True
-
-                        }
-                        
-                        Else {
-                        
-                            try {Set-LMConfigOptions -Branch ChatSettings -Options @{"ContextDepth" = $CondValue} -Commit}
-                            catch {
-                                $ResultObj.Message = "$($_.Exception.Message)"
-                                $Fault = $True
-                            }
-
-                        }
-                    }
-
-                    1 {
-
-                        $ResultObj.Message = "Incorrect value: :cond must be an even number"
-                        $Fault = $True
-
-                    }
-
-                }
-
-            }
-
-            If (!$Fault){$ResultObj.Message = ":cond was successfully set to $CondValue"}
-            
-        } #:temp
-
-        {$_ -ieq ":newp"}{ #Test Good
-
-            $PromptValue = $UserInput.Substring(5,($UserInput.Length -5))
-
-            If ($PromptValue.Length -eq 0){
-                $ResultObj.Message = "No string was provided after :newp"
-                $Fault = $True
-
-            }
-
-            If (!$Fault){
-
-                try {Edit-LMSystemPrompt -Add -Name "Generated $((Get-Date).ToString())" -Prompt "$PromptValue"}
-                catch {
-
-                    $ResultObj.Message = "$($_.Exception.Message)"
-                    $Fault = $True
-
-                }
-
-            }
-
-            If (!$Fault){$ResultObj.Message = "New prompt creation succeeded! Select it with :selp"}
-            
-        } #:temp
-
-        Default {
-
-            $ResultObj.Message = "Command not recognized. Run :help for Help"
+        $Fault = $False
+    
+        try {$Setting = $UserInput.Substring(0,5)}
+        catch {
+            $ResultObj.Message = "Option input is invalid. Try ':help' for more information."
             $Fault = $True
-
         }
-
-    } #Close Switch $Setting
-
-} #Close !$Fault
-
-}
-
-end {
-
-    $ResultObj.Result = !$Fault
-    return $ResultObj
-
-}
-
-} #Close function
+    
+    }
+    process {
+        
+    If (!$Fault){
+        
+        switch ($Setting){
+    
+            {$_ -ieq ":help"}{
+                
+                Show-LMHelp
+                break
+    
+            } #Test Good
+    
+            {$_ -ieq ":show"}{
+                
+                Show-LMHelp
+                break
+    
+            } #Test Good
+    
+            {$_ -ieq ":selp"}{ #Test Good
+    
+                try {Select-LMSystemPrompt -Pin}
+                catch {
+                    $ResultObj.Message = $_.Exception.Message
+                    $Fault = $True 
+                }
+    
+                If (!$Fault){$ResultObj.Message = "Prompt successfully selected and pinned"}
+    
+                break
+    
+            }
+    
+            {$_ -ieq ":temp"}{ #Test Good
+    
+                try {$TempValue = $UserInput.Substring(5,($UserInput.Length - 5))}
+                catch {
+                    $ResultObj.Message = "Incorrect input: cannot be correctly parsed."
+                    $Fault = $True
+                }
+    
+                If (!$Fault){
+    
+                    If (($UserInput.Length -ne 9) -or ($TempValue -notmatch '(\d[.]\d)')){
+                        $ResultObj.Message = "Incorrect syntax: expected :temp #.#"
+                        $Fault = $True
+                    }
+        
+                }
+                
+                If (!$Fault){
+    
+                    try {$TempValue = [double]$TempValue}
+                    catch {
+                        $ResultObj.Message = "Incorrect syntax: expected :temp [0.0 - 2.0]"
+                        $Fault = $True
+                    }
+    
+                }
+    
+                If (!$Fault){
+                    
+                    If ($TempValue -lt 0 -or $TempValue -gt 2){
+                        $ResultObj.Message = "Temperature must be within the range of 0.0 to 2.0"
+                        $Fault = $True
+                    }
+    
+                }
+    
+                If (!$Fault){
+                
+                    try {Set-LMConfigOptions -Branch ChatSettings -Options @{"temperature" = $TempValue} -Commit}
+                    catch {
+                        $ResultObj.Message = "$($_.Exception.Message)"
+                        $Fault = $True
+                    }
+    
+                }
+    
+                If (!$Fault){$ResultObj.Message = "Temperature successfully set to $TempValue"}
+    
+                break
+                
+            } #:temp
+    
+            {$_ -ieq ":mtok"}{ #Test Good
+    
+                try {$MtokValue = $UserInput.SubString(5,(($UserInput.Length - 5)))}
+                catch {
+                    $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
+                    $Fault = $True
+                }
+    
+                If (!$Fault){
+    
+                    If (($UserInput.Length -gt 11) -or ($MtokValue -notmatch '([-]\d+|\d)')){
+                        $ResultObj.Message = "Incorrect syntax: expected :mtok number of 1 or greater, or -1, expected"
+                        $Fault = $True
+                    }
+    
+                }
+    
+                If (!$Fault){
+    
+                    try {$MtokValue = [int]$MtokValue}
+                    catch {
+                        $ResultObj.Message = "Incorrect syntax: expected :mtok [int]"
+                        $Fault = $True
+                    }
+    
+                }
+    
+                If (!$Fault){
+    
+                    If ($MtokValue -le -2){
+                        $ResultObj.Message = "Max tokens must be -1 or greater"
+                        $Fault = $True
+                    }
+    
+                }
+    
+                If (!$Fault){
+                
+                    try {Set-LMConfigOptions -Branch ChatSettings -Options @{"max_tokens" = $MtokValue} -Commit}
+                    catch {
+                        $ResultObj.Message = "$($_.Exception.Message)"
+                        $Fault = $True
+                    }
+    
+                }
+    
+                If (!$Fault){$ResultObj.Message = "Max Tokens successfully set to $MtokValue"}
+    
+                break
+                
+            } #:temp
+    
+            {$_ -ieq ":strm"}{ #Test Good
+    
+                try {$StreamValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
+                catch {
+                    $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
+                    $Fault = $True
+                }
+    
+                If (!$Fault){
+                    
+                    switch ($StreamValue){
+                    
+                        {$_ -ieq "true"}{$StreamValue = $True}
+                        {$_ -ieq "false"}{$StreamValue = $False}
+    
+                        Default {
+                            $ResultObj.Message = "Incorrect syntax: expected :strm value of True or False"
+                            $Fault = $True
+                        }
+    
+                    }
+    
+                    break
+    
+                }
+    
+                If (!$Fault){
+    
+                    try {Set-LMConfigOptions -Branch ChatSettings -Options @{"stream" = $StreamValue} -Commit}
+                    catch {
+                        $ResultObj.Message = "$($_.Exception.Message)"
+                        $Fault = $True
+                    }
+    
+                }
+    
+                If (!$Fault){$ResultObj.Message = "Stream successfully set to $StreamValue"}
+    
+            }
+    
+            {$_ -ieq ":save"}{ #Test Good
+    
+                try {$SaveValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
+                catch {
+                    $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
+                    $Fault = $True
+                }
+    
+                If (!$Fault){
+                    
+                    switch ($SaveValue){
+                    
+                        {$_ -ieq "true"}{$SaveValue = $True}
+                        {$_ -ieq "false"}{$SaveValue = $False}
+    
+                        Default {
+                            $ResultObj.Message = "Incorrect syntax: expected :save value of True or False"
+                            $Fault = $True
+                        }
+    
+                    }
+    
+                }
+    
+                If (!$Fault){
+    
+                    try {Set-LMConfigOptions -Branch ChatSettings -Options @{"SavePrompt" = $SaveValue} -Commit}
+                    catch {
+                        $ResultObj.Message = "$($_.Exception.Message)"
+                        $Fault = $True
+                    }
+    
+                }
+    
+                If (!$Fault){$ResultObj.Message = "Stream successfully set to $SaveValue"}
+    
+                break
+    
+            }
+    
+            {$_ -ieq ":mark"}{ #Test Good
+    
+                try {$MarkValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
+                catch {
+                    $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
+                    $Fault = $True
+                }
+    
+                If (!$Fault){
+                    
+                    switch ($MarkValue){
+                    
+                        {$_ -ieq "true"}{$MarkValue = $True}
+                        {$_ -ieq "false"}{$MarkValue = $False}
+    
+                        Default {
+                            $ResultObj.Message = "Incorrect syntax: expected :mark value of True or False"
+                            $Fault = $True
+                        }
+    
+                    }
+    
+                }
+    
+                If (!$Fault){
+    
+                    try {Set-LMConfigOptions -Branch ChatSettings -Options @{"Markdown" = $MarkValue} -Commit}
+                    catch {
+                        $ResultObj.Message = "$($_.Exception.Message)"
+                        $Fault = $True
+                    }
+    
+                }
+    
+                If (!$Fault){$ResultObj.Message = "Stream successfully set to $MarkValue"}
+    
+                break
+    
+            }
+    
+            {$_ -ieq ":gret"}{ #Test Good
+    
+                try {$GreetValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
+                catch {
+                    $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
+                    $Fault = $True
+                }
+    
+                If (!$Fault){
+                    
+                    switch ($GreetValue){
+                    
+                        {$_ -ieq "true"}{$MarkValue = $True}
+                        {$_ -ieq "false"}{$MarkValue = $False}
+    
+                        Default {
+                            $ResultObj.Message = "Incorrect syntax: expected :gret value of True or False"
+                            $Fault = $True
+                        }
+    
+                    }
+    
+                }
+    
+                If (!$Fault){
+    
+                    try {Set-LMConfigOptions -Branch ChatSettings -Options @{"Greeting" = $GreetValue} -Commit}
+                    catch {
+                        $ResultObj.Message = "$($_.Exception.Message)"
+                        $Fault = $True
+                    }
+    
+                }
+    
+                If (!$Fault){$ResultObj.Message = "Greeting successfully set to $GreetValue"}
+    
+                break
+    
+            }
+    
+            {$_ -ieq ":cond"}{ #Test Good
+    
+                try {$CondValue = ([int]($UserInput.SubString(5,($UserInput.Length - 5))))}
+                catch {
+                    $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
+                    $Fault = $True
+                }
+    
+                If (!$Fault){
+    
+                    If (($UserInput.Length -gt 11) -or ($CondValue -notmatch '(\d+)')){
+                        $ResultObj.Message = "Incorrect syntax: expected :cond number of 2 or greater expected"
+                        $Fault = $True
+                    }
+    
+                }
+    
+                If (!$Fault){
+    
+                    switch ($CondValue % 2){
+    
+                        0 {
+    
+                            If ($CondValue -le 0){
+                                
+                                $ResultObj.Message = "Incorrect value: :cond must be greater than or equal to 2"
+                                $Fault = $True
+    
+                            }
+                            
+                            Else {
+                            
+                                try {Set-LMConfigOptions -Branch ChatSettings -Options @{"ContextDepth" = $CondValue} -Commit}
+                                catch {
+                                    $ResultObj.Message = "$($_.Exception.Message)"
+                                    $Fault = $True
+                                }
+    
+                            }
+                        }
+    
+                        1 {
+    
+                            $ResultObj.Message = "Incorrect value: :cond must be an even number"
+                            $Fault = $True
+    
+                        }
+    
+                    }
+    
+                }
+    
+                If (!$Fault){$ResultObj.Message = ":cond was successfully set to $CondValue"}
+    
+                break
+                
+            } #:temp
+    
+            {$_ -ieq ":newp"}{ #Test Good
+    
+                $PromptValue = $UserInput.Substring(5,($UserInput.Length -5))
+    
+                If ($PromptValue.Length -eq 0){
+                    $ResultObj.Message = "No string was provided after :newp"
+                    $Fault = $True
+    
+                }
+    
+                If (!$Fault){
+    
+                    try {Edit-LMSystemPrompt -Add -Name "Generated $((Get-Date).ToString())" -Prompt "$PromptValue"}
+                    catch {
+    
+                        $ResultObj.Message = "$($_.Exception.Message)"
+                        $Fault = $True
+    
+                    }
+    
+                }
+    
+                If (!$Fault){$ResultObj.Message = "New prompt creation succeeded! Select it with :selp"}
+    
+                break
+                
+            } #:temp
+    
+            Default {
+    
+                $ResultObj.Message = "Command not recognized. Run :help for Help"
+                $Fault = $True
+    
+            }
+    
+        } #Close Switch $Setting
+    
+    } #Close !$Fault
+    
+    }
+    
+    end {
+    
+        $ResultObj.Result = !$Fault
+        return $ResultObj
+    
+    }
+    
+    } #Close function
 
 #This function converts Dialog Messages to Markdown output
 function Show-LMDialog {
@@ -2987,7 +3017,6 @@ function Start-LMChat {
 
                     $False {
                         
-                        Write-Host "NOTICE: " -ForegroundColor Green -NoNewline
                         Write-Host "Privacy Mode cancelled."
                         continue main
                     
@@ -2995,12 +3024,7 @@ function Start-LMChat {
 
                 }
             }
-            ElseIf ($OptTriggered -and $OptionKey -ieq ':show'){
 
-                Show-LMSettings
-                continue main
-
-            }
             Else { 
 
                 $Option = Set-LMCLIOption -Input $UserInput
