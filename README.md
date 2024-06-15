@@ -72,6 +72,45 @@ Check out my **development journal** (below) to see where I am and what I'm work
 
 💡 **- Idea  🐛 - Bug**
 
+---
+### 06/15/2024
+
+I have selectively tested options, though I haven't tested the functionality of every option from *end-to-end*. The individual logic works for each piece - which is no guarantee that it will work as a whole. Nonetheless, the things I did test cover the bulk of options and use-cases.
+
+The next step is to address the following bugs and features:
+
+⬜️ Fill in the **end {}** block of **Start-LMChat**
+
+⬜️ Add a **clean {}** block to the end of **Start-LMChat**
+
+⬜️ Write duplicates detection and handling in the **Edit-LMSystemPrompt -Remove** function
+
+⬜️ Fix object typing and sorting for the **Start-LMChat -ResumeChat** parameter
+
+⬜️ Fix and re-write **Edit-LMSystemPrompt -Remove -Bulk** (*doesn't work*)
+
+⬜️ Convert **Get-LMGreeting** to only use the Config File
+
+⬜️ Add Set Tags (**:tags**) to **Set-LMCLIOption**, **Get-LMHelp**
+
+⬜️ Test and validate the **:priv** command
+
+⬜️ Write the **Search-LMHistory** function
+
+
+**And these are "admin" tasks:** (*copied over from 05/31/2024*)
+
+⬜️ Better prompts and questions for the greeting generator
+
+**⬜️ Check my functions, and identify which have never been used by any other function**
+
+⬜️ Separate out Public and Private functions (second-to-last thing to do)
+
+⬜️ Build the **psd1** file out
+
+⬜️ Documentation: this one is so important. I need to be very clear that this is built and designed to be easy to use, and is records-oriented: titling, tagging discussions, and searching for them, is what I built.
+
+---
 ### 06/14/2024
 
 I had a strange de-sync issue with the repo where my commit and push worked, but the data in my local repository was out of date at the time that I launched VSCode. I'm not sure how that happened, perhaps a failing drive, failing memory, a VSCode bug, and/or something else. Very strange.
@@ -136,7 +175,7 @@ I also updated **Get-LMHelp** to provide far more detail and much better formatt
 
 ✅ I need to test each remaining option command for **Set-LMCLIOption**. There's enough error checking in it to catch bad input, so at this point I just need to test it for good input.
 
-After I check the parametesr, I need to ⬜️ Integrate **:quit** and **:priv** into the **Start-LMChat** function directly. These two parameters are specific to the chat session.
+After I check the parameters, I need to ✅ Integrate **:quit** and **:priv** into the **Start-LMChat** function directly. These two parameters are specific to the chat session.
 
 That's all for now!
 
@@ -147,9 +186,9 @@ That's all for now!
 Got a good start on **Set-LMCLIOption** (renamed). I decided not to use Invoke-Expression and all that, it's adding complexity and danger I don't really want in the code.
 ":temp" parsing is done, have quite a few more to do:
 
-⬜️ :q - quit
+✅ :q - quit
 
-⬜️ :h - help
+✅ :h - help
 
 ✅ :temp [double]<0.0 - 2.0>             - temperature
 
@@ -167,7 +206,7 @@ Got a good start on **Set-LMCLIOption** (renamed). I decided not to use Invoke-E
 
 ✅ :newp - [string]<[1] - [512]>         - New System Prompt
 
-⬜️ :priv - [boolean]<$True or $False>    - Privacy Mode (Deletes Dialog file and disables saving)
+✅ :priv - [boolean]<$True or $False>    - Privacy Mode (Deletes Dialog file and disables saving)
 
 Have some gardening to do, that's all for now.
 
@@ -350,7 +389,7 @@ I've gotten deeper into **Get-LMResponse**. There are a few key features I would
 
 ✅ Dialog File handling
 
-**✅** Allow independent submission of values (temperature, system prompt, etc)
+✅ Allow independent submission of values (temperature, system prompt, etc)
 
 It's coming along, slowly but surely.
 
@@ -364,7 +403,7 @@ The way that I've implemented Settings with **Get-LMResponse** is that:
 My reason for doing this is that the **\-Settings** parameter exists to explicitly override the Config File. If settings provided don't pass validation, falling back to the Config File defaults would negate the whole reason for using **\-Settings**: to apply something other than what is configured.
 
 I need to work through the following two sections:
-**✅** User Prompt Checking for **$LMStudioVars** and **\-Settings** configs, respectively.
+✅ User Prompt Checking for **$LMStudioVars** and **\-Settings** configs, respectively.
 
 ✅ Dialog File generation for the above two conditions.
 
@@ -378,9 +417,9 @@ I incorporated **Invoke-LMSaveOrOpenUI** into **Import-LMConfig**. 'Twas a simpl
 
 I thought hard about the **Get-LMResponse** function. I'm going to have to move over a lot of code from **Start-LMChat**.
 
-The parameters could get ugly, **✅** I may force the function to use the "**ManualChatSettings**" template, which I'll need to tweak and reshape for its repurposing. (_It was originally for **Start-LMChat**_)
+The parameters could get ugly, ✅ I may force the function to use the "**ManualChatSettings**" template, which I'll need to tweak and reshape for its repurposing. (_It was originally for **Start-LMChat**_)
 
-**✅** In **Get-LMResponse**, it would be very useful to generate a Dialog File, and I'm now committed to putting it in. I will use the Dialog File tags field to tag dialogs generated in this way.
+✅ In **Get-LMResponse**, it would be very useful to generate a Dialog File, and I'm now committed to putting it in. I will use the Dialog File tags field to tag dialogs generated in this way.
 
 That's all for now!
 
@@ -388,13 +427,13 @@ That's all for now!
 
 ### 05/30/2024
 
-I put together **✅** **Edit-LMSystemPrompt**. It takes an **\-Add** or an **\-Remove** parameter. It's pretty simple, actually.
+I put together ✅ **Edit-LMSystemPrompt**. It takes an **\-Add** or an **\-Remove** parameter. It's pretty simple, actually.
 
 I've been slowing down a bit, but I'm still making myself work on this. I'm determined to "finish" it and make this journal public. It's one of the coolest things I've built in Powershell, and by far the most mature module I've ever written.
 
 Perhaps tomorrow, I'll work on **Search-LMHistory**. If I want an easy day, I'll write **Get-LMResponse**.
 
-**✅** With **Get-LMResponse**, I may integrate Dialog File generation. I'm not sure yet.
+✅ With **Get-LMResponse**, I may integrate Dialog File generation. I'm not sure yet.
 
 That's all for now.
 
@@ -430,9 +469,9 @@ Here's some code I might need later:
 
 `#endregion`
 
-**✅** I need to add a switch to **Start-LMChat**: **\-NoSave**. This will give the ability for a user to not record a chat if they don't want to.
+✅ I need to add a switch to **Start-LMChat**: **\-NoSave**. This will give the ability for a user to not record a chat if they don't want to.
 
-**✅** I also included **$JobOutput.Dispose()** in the **Invoke-LMStream** function's **Get-Content -Wait** try/catch block. I wonder if some longer term instability I was seeing was because I wasn't properly closing my streamwriters. (_It could also be because I'm always running LMStudio locally when testing_).
+✅ I also included **$JobOutput.Dispose()** in the **Invoke-LMStream** function's **Get-Content -Wait** try/catch block. I wonder if some longer term instability I was seeing was because I wasn't properly closing my streamwriters. (_It could also be because I'm always running LMStudio locally when testing_).
 
 ---
 
@@ -448,7 +487,7 @@ I don't like the idea of forcing people into doing the way I think is best, beca
 
 Or it might not matter at all. Users may really enjoy the "plug and play", relatively uninvolved way I've built it.
 
-I'm hesitant, but I think I'm going to **✅** remove the extensibility. I have to make a decision and live with it, but there are other benefits to removing it:
+I'm hesitant, but I think I'm going to ✅ remove the extensibility. I have to make a decision and live with it, but there are other benefits to removing it:
 
 - The code becomes shorter and more compact
 - It eliminates a great deal of ways errors can be introduced
@@ -464,7 +503,7 @@ That's all for now, no coding today.
 
 Busy day yesterday, and took another break.
 
-**✅** Instead of integrating markdown into the web client functions (**Invoke-LMBlob/Invoke-LMStream**), I built **Show-LMDialog** to handle Markdown/non-markdown output. It appears to be working pretty well.
+✅ Instead of integrating markdown into the web client functions (**Invoke-LMBlob/Invoke-LMStream**), I built **Show-LMDialog** to handle Markdown/non-markdown output. It appears to be working pretty well.
 
 🐛 The markdown integration isn't perfect. This time it's not my fault. **Show-Markdown** has some problems that I spent a few hours trying to circumvent but was unable to.
 
@@ -474,34 +513,36 @@ I fought with a lot of different approaches to solving the problem, but I'm goin
 
 **The list is getting shorter:**
 
-**✅** Integrate **Invoke-LMSaveOrOpenUI** into **Import-LMConfig** (_when opening the file without specifying the path_)
+✅ Integrate **Invoke-LMSaveOrOpenUI** into **Import-LMConfig** (_when opening the file without specifying the path_)
 
-⬜️Write how the **Start-LMChat** prompt is going to handle option (**:**) inputs. Maybe this should be an auxiliary function
+✅ Write how the **Start-LMChat** prompt is going to handle option (**:**) inputs. Maybe this should be an auxiliary function
 
-💡 I can add parameters to **Show-LMHelp** to give details for each parameter
+❌ I can add parameters to **Show-LMHelp** to give details for each parameter
 
 ...
 
 **These are functions I need to write:**
 
-**✅** Write a **Modify-LMSystemPrompts** function (to add to/remove from the list)
+✅ Write a **Modify-LMSystemPrompts** function (to add to/remove from the list)
 
 ⬜️ Write the **Search-LMHistory** function
 
-**✅** Write **Get-LMResponse** (single-response query, no console output).
+✅ Write **Get-LMResponse** (single-response query, no console output).
 ...
 
-**And these are "admin" tasks:**
+**And these are "admin" tasks:** 
 
-⬜️ Better prompts and questions for the greeting generator
+(**Moved to 06/15/2024**)
 
-**⬜️ Check my functions, and identify which have never been used by any other function**
+*Moved* Better prompts and questions for the greeting generator
 
-⬜️ Separate out Public and Private functions (second-to-last thing to do)
+*Moved* Check my functions, and identify which have never been used by any other function**
 
-⬜️ Build the **psd1** file out
+*Moved* Separate out Public and Private functions (second-to-last thing to do)
 
-⬜️ Documentation: this one is so important. I need to be very clear that this is built and designed to be easy to use, and is records-oriented: titling, tagging discussions, and searching for them, is what I built.
+*Moved* Build the **psd1** file out
+
+*Moved* Documentation: this one is so important. I need to be very clear that this is built and designed to be easy to use, and is records-oriented: titling, tagging discussions, and searching for them, is what I built.
 
 That's enough for now.
 
@@ -511,7 +552,7 @@ That's enough for now.
 
 I needed a break.
 
-**✅** I gutted the validation and complexity in **New-LMConfig** in favor of a single-path approach: define -**BasePath** and everything else is created under this.
+✅ I gutted the validation and complexity in **New-LMConfig** in favor of a single-path approach: define -**BasePath** and everything else is created under this.
 
 This gutting also enabled me to get rid of the **Set-LMHistoryFilePath** function, which was nothing more than a recursive directory creator.
 
@@ -545,15 +586,15 @@ It's not perfect. I really like how OpenAI converts it in-line, but I would need
 
 ### 05/22/2024
 
-**✅** Fixed problem with fragmentation in **Invoke-LMStream**: if the line fragmented twice, the second fragment wasn't caught.
+✅ Fixed problem with fragmentation in **Invoke-LMStream**: if the line fragmented twice, the second fragment wasn't caught.
 
-**✅** I need to "go deep" on the **Do/Until** loop for **Invoke-LMStream**. There looks like a lot of room for optimization, and it's cludgy at present. I bet I can improve performance.
+✅ I need to "go deep" on the **Do/Until** loop for **Invoke-LMStream**. There looks like a lot of room for optimization, and it's cludgy at present. I bet I can improve performance.
 
 💡 I need to come up with a "Pacing" system to detect stuttering from a slow LLM response, and output console text so it's slower but smoother.
 
-**✅** History File isn't being updated with **\-ResumeChat,** need to look into this.
+✅ History File isn't being updated with **\-ResumeChat,** need to look into this.
 
-**✅** Restructured **Invoke-LMStream** from a series of IF statements, to a switch. Tested with PS5/PS7, seems to work just fine.
+✅ Restructured **Invoke-LMStream** from a series of IF statements, to a switch. Tested with PS5/PS7, seems to work just fine.
 
 #### **Follow-Up:**
 
@@ -567,7 +608,7 @@ I fixed a problem with how I determined the default **MarkDown** property.
 
 Plus everything above.
 
-I forgot to add something to the list below: **✅** Export the System Prompt file in **New-LMConfig.**
+I forgot to add something to the list below: ✅ Export the System Prompt file in **New-LMConfig.**
 
 That's all for now.
 
@@ -579,15 +620,15 @@ That's all for now.
 
 ### 05/21/2024
 
-**✅** Squashed a bug where I incorrectly terminated in a Default switch (PS5 doesn't assign '.Count' to most non-array objects). This was causing re-opened Dialog files to fail to save. Accommodates both 5/7 now.
+✅ Squashed a bug where I incorrectly terminated in a Default switch (PS5 doesn't assign '.Count' to most non-array objects). This was causing re-opened Dialog files to fail to save. Accommodates both 5/7 now.
 
-**✅** Squashed another where the condition I set in the **:main** was causing the "Opener" property to be provisioned in the Dialog file, which leads (downstream) to it missing in the History file.
+✅ Squashed another where the condition I set in the **:main** was causing the "Opener" property to be provisioned in the Dialog file, which leads (downstream) to it missing in the History file.
 
-**✅** **\-** I made the System Prompts a template in **Get-LMTemplate,** which will be instantiated by **New-LMConfig**. This will solve the problem of how to guarantee the file and its location.
+✅ **\-** I made the System Prompts a template in **Get-LMTemplate,** which will be instantiated by **New-LMConfig**. This will solve the problem of how to guarantee the file and its location.
 
 ✅ - I made the "Open Cancelled" output gentler. No reason to throw an error over that.
 
-Added **✅** **ChatSettings.SystemPrompt,** **✅** **ChatSettings.MarkDown** **✅** **ChatSettings.SavePrompt** everywhere:
+Added ✅ **ChatSettings.SystemPrompt,** ✅ **ChatSettings.MarkDown** ✅ **ChatSettings.SavePrompt** everywhere:
 
 - In the Config
 - In the "ManualChatSettings" Template
@@ -609,7 +650,7 @@ This is a bit much to bite off right now though, there's some time/order logic I
 
 ### 05/21/2024
 
-**✅** Completed and tested **Repair-LMHistoryFile**, which effectively rebuilds the History File from scratch. Works pretty well.
+✅ Completed and tested **Repair-LMHistoryFile**, which effectively rebuilds the History File from scratch. Works pretty well.
 
 This is a consolidated list of the work to do:
 
@@ -617,9 +658,9 @@ This is a consolidated list of the work to do:
 
 **❌** Implement MarkDown into **Invoke-LMStream** and **Invoke-LMBlob**
 
-**✅** Write **Get-LMSystemPrompt** (Involves more file-handling)
+✅ Write **Get-LMSystemPrompt** (Involves more file-handling)
 
-**✅** Integrate **Get-LMSystemPrompt**  into **Start-LMChat**, and possibly **New-LMConfig**.
+✅ Integrate **Get-LMSystemPrompt**  into **Start-LMChat**, and possibly **New-LMConfig**.
 
 **\[Moved\]** Separate out Public and Private functions (second-to-last thing to do)
 
@@ -629,7 +670,7 @@ This is a consolidated list of the work to do:
 
 **\[Moved\]** Get a start on how the **Start-LMChat** prompt is going to handle option (**:**) inputs. Maybe this should be an auxiliary function
 
-**✅** Write a small console script that prompts for a "y/N" answer. (_Or a message box)_
+✅ Write a small console script that prompts for a "y/N" answer. (_Or a message box)_
 
 **\[Moved\]** Go through my functions list and add/strike things off of the list.
 
@@ -663,13 +704,13 @@ Put together the following functions:
 
 **✅ Select-LMHistoryEntry :** This reads and parses the History file, and uses **Out-GridView** to present the contents for continuation of a previous dialog.
 
-The **Select-LMHistoryEntry** function hints at the **✅** **Repair-LMHistoryFile** function, which still needs to be written. It's functionally simple, it'll use the **Convert-LMDialogToHistoryEntry** function to read every Dialog file and reassemble the History File.
+The **Select-LMHistoryEntry** function hints at the ✅ **Repair-LMHistoryFile** function, which still needs to be written. It's functionally simple, it'll use the **Convert-LMDialogToHistoryEntry** function to read every Dialog file and reassemble the History File.
 
 **Today I need to:**
 
-**✅** Integrate the two new functions into **Start-LMChat**
+✅ Integrate the two new functions into **Start-LMChat**
 
-**✅** Sort out History File handling in **Start-LMChat**
+✅ Sort out History File handling in **Start-LMChat**
 
 **\[Moved\]** Integrate the **ChatInfo.SystemPrompt** field into the Configuration file
 
@@ -750,9 +791,9 @@ Today, I built the **Invoke-LMSaveOrOpenUI** function, which presents an Open/Sa
 
 I built a pretty functional "Save Prompt" system in **Start-LMChat**. I also added the **\-SkipSavePrompt** parameter, to bypass the whole thing:  I'll need to include a "**:s**" instruction in the **do/until** loop to give the user an opportunity to save the file during/after the dialog has begun.
 
-**✅** I also fixed a problem with the **Invoke-LMSaveOrOpenUI** function's name generation: There was a **!Test-Path** instruction in there, and I had a good reason to put it there, but I can't remember why. So I pulled it out.
+✅ I also fixed a problem with the **Invoke-LMSaveOrOpenUI** function's name generation: There was a **!Test-Path** instruction in there, and I had a good reason to put it there, but I can't remember why. So I pulled it out.
 
-**✅** I decided to strip out the "**\-Lite**" parameter and all of its intricacies, in favor of a new **Get-LMResponse** function. This new function is a basic "_send a prompt, get an answer_" function. It's non-interactive, and built for use with coding (_like, some of my ambitions after I finish this project_).
+✅ I decided to strip out the "**\-Lite**" parameter and all of its intricacies, in favor of a new **Get-LMResponse** function. This new function is a basic "_send a prompt, get an answer_" function. It's non-interactive, and built for use with coding (_like, some of my ambitions after I finish this project_).
 
 **Follow-Up:**
 
@@ -760,7 +801,7 @@ Some improvements; started moving into the **Do/Until** loop to get a feel for w
 
 I need another new function to keep things simple:
 
-**✅** A Dialog => Body function:
+✅ A Dialog => Body function:
 
 - Intakes the contents of a Dialog object
 - Evaluates the messages in the $Dialog.Messages Array
@@ -776,13 +817,13 @@ I wrote the DIalog => Body function,(**Convert-LMDialogToBody**) and it's one of
 
 **\[moved\]** Add **$Global:LMStudioVars.ChatSettings.SystemPrompt** variable to make this value easilysettable/persistent.
 
-**✅** Chase down **Update-HistoryFile**, **Import-HistoryFile,** work out how to save the key Dialog information to the History File
+✅ Chase down **Update-HistoryFile**, **Import-HistoryFile,** work out how to save the key Dialog information to the History File
 
 ---
 
 ### 05/17/2024
 
-Today, I built the **Invoke-LMBlob** function, which isn't complete or polished but should take **✅** maybe 5-10 more minutes to make functional and error-sensitive.
+Today, I built the **Invoke-LMBlob** function, which isn't complete or polished but should take ✅ maybe 5-10 more minutes to make functional and error-sensitive.
 
 I also established that **.Net Framework 4.5** is the minimum I require for this code to work, due to the use of async methods in the C# code.
 
@@ -792,7 +833,7 @@ Out of curiosity, I used ChatGPT to generate a non-obsolete version of the C# cl
 
 I will use the **Out-Gridview** functionality to make it easy to:
 
-**✅**  Resume a previous conversation (using the History File)
+✅  Resume a previous conversation (using the History File)
 
 **\[Moved\]**  Select a System Prompt (from a statically defined list of system prompts, exported from LM Studio).
 
@@ -802,11 +843,11 @@ I'm also not happy with my **Get-LMGreeting** prompt generator. Functionally, it
 
 #### **Follow-Up:**
 
-**✅** I decided to write the path to the config file to $Global:LMConfigFile. This is done by **Import-LMConfig** and **New-LMConfig**. At this time, the only place I'm using the variable is in **Set-LMVariableOptions** (**✅**  soon to be **Set-LMOptions**) . Not sure if there's a use for it anywhere else.
+✅ I decided to write the path to the config file to $Global:LMConfigFile. This is done by **Import-LMConfig** and **New-LMConfig**. At this time, the only place I'm using the variable is in **Set-LMVariableOptions** (✅  soon to be **Set-LMOptions**) . Not sure if there's a use for it anywhere else.
 
-**✅** I changed **$UseLoadedConfig** to **$UseConfig**. Documentation regarding parameters will cover this more ambiguous parameter name.
+✅ I changed **$UseLoadedConfig** to **$UseConfig**. Documentation regarding parameters will cover this more ambiguous parameter name.
 
-**✅**  Shell Functions **Set-LMSystemPrompt** and **Select-LMHistoryFile** were created to use **Out-GridView** as a file selection mechanism.
+✅  Shell Functions **Set-LMSystemPrompt** and **Select-LMHistoryFile** were created to use **Out-GridView** as a file selection mechanism.
 
 **\[Moved\]** I should probably add **$Global:LMStudioVars.ChatSettings.SystemPrompt** variable to make this value settable/persistent.
 
@@ -828,7 +869,7 @@ I made significant progress on **Start-LMChat**. I'm working through the **begin
 
 Once I have the history file management set up, it'll be time to enter the **Do/Until** loop, and all that fun (Send/receive responses, append responses to history dialog, write out history dialog; Build "Help" and "Options", set and manage quit options).
 
-I also **✅** incorporated **Invoke-LMBlob** into **Get-LMGreeting.**
+I also ✅ incorporated **Invoke-LMBlob** into **Get-LMGreeting.**
 
 ---
 
@@ -836,15 +877,15 @@ I also **✅** incorporated **Invoke-LMBlob** into **Get-LMGreeting.**
 
 I spent a great deal of time last night implementing parameter validation. This is not yet complete.
 
-**Start-LMGreeting** (**✅** _soon to be renamed **Get-LMGreeting**_) works great:
+**Start-LMGreeting** (✅ _soon to be renamed **Get-LMGreeting**_) works great:
 
 ![](/Docs/images/get-lmgreeting.gif)
 
-**✅** The only code remaining for **Start-LMGreeting** is to write the received information out to the **hello.greeting** file in the folder.
+✅ The only code remaining for **Start-LMGreeting** is to write the received information out to the **hello.greeting** file in the folder.
 
 Some additional things I'd like to accomplish today/tomorrow:
 
-- **✅** Incorporate the following fields into the Config File:
+- ✅ Incorporate the following fields into the Config File:
   - $Global:LMStudioVars. Endpoints = @{}
     - .Endpoints.ModelURI = \[computed from ServerInfo Server, Port information\]
     - .Endpoints.CompletionURI = \[computed from ServerInfo Server, Port information\]
@@ -858,11 +899,11 @@ I parameterized a few more functions. It didn't get me back a lot of lines, but 
 
 I got a lot of things done today: created all of the Config entries I could ever need; I deleted the superfluous **Set-LMGlobalVariables** and **Initialize-LMVarStore** functions and instead incorporated their utility directly into the (_now renamed_) **Import-LMConfig** and **New-LMConfig** functions.
 
-**Import-LMConfig** will be supplemented by **Set-LMOption \[-Commit\],** which serves to change settings in **Global:LMStudioVars**, as well as **✅** Save the state of **$Global:LMStudioVars** _as-is_.
+**Import-LMConfig** will be supplemented by **Set-LMOption \[-Commit\],** which serves to change settings in **Global:LMStudioVars**, as well as ✅ Save the state of **$Global:LMStudioVars** _as-is_.
 
 **\[Moved\]** Mark-down might be a neat thing to experiment with, particularly for the **New-Config** prompts as well as verbose check results.
 
-**Get-LMGreeting** works perfectly, and **✅**I need to finish incorporating it into the **Start-LMChat** function.
+**Get-LMGreeting** works perfectly, and ✅I need to finish incorporating it into the **Start-LMChat** function.
 
 ---
 
@@ -876,13 +917,13 @@ I've moved on to doing the same for **New-ConfigFile**, and shortly after I'll d
 
 I'm on the fence about **$CompletionURI** and **$ModelURI**. I think it would be convenient and "clean" in a small way. The temptation to reduce a whole bunch of duplicate API endpoint paths into a couple variables and parameter names is strong, but I have more important problems to solve at the moment.
 
-**✅** Oh yeah, I restored the fragmentation functionality to the **Invoke-LMStream** function. It turns out to be a problem with models that seem to "struggle" with assembling and returning the words. It wasn't my code, it wasn't the computer, it's the model and web server software.
+✅ Oh yeah, I restored the fragmentation functionality to the **Invoke-LMStream** function. It turns out to be a problem with models that seem to "struggle" with assembling and returning the words. It wasn't my code, it wasn't the computer, it's the model and web server software.
 
 (_Something they could do with LM Studio to improve the web server would be to moderate the stream output speed to be slightly slower than the average of all received characters in a burst. Sounds easy but it's hard to do, but it would make the output slower but less "jittery"_).
 
 (_Alternatively, I could do it myself, from the front-end_).
 
-**✅** I also forgot to implement the "**Greeting**" property in the **$Global:LMVars**. Whoops, I'll do that tomorrow.
+✅ I also forgot to implement the "**Greeting**" property in the **$Global:LMVars**. Whoops, I'll do that tomorrow.
 
 ---
 
@@ -900,13 +941,13 @@ Will resume working on **Start-LMGreeting** tomorrow.
 
 #### **Follow-Up:**
 
-**✅** Wrote **Set-LMOptions** to create a way to dynamically adjust variables (like _max_tokens, temperature, context_). Wrote it in a way that it doesn't depend on a fixed list of keys.
+✅ Wrote **Set-LMOptions** to create a way to dynamically adjust variables (like _max_tokens, temperature, context_). Wrote it in a way that it doesn't depend on a fixed list of keys.
 
 Finished updating **Import-LMHistoryFile**.
 
 **A few script-wide improvements to do:**
 
-- **✅** I use "_$null -ne $\_ -or $\_.Length -gt 0_" a LOT. It works, but it's not elegant. I will work toward moving to this, instead (where it makes sense):
+- ✅ I use "_$null -ne $\_ -or $\_.Length -gt 0_" a LOT. It works, but it's not elegant. I will work toward moving to this, instead (where it makes sense):
 
 ```
 Parameter ValidateScript: [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
@@ -914,15 +955,15 @@ Parameter ValidateScript: [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { t
 If (!($PSBoundParameters.ContainsKey('PARAMETERNAME'))){}
 ```
 
-- **✅** **"Temperature", "Max_Tokens" and "ContextDepth"** should be stored, if not in the History File, then in the dialog file. I haven't gotten to writing dialog handling yet, so it's something to do while building is early.
+- ✅ **"Temperature", "Max_Tokens" and "ContextDepth"** should be stored, if not in the History File, then in the dialog file. I haven't gotten to writing dialog handling yet, so it's something to do while building is early.
 
 #### **Follow-Up:**
 
-**✅** Fixed **Import-LMConfigFile**, added enhancements to **Import-ConfigFile**.
+✅ Fixed **Import-LMConfigFile**, added enhancements to **Import-ConfigFile**.
 
-**✅**Fixed **Initialize-LMVarStore, Set-LMGlobalVariables, Confirm-LMGlobalVariables**.
+✅Fixed **Initialize-LMVarStore, Set-LMGlobalVariables, Confirm-LMGlobalVariables**.
 
-**✅** Pointed all **$Global:LMHistoryVars.HistoryFilePath** entries to **$Global:LMHistoryVars.FilePaths.HistoryFilePath**.
+✅ Pointed all **$Global:LMHistoryVars.HistoryFilePath** entries to **$Global:LMHistoryVars.FilePaths.HistoryFilePath**.
 
 ---
 
@@ -930,27 +971,27 @@ If (!($PSBoundParameters.ContainsKey('PARAMETERNAME'))){}
 
 In moving over functions to use the **New-LMTemplate** (_which is not done, HistoryFile template has a LOT of hooks_), with a sense of doom I realized I absolutely have to get all of the client settings I need into the config management system. If I don't, it'll be a headache to fix later.
 
-I have much of the Config File (object) formatting done. **✅** **Confirm-LMGlobalVariables** needs to be rewritten.
+I have much of the Config File (object) formatting done. ✅ **Confirm-LMGlobalVariables** needs to be rewritten.
 
-**✅** I need to rewrite **Import-LMConfigFile** to accommodate the new config JSON structure., specifically Lines 261 - 269.
+✅ I need to rewrite **Import-LMConfigFile** to accommodate the new config JSON structure., specifically Lines 261 - 269.
 
 ---
 
 ### 05/12/2024
 
-**✅** Finished the **New-LMTemplate** function; added **temperature,max_tokens,stream,ContextDepth** to Config file and to global settings incorporation.
+✅ Finished the **New-LMTemplate** function; added **temperature,max_tokens,stream,ContextDepth** to Config file and to global settings incorporation.
 
 **TO DO TOMORROW:**
-**✅** Move functions over to the New-LMTemplate
-**✅** Remove the old standalone template functions
-**✅** Evaluate whether I can remove functions I've labeled as such
+✅ Move functions over to the New-LMTemplate
+✅ Remove the old standalone template functions
+✅ Evaluate whether I can remove functions I've labeled as such
 
 #### **Follow-Up:**
 
 Had another thought:
 
-**✅** I need to convert all "New-LMHistoryFile" calls to the new Template function.
-**✅**  **New-LMHistoryFile** does nothing but save an arbitrary file, it's a pointless function. I just have to do:
+✅ I need to convert all "New-LMHistoryFile" calls to the new Template function.
+✅  **New-LMHistoryFile** does nothing but save an arbitrary file, it's a pointless function. I just have to do:
 
 ```
 [Get a new history entry template] | Convertto-Json -Depth 3 | out-file $somefilepath
@@ -1016,7 +1057,7 @@ I have many of the important pieces together now. I REALLY want to build a funct
 
 **\[Moved\]** I can add parameters to Show-LMHelp to give details for each parameter
 ✅ Make an official list of functions, and their purpose
-**✅**Update the Client to use the complete functions I have (should shorten the code substantially)
+✅Update the Client to use the complete functions I have (should shorten the code substantially)
 Review this, and likely simplify/replace it (Client):\`
 
 ✅ Need to check if this is still valid:
