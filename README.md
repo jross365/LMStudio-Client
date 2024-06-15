@@ -1,23 +1,64 @@
 # LMStudio-Client
 
+A feature-rich Powershell LMStudio client.
+
 ![](/Docs/images/alpacas-prompt.gif)
 
-This project is to develop a full-featured, capable PowerShell 5 and PowerShell 7 LMStudio client.
 
-This client interfaces with the LMStudio Web Server, allowing a user to use LMStudio from a remote workstation.
+## Features:
 
-**Features**
+- Use LMStudio chat from any computer on your network!
 
-- Response streaming: LLM output is displayed as it is generated
-- Records and saves LLM chat dialogs
-  - Built-in file management, indexing and search capabilities
+- Records and saves LLM chat dialogs locally
+  - Built-in file management, indexing (*search* will be included)
+  - Previous dialogs can be resumed easily 
+
 - Persistent configuration management:
   - Settings are preserved in a configuration file
   - Settings can be modified and saved easily
 
-This module is being built and improved upon, and features are implemented as they're discovered.
+- And more!
+  - Seriously, there's a lot of functionality built into this module.
+  - What these are and how to use them will be included in the documentation.
 
-This project isn't complete, and as of this writing ~~the module isn't anywhere close to complete (_05/21/2024_)~~ we're getting close (*06/02/2024*). Please see my **development journal** below to follow my progress!
+This project is not complete, and documentation isn't yet written.
+
+## Alpha Quick-Start Guide:
+
+This quick-start guide assumes LMStudio is configured and running.
+
+1. Rename *LMStudio-Client.psm1* to *LMStudio-Client.ps1*.
+
+2. Import the functions:
+```
+. .\LMStudio-Client.ps1
+```
+
+3. Create a new config:
+```
+New-LMConfig -Server <Name/IP> -Port <1234>
+```
+
+4. Import the config:
+```
+Import-LMConfig -ConfigFile "$Env:USERPROFILE\Documents\LMStudio-PSClient\lmsc.cfg" -Verify
+```
+
+5. Start the chat program:
+```
+Start-LMChat
+```
+
+6. For help changing settings, in the chat prompt run this command:
+```
+:help
+```
+
+## Notes/Addendum:
+
+I will write the documentation after I've implemented all primary features and fixed critical bugs and problems.
+
+Check out my **development journal** (below) to see where I am and what I'm working on. 
 
 ---
 
@@ -45,7 +86,7 @@ I'm going to commit and sync this, do some testing, and perhaps drop in an updat
 ---
 ### 06/12/2024
 
-✅ I fully integrated the **:priv** (Privacy Mode) option into **Start-LMChat**.  ⬜️ I need to test the options system now.
+✅ I fully integrated the **:priv** (Privacy Mode) option into **Start-LMChat**.  🚧 I need to test the options system now.
 
 💡 I also need to find some use for the **Start-LMChat** end {} block (*if any*). 
 
