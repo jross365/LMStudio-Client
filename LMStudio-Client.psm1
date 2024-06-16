@@ -1634,7 +1634,11 @@ namespace LMStudio
     }
     #$JobOutput.Close() See above
     $jobOutput.Dispose()
-      
+    
+    Remove-Variable jobOutput -ErrorAction SilentlyContinue
+    Remove-Variable StreamSession -ErrorAction SilentlyContinue
+    [gc]::Collect()
+
     } #Close $StreamJob
     
     #Send the right parameters to let the old C# code run:
@@ -1735,6 +1739,7 @@ process {
     
         }
     
+        Start-Sleep -Milliseconds 30 #06/15 - Experimenting with ways to reduce CPU demand
     }
     until ($Complete -eq $True)
 
@@ -1745,6 +1750,7 @@ end {
     If (!($Interrupted)){
         
         &$KillProcedure
+        [gc]::Collect()
         return $MessageBuffer
     }
     Else {return "[stream_interrupted]"}
@@ -3145,19 +3151,31 @@ function Start-LMChat {
                 }
 
             }
-            #endregion       
+            #endregion
+            
+            Start-Sleep -Milliseconds 30 #06/15: Experimenting with trying to reduce CPU demand
             
         }
         until ($BreakDialog -eq $True)
     }
 
-    end {
+    end {} #Everything in end {} is better off in clean {}, in this case
 
-        #HERE:
-            # - Need to Update the "opener" line for the Dialog object
-            # - Need to update the History File with the new Dialog object information
+    clean {
+
+        Remove-Variable Dialog -ErrorAction SilentlyContinue
+        Remove-Variable Body -ErrorAction SilentlyContinue
+
+        (Get-Job -ErrorAction SilentlyContinue) | Foreach-Object {
+        
+            $_ | Stop-Job -ErrorAction SilentlyContinue
+            $_ | Remove-Job -ErrorAction SilentlyContinue
 
         }
+
+        [gc]::Collect()
+
+    }
 
 }
 

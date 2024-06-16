@@ -79,9 +79,9 @@ I have selectively tested options, though I haven't tested the functionality of 
 
 The next step is to address the following bugs and features:
 
-⬜️ Fill in the **end {}** block of **Start-LMChat**
+❌ Fill in the **end {}** block of **Start-LMChat**
 
-⬜️ Add a **clean {}** block to the end of **Start-LMChat**
+✅ Add a **clean {}** block to the end of **Start-LMChat**
 
 ⬜️ Write duplicates detection and handling in the **Edit-LMSystemPrompt -Remove** function
 
@@ -110,6 +110,11 @@ The next step is to address the following bugs and features:
 
 ⬜️ Documentation: this one is so important. I need to be very clear that this is built and designed to be easy to use, and is records-oriented: titling, tagging discussions, and searching for them, is what I built.
 
+**Follow-Up:**
+Knocked the first two of these out.
+
+Also added clean-up to **Invoke-LMStream**. And put a few strategic 30ms pauses in the prominent *do {}* loops, to cut down on empty/unnecessary looping.
+
 ---
 ### 06/14/2024
 
@@ -120,7 +125,7 @@ For some reason, I had kept **:show** in **Start-LMChat**, where I'd fully inten
 I put breaks in **Set-LMCLIOption**'s selection switch. Just in case.
 
 I'm going to commit and sync this, do some testing, and perhaps drop in an update.
----
+
 
 ---
 ### 06/12/2024
