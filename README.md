@@ -73,6 +73,13 @@ Check out my **development journal** (below) to see where I am and what I'm work
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 06/16/2024
+
+I fixed the two problems with the **Edit-LMSystemPrompt** function, involving the **-Remove** parameter. Bulk removal (and re-adding for any that weren't selected) has been sorted.
+
+I also fixed object typing/sorting for dates in **Select-LMHistoryEntry**. These display in descending order from the "Modified" date in the history file, now.
+
+---
 ### 06/15/2024
 
 I have selectively tested options, though I haven't tested the functionality of every option from *end-to-end*. The individual logic works for each piece - which is no guarantee that it will work as a whole. Nonetheless, the things I did test cover the bulk of options and use-cases.
@@ -83,11 +90,11 @@ The next step is to address the following bugs and features:
 
 ✅ Add a **clean {}** block to the end of **Start-LMChat**
 
-⬜️ Write duplicates detection and handling in the **Edit-LMSystemPrompt -Remove** function
+✅ Write duplicates detection and handling in the **Select-LMHistoryEntry** function
 
-⬜️ Fix object typing and sorting for the **Start-LMChat -ResumeChat** parameter
+✅ Fix object typing and sorting for the **Start-LMChat -ResumeChat** parameter
 
-⬜️ Fix and re-write **Edit-LMSystemPrompt -Remove -Bulk** (*doesn't work*)
+✅ Fix and re-write **Edit-LMSystemPrompt -Remove -Bulk** (*doesn't work*)
 
 ⬜️ Convert **Get-LMGreeting** to only use the Config File
 

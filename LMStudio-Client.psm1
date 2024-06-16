@@ -2081,9 +2081,24 @@ function Edit-LMSystemPrompt {
                 $True {
                     try {$RemovePrompts = Select-LMSystemPrompt -AsObject -Bulk}
                     catch {throw $_.Exception.Message}
-    
-                    
-                    Foreach ($Prompt in $RemovePrompts){$SystemPrompts = $SystemPrompts | Where-Object {$_.Name -ne $Prompt.Name -and $_.Prompt -ne $Prompt.Prompt}}    
+                       
+                    $PromptGroups = $RemovePrompts | Group-Object Name,Prompt
+
+                    Foreach ($Group in $PromptGroups){
+
+                        $PromptObj = $Group.Group[0]
+                        $PromptName = $PromptObj.Name
+                        $PromptBody = $PromptObj.Prompt
+
+                        $MatchingPrompts = $SystemPrompts | Where-Object {$_.Name -eq $PromptName -and $_.Prompt -eq $PromptBody}
+
+                        $SystemPrompts = $SystemPrompts | Where-Object {$_.Name -ne $PromptName -and $_.Prompt -ne $PromptBody}
+
+                        $PromptsToPutBack = $MatchingPrompts.Count - $Group.Count
+
+                        If ($PromptsToPutBack -ge 1){ (0..($PromptsToPutBack - 1)) | ForEach-Object {$SystemPrompts += $PromptObj} }
+
+                    }
 
                 }
 
@@ -2092,7 +2107,14 @@ function Edit-LMSystemPrompt {
                     try {$RemovePrompt = Select-LMSystemPrompt -AsObject}
                     catch {throw $_.Exception.Message}
 
-                    $SystemPrompts = $SystemPrompts | Where-Object {$_.Name -ne $RemovePrompt.Name -and $_.Prompt -ne $RemovePrompt.Prompt}
+                    $PromptName = $RemovePrompt.Name
+                    $PromptBody = $RemovePrompt.Prompt
+
+                    $PromptsToPutBack = ($SystemPrompts | Where-Object {$_.Name -eq $PromptName -and $_.Prompt -eq $PromptBody}).Count
+
+                    $SystemPrompts = $SystemPrompts | Where-Object {$_.Name -ne $PromptName -and $_.Prompt -ne $PromptBody}
+
+                    If ($PromptsToPutBack -gt 1){$SystemPrompts += $RemovePrompt}
 
                 }
 
@@ -2271,14 +2293,14 @@ function Select-LMHistoryEntry {
 
         $HistoryData = New-Object System.Collections.ArrayList
 
-        try {$HistoryEntries = Import-LMHistoryFile -FilePath $HistoryFile | Select-Object Created, Modified, Title, Opener, FilePath, @{N = "Tags"; E = {$_.Tags -join ', '}}}
+        try {$HistoryEntries = Import-LMHistoryFile -FilePath $HistoryFile | Select-Object @{N="Created"; E={Get-Date ($_.Created)}}, @{N="Modified"; E={Get-Date ($_.Modified)}}, Title, Opener, FilePath, @{N = "Tags"; E = {$_.Tags -join ', '}}}
         catch {throw "History file is not the correct file format [$HistoryFile]"}
     
         $HistoryEntries | ForEach-Object {$HistoryData.Add($_) | out-null}
     
         $HistoryData += ([pscustomobject]@{"Created" = "Select this entry to Cancel"; "Modified" = ""; "Title" = ""; "Opener" = ""; "FilePath" = ""})
     
-        $Selection = $HistoryData | Out-GridView -Title "Select a Chat Dialog" -OutputMode Single
+        $Selection = $HistoryData | Sort-Object -Property Modified -Descending | Out-GridView -Title "Select a Chat Dialog" -OutputMode Single
 
     }
     end {
