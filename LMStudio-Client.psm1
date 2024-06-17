@@ -141,8 +141,8 @@ function New-LMConfig { #Complete
         #endregion
 
         #region Set creation variables        
-        $ConfigFileObj = Get-LMTemplate -Type ConfigFile
-        $SystemPromptsObj = Get-LMTemplate -Type SystemPrompts
+        $ConfigFileObj = New-LMTemplate -Type ConfigFile
+        $SystemPromptsObj = New-LMTemplate -Type SystemPrompts
 
         $ConfigFileObj.ServerInfo.Server = $Server
         $ConfigFileObj.ServerInfo.Port = $Port
@@ -195,7 +195,7 @@ function New-LMConfig { #Complete
             
             Write-Host "History File $HistoryFilePath not found, creating."
 
-            try {@((Get-LMTemplate -Type HistoryEntry)) | ConvertTo-Json | Out-File -FilePath $HistoryFilePath -ErrorAction Stop}
+            try {@((New-LMTemplate -Type HistoryEntry)) | ConvertTo-Json | Out-File -FilePath $HistoryFilePath -ErrorAction Stop}
             catch {throw "History file creation failed: $($_.Exception.Message)"}
         }
 
@@ -211,7 +211,7 @@ function New-LMConfig { #Complete
 
             Write-Host "Greeting file $GreetingFilePath not found, creating."
 
-            try {(Get-LMTemplate -Type ChatGreeting | Export-csv $GreetingFilePath -NoTypeInformation)}
+            try {(New-LMTemplate -Type ChatGreeting | Export-csv $GreetingFilePath -NoTypeInformation)}
             catch {throw "Greeting file creation failed: $($_.Exception.Message)"}
 
         }
@@ -227,8 +227,8 @@ function New-LMConfig { #Complete
 
         $HistoryArray = New-Object System.Collections.ArrayList
 
-        $HistoryArray.Add((Get-LMTemplate -Type HistoryEntry)) | Out-Null
-        $HistoryArray.Add((Get-LMTemplate -Type HistoryEntry)) | Out-Null
+        $HistoryArray.Add((New-LMTemplate -Type HistoryEntry)) | Out-Null
+        $HistoryArray.Add((New-LMTemplate -Type HistoryEntry)) | Out-Null
 
         try {$HistoryArray | ConvertTo-Json -depth 5 | Out-File -FilePath $HistoryFilePath -ErrorAction Stop}
         catch {throw "History file creation failed: $($_.Exception.Message)"}
@@ -385,7 +385,7 @@ function Set-LMConfigOptions {
     }
 
 #This function returns different kinds of objects needed by various functions
-function Get-LMTemplate { #Complete
+function New-LMTemplate { #Complete
     [CmdletBinding()]
     param(
         # Param1 help description
@@ -485,7 +485,7 @@ function Get-LMTemplate { #Complete
             #The "Messages" portion of the file.
             $Messages = New-Object System.Collections.ArrayList
 
-            $DummyRow = Get-LMTemplate -Type DialogMessage
+            $DummyRow = New-LMTemplate -Type DialogMessage
 
             If ($null -eq $DummyRow.temperature){$DummyRow.temperature = 0.7}
             If ($null -eq $DummyRow.max_tokens){$DummyRow.max_tokens = -1}
@@ -552,7 +552,8 @@ function Get-LMTemplate { #Complete
             $Object.Add("SystemPrompt", $Global:LMStudioVars.ChatSettings.SystemPrompt)
             $Object.Add("UserPrompt", "")
             $Object.Add("DialogFile", $null)
-
+            $Object.Add("stream", $True)
+            $Object.Add("Markdown", (&{If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False}}))
 
         }
 
@@ -583,7 +584,7 @@ function Confirm-LMGlobalVariables ([switch]$ReturnBoolean) { #Complete, rewrote
 
     $Errors = New-Object System.Collections.ArrayList
     
-    $GlobalVarsTemplate = Get-LMTemplate -Type ConfigFile
+    $GlobalVarsTemplate = New-LMTemplate -Type ConfigFile
 
     If ($null -ne $Global:LMStudioVars){
 
@@ -665,7 +666,7 @@ function Import-LMHistoryFile { #Complete
 
     process {
     
-        $HistoryColumns = (Get-LMTemplate -Type HistoryEntry).psobject.Properties.Name
+        $HistoryColumns = (New-LMTemplate -Type HistoryEntry).psobject.Properties.Name
         
         If ($HistoryContent.Count -eq 1){
 
@@ -697,7 +698,7 @@ function Import-LMHistoryFile { #Complete
     
         $NewHistory = New-Object System.Collections.ArrayList
 
-        If ($HistoryContent.Count -eq 1){$NewHistory.Add((Get-LMTemplate -Type HistoryEntry)) | Out-Null}
+        If ($HistoryContent.Count -eq 1){$NewHistory.Add((New-LMTemplate -Type HistoryEntry)) | Out-Null}
 
         $HistoryContent | ForEach-Object {$NewHistory.Add($_) | Out-Null}
     }
@@ -755,7 +756,7 @@ function Repair-LMHistoryFile {
 
         If (Test-Path $FilePath){Move-Item $FilePath -Destination "$FilePath.old"}
 
-        Get-LMTemplate -Type HistoryEntry | ConvertTo-Json | Out-File -FilePath $FilePath
+        New-LMTemplate -Type HistoryEntry | ConvertTo-Json | Out-File -FilePath $FilePath
 
         :dfloop foreach ($File in $DialogFiles){
 
@@ -835,7 +836,7 @@ function Update-LMHistoryFile { #Complete, requires testing
     begin {
 
         #region Validate $Entry:
-        $StandardFields = (Get-LMTemplate -Type HistoryEntry).psobject.Properties.Name
+        $StandardFields = (New-LMTemplate -Type HistoryEntry).psobject.Properties.Name
 
         $EntryFields = $Entry.PSObject.Properties.Name
 
@@ -954,7 +955,7 @@ function Remove-LMHistoryEntry {
         $History = New-Object System.Collections.ArrayList
 
         #Create "Cancel" entry
-        $CancelEntry = Get-LMTemplate -Type HistoryEntry 
+        $CancelEntry = New-LMTemplate -Type HistoryEntry 
         $CancelEntry.Title = "Select This Entry To Cancel"
         ("Created", "Modified", "Opener","Model","FilePath").ForEach({$CancelEntry.$_ = ""})
         $History.Add($CancelEntry) | Out-Null
@@ -1035,7 +1036,7 @@ function Import-LMDialogFile {
 
 begin {
 
-    $DialogTemplate = Get-LMTemplate -Type ChatDialog
+    $DialogTemplate = New-LMTemplate -Type ChatDialog
 
     try {$Dialog = Get-Content $FilePath -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop}
     catch {throw "Unable to read $FilePath : $($_.Exception.Message)"}
@@ -1765,30 +1766,22 @@ end {
 function Get-LMGreeting {
     [CmdletBinding(DefaultParameterSetName="Auto")]
     param (
-        [Parameter(Mandatory=$true, ParameterSetName='Auto')]
-        [switch]$UseConfig,
-        
-        [Parameter(Mandatory=$true, ParameterSetName='Manual')]
+        [Parameter(Mandatory=$false, ParameterSetName='Settings')]
         [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
-        [string]$Server,
+        [hashtable]$Settings,
         
-        [Parameter(Mandatory=$true, ParameterSetName='Manual')]
-        [ValidateRange(1, 65535)][int]$Port,
-        
-        [Parameter(Mandatory=$false, ParameterSetName='Manual')]
+        [Parameter(Mandatory=$false, ParameterSetName='Settings')]
         [ValidateScript({ if (!(Test-Path -Path $_)) { throw "Greeting file path does not exist" } else { $true } })]
-        [string]$GreetingFile,
-        
-        [Parameter(Mandatory=$false, ParameterSetName='Manual')]
-        [boolean]$Stream
+        [string]$GreetingFile
+
         )
 
 begin {
 
     #region Evaluate and set Variables
-    switch ($UseConfig.IsPresent){
+    switch (($PSBoundParameters.ContainsKey('Settings'))){
 
-        $True {
+        $False {
             If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "Config file variables not loaded, run [Import-ConfigFile] to load them"}
             
             $Server = $Global:LMStudioVars.ServerInfo.Server
@@ -1808,31 +1801,153 @@ begin {
 
         }
 
-        $False {
+        $True {
+            #region Validate Settings
+            #region Validate Settings structure
+            $SettingsFields = (New-LMTemplate -Type ManualSettings).GetEnumerator().Name
+            try {$ProvidedFields =$Settings.GetEnumerator().Name}
+            catch {throw "[Get-LMResponse] -Settings object is missing requisite properties and methods"}
+
+            $FieldComparison = Compare-Object -ReferenceObject $SettingsFields -DifferenceObject $ProvidedFields
+
+            If ($FieldComparison.Count -gt 0){throw "[Get-LMResponse] properties on -Settings object is missing properties ($($FieldComparison.InputObject -join ', '))"}
+            #endregion
+
+            #region Evaluate the provided settings
+            $Warnings = New-Object System.Collections.ArrayList
+            #endregion
+
+            #region Check Server
+            If ($Null -eq $Settings.server -or $Settings.server.Length -eq 0){$Errors.Add("Server is null or empty") | Out-Null}
+            #endregion
+
+            #region Check Port
+            If ($Null -eq $Settings.port -or $Settings.port.Length -eq 0){$Errors.Add("Port is null or empty") | Out-Null}
+            Else {
+            
+                try {$PortAsInt = [int]$Settings.port}
+                catch {throw "Port is not convertable to integer"}
+                
+                If ($PortAsInt -le 0 -or $PortAsInt -gt 65535){
+                    throw "Port not 1-65536 ($($PortAsInt))"
+                }
+            }
+            #endregion
+
+            #region Check Max_Tokens
+            If ($Settings.max_tokens.Length -eq 0 -or $null -eq $Settings.max_tokens){
+                $Settings.max_tokens = -1
+                $Warnings.Add("Max_Tokens is null or empty") | Out-Null
+            }
+            Else {
+            
+                try {$TokensAsInt = [int]$Settings.max_tokens}
+                catch {
+                    $Warnings.Add("Port is not convertable to integer") | Out-Null
+                    $Settings.max_tokens = -1
+                    continue
+                }
+                
+                If ($TokensAsInt -le -2){
+                    $Warnings.Add("Max_Tokens is less than or equal to -2 ($($TokensAsIntAsInt))")
+                    $Settings.max_tokens = -1
+                }
+            }
+            #endregion
+
+            #region Check ContextDepth
+            If ($Settings.ContextDepth.Length -eq 0 -or $null -eq $Settings.ContextDepth){
+                $Settings.ContextDepth = 10
+                $Warnings.Add("ContextDepth is null or empty") | Out-Null
+            }
+            Else {
+            
+                try {$ContextDepthAsInt = [int]$Settings.ContextDepth}
+                catch {
+                    $Warnings.Add("ContextDepth is not convertable to integer") | Out-Null
+                    $Settings.ContextDepth = 10
+                    continue
+                }
+                
+                If ($ContextDepthAsInt -le 0){
+                    $Warnings.Add("ContextDepth is less than or equal to 0 ($($TokensAsIntAsInt))")
+                    $Settings.ContextDepth = 10
+                }
+            }
+            #endregion
+            
+            #region Check Temperature
+            If ($Settings.temperature.Length -eq 0 -or $null -eq $Settings.temperature){
+                $Settings.temperature = 0.7
+                $Warnings.Add("Temperature is null or empty") | Out-Null
+            }
+            Else {
+            
+                try {$TempAsDouble = [system.math]::Round([double]$Settings.temperature, 1)}
+                catch {
+                    $Warnings.Add("Temperature isn't convertable to a double") | Out-Null
+                    $Settings.temperature = 0.7
+                    continue
+                }
+                
+                If ($TempAsDouble -lt 0 -or $TempAsDouble -gt 2){
+                    $Warnings.Add("Temperature isn't in a range of 0-2 ($($TempAsDouble))")
+                    $Settings.temperature = 0.7
+                }
+            }
+            #endregion
+
+            #region Check System Prompt
+            If ($Settings.SystemPrompt.Length -eq 0 -or $null -eq $Settings.SystemPrompt){
+                $Settings.SystemPrompt = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
+                $Warnings.Add("System Prompt is null or empty") | Out-Null
+            }
+            #endregion
+
+            #region Check Stream
+            If ($Settings.stream.GetType().Name -ne "Boolean"){$Warnings.Add("Stream value is not boolean")}
+            #endregion
+
+            #region Check Markdown
+            If ($Settings.Markdown.GetType().Name -ne "Boolean"){$Warnings.Add("Markdown value is not boolean")}
+            #endregion
+            #endregion Validate Settings
+
+            #region Set Variables
             $UseGreetingFile = $PSBoundParameters.ContainsKey('GreetingFile')
             $StreamCachePath = (Get-Location).Path + '\lmstream.cache'
-            If (!$PSBoundParameters.ContainsKey('Stream')){$Stream = $True} #Stream by Default
-            $Temperature = 0.7 #Default
-            $MaxTokens = -1 #Default
+            $Stream = $Settings.stream
+            $Temperature = $Settings.temperature
+            $MaxTokens = $Settings.max_tokens
+            $Server = $Settings.server
+            $Port = $Settings.port
             $Endpoint = "$Server" + ":" + "$Port"
             $CompletionURI = "http://$Endpoint/v1/chat/completions"
-            $ContextDepth = 10 #Default
-            $MarkDown = &{If ($PSVersionTable.PSVersion.Major -ge 7){$true} else {$False}}
+            $ContextDepth = $Settings.ContextDepth
+            $MarkDown = $Settings.markdown
             $ShowSavePrompt = $True
-            $SystemPrompt = "You are a helpful, smart, kind, and efficient AI assistant. You always fulfill the user's requests to the best of your ability."
+            $SystemPrompt = $Settings.SystemPrompt
+            #endregion Set Variables
         }
     
     }
     #endregion
 
-    #region Load greeting file
+    #region Load or create greeting file
     If ($UseGreetingFile){
 
         try {$GreetingData = Import-csv $GreetingFile -ErrorAction Stop}
         catch {
-            Write-Host "Notice: Unable to import greeting file" -ForegroundColor Blue
             $UseGreetingFile = $False
+            $GreetingData = New-LMTemplate -Type ChatGreeting
+            $NewFile = $True
+
             }
+    }
+    Else {
+            $GreetingData = New-LMTemplate -Type ChatGreeting
+            $NewFile = $True
+  
     }
    #endregion
  
@@ -1846,7 +1961,7 @@ process {
 
     $GreetingPrompt = New-LMGreetingPrompt
     
-    $Body = Get-LMTemplate -Type Body
+    $Body = New-LMTemplate -Type Body
     $Body.model = $Model
     $Body.temperature = $Temperature
     $Body.max_tokens =  $MaxTokens
@@ -1855,61 +1970,56 @@ process {
     $Body.messages[1].content = $GreetingPrompt
     #endregion
 
-    #region If using a Greeting File, prep the Body with context    
-    If ($UseGreetingFile){
+    #region Provision the greeting file, even if we don't save it ($UseGreetingFile)
+    If ($NewFile){
 
-        If ($NewFile){
+        $GreetingData[0].TimeStamp = (Get-Date).ToString()
+        $GreetingData[0].System = $Body.messages[0].content
+        $GreetingData[0].User = $Body.messages[1].content
+        $GreetingData[0].Model = "$Model"        
+        $GreetingData[0].Temperature = $Temperature
+        $GreetingData[0].Max_Tokens = $MaxTokens
+        $GreetingData[0].Stream = $Stream
+        $GreetingData[0].ContextDepth = $ContextDepth
 
-            $GreetingData[0].TimeStamp = (Get-Date).ToString()
-            $GreetingData[0].System = $Body.messages[0].content
-            $GreetingData[0].User = $Body.messages[1].content
-            $GreetingData[0].Model = "$Model"        
-            $GreetingData[0].Temperature = $Temperature
-            $GreetingData[0].Max_Tokens = $MaxTokens
-            $GreetingData[0].Stream = $Stream
-            $GreetingData[0].ContextDepth = $ContextDepth
+    }
 
-        }
+    Else { 
 
-        Else { 
+        #region Create a new entry to append to existing greeting file:
+        $GreetingEntry = New-LMTemplate -Type ChatGreeting
 
-            #region Create a new entry to append to existing greeting file:
-            $GreetingEntry = Get-LMTemplate -Type ChatGreeting
+        $GreetingEntry.TimeStamp = (Get-Date).ToString()
+        $GreetingEntry.System = $Body.messages[0].content
+        $GreetingEntry.User = $Body.messages[1].content
+        $GreetingEntry.Model = "$Model"        
+        $GreetingEntry.Temperature = $Temperature
+        $GreetingEntry.Max_Tokens = $MaxTokens
+        $GreetingEntry.Stream = $Stream
+        $GreetingEntry.ContextDepth = $ContextDepth
+        #endregion
 
-            $GreetingEntry.TimeStamp = (Get-Date).ToString()
-            $GreetingEntry.System = $Body.messages[0].content
-            $GreetingEntry.User = $Body.messages[1].content
-            $GreetingEntry.Model = "$Model"        
-            $GreetingEntry.Temperature = $Temperature
-            $GreetingEntry.Max_Tokens = $MaxTokens
-            $GreetingEntry.Stream = $Stream
-            $GreetingEntry.ContextDepth = $ContextDepth
-            #endregion
-            
-            #region Put the previous requests in Q/A order:
-            $ContextEntries = $GreetingData | Select-Object -Last ([int]($ContextDepth / 2))
+    }
 
-            $ContextMessages = New-Object System.Collections.ArrayList
-            
-            $ContextMessages.Add([pscustomobject]@{"role" = "system"; "content" = "$($Body.messages[0].content)"}) | Out-Null
+    #region Put the previous requests in Q/A order:
+    $ContextEntries = $GreetingData | Select-Object -Last ([int]($ContextDepth / 2))
 
-            Foreach ($Entry in $ContextEntries){
+    $ContextMessages = New-Object System.Collections.ArrayList
+    
+    $ContextMessages.Add([pscustomobject]@{"role" = "system"; "content" = "$($Body.messages[0].content)"}) | Out-Null
 
-                $ContextMessages.Add([pscustomobject]@{"role" = "user"; "content" = "$($Entry.User)"})  | Out-Null
-                $ContextMessages.Add([pscustomobject]@{"role" = "assistant"; "content" = "$($Entry.Assistant)"})  | Out-Null
+    Foreach ($Entry in $ContextEntries){
 
-            }
+        $ContextMessages.Add([pscustomobject]@{"role" = "user"; "content" = "$($Entry.User)"})  | Out-Null
+        $ContextMessages.Add([pscustomobject]@{"role" = "assistant"; "content" = "$($Entry.Assistant)"})  | Out-Null
 
-            $ContextMessages.Add([pscustomobject]@{"role" = "user"; "content" = "$($Body.messages[1].content)"})  | Out-Null
+    }
 
-            $Body.messages = $ContextMessages
-            #endregion
+    $ContextMessages.Add([pscustomobject]@{"role" = "user"; "content" = "$($Body.messages[1].content)"})  | Out-Null
 
+    $Body.messages = $ContextMessages
+    #endregion
 
-
-        }
-
-    } #Close If UseGreetingFile
     #endregion
 
     Write-Host "You: " -ForegroundColor Green -NoNewline; Write-Host "$GreetingPrompt"
@@ -1922,7 +2032,11 @@ process {
         $False {$ServerResponse = Invoke-LMBlob -CompletionURI $CompletionURI -Body $Body -StreamSim}
     }
 
-    Write-Host ""
+    $ContextMessages.Add([pscustomobject]@{"role" = "assistant"; "content" = "$ServerResponse"})  | Out-Null
+
+    #Write response out as markdown
+    If ($MarkDown){Show-LMDialog -DialogMessages ($ContextMessages | Select-Object -Last 2) -AsMarkdown}
+    Else {Write-Host ""}
 }
 
 end {
@@ -2153,7 +2267,7 @@ function Convert-LMDialogToBody {
     
     begin {
 
-        $Body = Get-LMTemplate -Type Body
+        $Body = New-LMTemplate -Type Body
 
         $Body.model = $Settings.model
         $Body.temperature = $Settings.temperature
@@ -2246,7 +2360,7 @@ function Convert-LMDialogToHistoryEntry { #Complete
     [string]$DialogFilePath
     )
 
-    $HistoryEntry = Get-LMTemplate -Type HistoryEntry
+    $HistoryEntry = New-LMTemplate -Type HistoryEntry
     
     $HistoryEntry.Created = $DialogObject.Info.Created
     $HistoryEntry.Modified = $DialogObject.Info.Modified
@@ -2906,7 +3020,7 @@ function Start-LMChat {
             #This section can accommodate a failure to create a new Dialog file
             $false { #If not Resume Chat, then Create New Dialog File
 
-                    $Dialog = Get-LMTemplate -Type ChatDialog
+                    $Dialog = New-LMTemplate -Type ChatDialog
                     
                     $Dialog.Info.Model = $Model
                     $Dialog.Info.Modified = "$((Get-Date).ToString())"
@@ -2967,7 +3081,7 @@ function Start-LMChat {
         #endregion
         
         #region Initiate Greeting
-        If ($Global:LMStudioVars.ChatSettings.Greeting){Get-LMGreeting -UseConfig}
+        If ($Global:LMStudioVars.ChatSettings.Greeting){Get-LMGreeting}
         #endregion
     
     } #begin
@@ -3081,7 +3195,7 @@ function Start-LMChat {
             #endregion
 
             #region Construct the user Dialog Message and append to the Dialog:
-            $UserMessage = Get-LMTemplate -Type DialogMessage
+            $UserMessage = New-LMTemplate -Type DialogMessage
         
             $UserMessage.TimeStamp = (Get-Date).ToString()
             $UserMessage.temperature = $Global:LMStudioVars.ChatSettings.temperature
@@ -3114,7 +3228,7 @@ function Start-LMChat {
             If ($LMOutput -eq "[stream_interrupted]"){continue main}
 
             #region Construct the assistant Dialog message and append to the Dialog:
-            $AssistantMessage = Get-LMTemplate -Type DialogMessage
+            $AssistantMessage = New-LMTemplate -Type DialogMessage
             
             $AssistantMessage.TimeStamp = (Get-Date).ToString()
             $AssistantMessage.temperature = $Global:LMStudioVars.ChatSettings.temperature
@@ -3229,7 +3343,7 @@ function Get-LMResponse {
         If (($PSBoundParameters.ContainsKey('Settings'))){
 
             #region Validate Settings structure
-            $SettingsFields = (Get-LMTemplate -Type ManualSettings).GetEnumerator().Name
+            $SettingsFields = (New-LMTemplate -Type ManualSettings).GetEnumerator().Name
             try {$ProvidedFields =$Settings.GetEnumerator().Name}
             catch {throw "[Get-LMResponse] -Settings object is missing requisite properties and methods"}
 
@@ -3349,7 +3463,7 @@ function Get-LMResponse {
 
             If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "Config file variables not loaded, run [Import-ConfigFile] to load them"}
 
-            $Settings = Get-LMTemplate -Type ManualSettings
+            $Settings = New-LMTemplate -Type ManualSettings
             $Settings.max_tokens = $Global:LMStudioVars.ChatSettings.max_tokens
             $Settings.ContextDepth = $Global:LMStudioVars.ChatSettings.ContextDepth
             $Settings.temperature = $Global:LMStudioVars.ChatSettings.temperature
@@ -3382,7 +3496,7 @@ function Get-LMResponse {
         } 
         Else {
             #Create Dialog
-            $Dialog = Get-LMTemplate -Type ChatDialog
+            $Dialog = New-LMTemplate -Type ChatDialog
             $Dialog.Info.Model = $Model
             $Dialog.Info.Modified = "$((Get-Date).ToString())"
             $Dialog.Messages[0].temperature = $Settings.temperature
@@ -3410,7 +3524,7 @@ function Get-LMResponse {
     process {
 
         #region Construct the user Dialog Message and append to the Dialog:
-        $UserMessage = Get-LMTemplate -Type DialogMessage
+        $UserMessage = New-LMTemplate -Type DialogMessage
       
         $UserMessage.TimeStamp = (Get-Date).ToString()
         $UserMessage.temperature = $Settings.temperature
@@ -3446,7 +3560,7 @@ function Get-LMResponse {
         #endregion
 
         #region Construct the assistant Dialog message and append to the Dialog:
-        $AssistantMessage = Get-LMTemplate -Type DialogMessage
+        $AssistantMessage = New-LMTemplate -Type DialogMessage
         
         $AssistantMessage.TimeStamp = (Get-Date).ToString()
         $AssistantMessage.temperature = $Settings.temperature

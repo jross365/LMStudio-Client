@@ -79,6 +79,16 @@ I fixed the two problems with the **Edit-LMSystemPrompt** function, involving th
 
 I also fixed object typing/sorting for dates in **Select-LMHistoryEntry**. These display in descending order from the "Modified" date in the history file, now.
 
+**Follow-Up**
+
+I struck a compromise with **Get-LMGreeting**: instead of completely wiping out any non-config file configuration, I provided an alternative means to provide a *ManualSettings* file (like with **Get-LMResponse**). 
+
+I also integrated markdown into the function. This took a bit more work than I'd expected; the *$UseGreetingFile* variable became much less important. Formatting/ordering now requires the creation of a Greeting File in memory even if we have no intention of saving the file. Given that the function is a "toy" and a prototype, it's not a problem.
+
+✅ I renamed **Get-LMTemplate** to **New-LMTemplate** because, well, I kept typing it that way. That's what it should be named. There are other function names like this, and I'll rename them as better names occur to me.
+
+
+
 ---
 ### 06/15/2024
 
@@ -96,7 +106,7 @@ The next step is to address the following bugs and features:
 
 ✅ Fix and re-write **Edit-LMSystemPrompt -Remove -Bulk** (*doesn't work*)
 
-⬜️ Convert **Get-LMGreeting** to only use the Config File
+✅ Convert **Get-LMGreeting** to only use the Config File
 
 ⬜️ Add Set Tags (**:tags**) to **Set-LMCLIOption**, **Get-LMHelp**
 
