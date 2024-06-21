@@ -972,7 +972,7 @@ function Remove-LMHistoryEntry {
 
             $True {
 
-                $RemoveEntries = $History | Out-GridView -Title "Select History Entries for Removal/Deletion" -OutputMode Multiple
+                $RemoveEntries = $History | Select-Object @{N="Created"; E={Get-Date ($_.Created)}}, @{N="Modified"; E={Get-Date ($_.Modified)}}, Title, Opener, FilePath, @{N = "Tags"; E = {(($_.Tags) -join ', ') -replace 'dummyvalue, ','' -replace 'dummyvalue',''}} | Out-GridView -Title "Select History Entries for Removal/Deletion" -OutputMode Multiple
 
                 $CancelEntries = $RemoveEntries | Where-Object {$_.Title -eq "Select This Entry To Cancel"}
 
@@ -980,7 +980,7 @@ function Remove-LMHistoryEntry {
 
                 Foreach ($Entry in $RemoveEntries){
 
-                    $History.Remove($Entry) | Out-Null
+                    $History = $History | Where-Object {$_.FilePath -ne $Entry.FilePath}
 
                     If ($DeleteDialogFiles.IsPresent){
 
@@ -2249,11 +2249,8 @@ function Edit-LMSystemPrompt {
     }
 }
 
-#This function gets tags from a dialog file
-
 
 #This function consumes a Dialog, and returns a fully-furnished $Body object
-#Maybe I should make one of these for the Greetings, as well :-)
 function Convert-LMDialogToBody {
 
     [CmdletBinding(DefaultParameterSetName="Auto")]
@@ -2413,7 +2410,7 @@ function Select-LMHistoryEntry {
 
         $HistoryData = New-Object System.Collections.ArrayList
 
-        try {$HistoryEntries = Import-LMHistoryFile -FilePath $HistoryFile | Select-Object @{N="Created"; E={Get-Date ($_.Created)}}, @{N="Modified"; E={Get-Date ($_.Modified)}}, Title, Opener, FilePath, @{N = "Tags"; E = {$_.Tags -join ', '}}}
+        try {$HistoryEntries = Import-LMHistoryFile -FilePath $HistoryFile | Select-Object @{N="Created"; E={Get-Date ($_.Created)}}, @{N="Modified"; E={Get-Date ($_.Modified)}}, Title, Opener, FilePath, @{N = "Tags"; E = {(($_.Tags) -join ', ') -replace 'dummyvalue, ','' -replace 'dummyvalue',''}}}
         catch {throw "History file is not the correct file format [$HistoryFile]"}
     
         $HistoryEntries | ForEach-Object {$HistoryData.Add($_) | out-null}
@@ -3043,7 +3040,7 @@ function Start-LMChat {
                     # This is why it's outside of (!($SkipSavePrompt.IsPresent))
 
                     #If we didn't opt to skip this prompt:
-                    switch ($Global:LMStudioVars.ChatSettings.SavePrompt){
+                    switch (($Global:LMStudioVars.ChatSettings.SavePrompt -and $PrivacyOn -eq $False)){
 
                         $True {
 
@@ -3078,7 +3075,7 @@ function Start-LMChat {
 
                     Else {
                         $DialogFileExists = Test-Path $DialogFilePath
-                        If ($PrivacyOn -eq $True){Write-Warning "Dialog file not saved to file. In the User prompt, enter ':Save' to save."}
+                        If ($PrivacyOn -eq $True){Write-Host "Privacy mode enabled. Dialog file will not be saved."}
                     }
 
                     } #Close Case $False
@@ -3184,11 +3181,12 @@ function Start-LMChat {
                 continue main
 
             }
+            #endregion
 
-            #Add/Remove tag:
+            #region Add/Remove tags:
             ElseIf ($OptTriggered -and ($OptionKey -ieq ':atag' -or $OptionKey -ieq ':rtag')){
 
-                try {$TagText = "$($UserInput.Substring(5,$($UserInput.Length - 1)))"}
+                try {$TagText = "$($UserInput.Substring(5,$($UserInput.Length - 5)))"}
                 catch {
                     Write-host "$OptionKey syntax was incorrect. Use :help" -ForegroundColor Yellow
                     continue :main
@@ -3196,7 +3194,12 @@ function Start-LMChat {
                 }
 
                 If ($TagText -match ','){[array]$Tags = ($TagText -split ',').Trim().Where({$_ -ne ""})}
-                Else {[array]$Tags += $TagText.Trim()}
+                Else {
+                
+                    $Tags = @()
+                    $Tags += "$($TagText.Trim())"
+
+                }
 
                 If ($null -eq $Tags -or $Tags.Count -eq 0){
                     Write-host ":$OptionKey was provided no tags. Use :help" -ForegroundColor Yellow
@@ -3204,24 +3207,76 @@ function Start-LMChat {
 
                 }
 
-                If ($OptionKey -eq 'atag:'){
+                $TagUpdate = $False
+
+                If ($OptionKey -eq ':atag'){
+
                     $Tags.Foreach({
                         
                         $Tag = $_
-                        $Dialog.Info.Tags += "$Tag"}
+                        $Dialog.Info.Tags += "$Tag"
+                    
+                    })
+
+                    $TagUpdate = $True
+                }
                         
-                        )}
-                        
-                If ($OptionKey -eq 'rtag:'){
+                If ($OptionKey -eq ':rtag'){
                     
                     $Tags.Foreach({
                     
                         $Tag = $_
-                        $Dialog.Info.Tags = $Dialog.Info.Tags | Where-Object {$_ -ine "$Tag"}}
-                    
-                    )}
+                        $Dialog.Info.Tags = $Dialog.Info.Tags | Where-Object {$_ -ine "$Tag"}
+                
+                    })
+
+                    $TagUpdate = $True
+                
+                }
+
+                If ($TagUpdate){
+
+                    #region Update Dialog File, History File
+                    If ($DialogFileExists -and $PrivacyOn -eq $False){
+
+                        # Save the Dialog File
+                        try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
+                        catch {
+                            Write-Warning "Dialog file save failed; Disabling file saving (:Save to recreate a Dialog file)"
+                            $DialogFileExists = $False
+                        }
+
+                        # Update the History File
+                        If ($DialogFileExists){ 
+                        
+                            try {Update-LMHistoryFile -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
+                            catch { #Sleep and then try once more, in case we're stepping on our own feet (multiple)
+                                
+                                Start-Sleep -Seconds 2
+
+                                try {Update-LMHistoryFile -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
+                                catch {
+                                
+                                    Write-Warning "Unable to append Dialog updates to History file; Disabling file-saving (:Save to recreate a Dialog file)"
+                                    $DialogFileExists = $False
+                                }
+                            }
+
+                        }
+
+                    }
+                    Else {Write-Host "Unable to complete $OptionKey\: Dialog File cannot be saved" -ForegroundColor Yellow}
+
+                    #endregion
+
+
+                }
+
+                Remove-Variable TagUpdate,Tag,Tags,OptionKey,TagText -ErrorAction SilentlyContinue
+                continue :main
 
             }
+            #endregion
 
             Else { 
 
@@ -3232,9 +3287,7 @@ function Start-LMChat {
                     switch ($Option.Result){
 
                         $True {Write-Host "Set option succeeded" -ForegroundColor Green}
-
                         $False {Write-Host "Set option failed: $($Option.Message)" -ForegroundColor Green}
-
                         Default {Write-Host "Strange or no result returned from [Set-LMCLIOption]" -ForegroundColor Yellow}
 
                     }

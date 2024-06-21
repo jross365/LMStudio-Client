@@ -85,7 +85,14 @@ The options are named as follows:
 
 *Add* and *Remove* can also take comma-separated tags.
 
-⬜️ I need to test the new tags parameters, and confirm they not only get written to the Dialog File, but they also appear in the History File.
+✅ I need to test the new tags parameters, and confirm they not only get written to the Dialog File, but they also appear in the History File.
+
+**Follow-Up**
+Finished testing tags. I added a few improvements to allow sorting/filtering by date with the **Remove-LMHistoryEntry** function.
+
+I also tested the *:priv* option, and it works as intended. I needed to change/clean up the warning output, and accommodate for it in the save prompt code block.
+
+⬜️ I need to add *:title* to the options, this is something I forgot. I also need to come up with a better options scheme, the four letteres are very limiting.
 
 ---
 ### 06/16/2024
@@ -101,8 +108,6 @@ I struck a compromise with **Get-LMGreeting**: instead of completely wiping out 
 I also integrated markdown into the function. This took a bit more work than I'd expected; the *$UseGreetingFile* variable became much less important. Formatting/ordering now requires the creation of a Greeting File in memory even if we have no intention of saving the file. Given that the function is a "toy" and a prototype, it's not a problem.
 
 ✅ I renamed **Get-LMTemplate** to **New-LMTemplate** because, well, I kept typing it that way. That's what it should be named. There are other function names like this, and I'll rename them as better names occur to me.
-
-
 
 ---
 ### 06/15/2024
@@ -123,9 +128,9 @@ The next step is to address the following bugs and features:
 
 ✅ Convert **Get-LMGreeting** to only use the Config File
 
-🚧 Add Set Tags (**:tags**) to **Set-LMCLIOption**, **Get-LMHelp**
+✅ Add Set Tags (**:tags**) to **Set-LMCLIOption**, **Get-LMHelp**
 
-⬜️ Test and validate the **:priv** command
+✅ Test and validate the **:priv** command
 
 ⬜️ Write the **Search-LMHistory** function
 
