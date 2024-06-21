@@ -1364,9 +1364,12 @@ SWITCHES
 :show   - Shows the current Chat Settings
 :quit   - Quits the application
 :selp   - Select a System Prompt
+:tags   - Show Tags
 
 STRINGS
 :newp <[str]>   - Create a System Prompt
+:atag <[str]>   - Add a Tag     (comma-separate 2+)
+:rtag <[str]>   - Remove a Tag  (comma-separate 2+)
 
 TOGGLES
 :gret <true or false>   - Toggles start-up Greeting
@@ -2245,6 +2248,9 @@ function Edit-LMSystemPrompt {
 
     }
 }
+
+#This function gets tags from a dialog file
+
 
 #This function consumes a Dialog, and returns a fully-furnished $Body object
 #Maybe I should make one of these for the Greetings, as well :-)
@@ -3167,6 +3173,54 @@ function Start-LMChat {
                     }
 
                 }
+            }
+
+            #region Show tags:
+            ElseIf ($OptTriggered -and $OptionKey -ieq ':tags'){
+
+                Write-Host "Tags: " -ForegroundColor Magenta -NoNewline
+                Write-Host "$($Dialog.Info.Tags -join ', ')"
+
+                continue main
+
+            }
+
+            #Add/Remove tag:
+            ElseIf ($OptTriggered -and ($OptionKey -ieq ':atag' -or $OptionKey -ieq ':rtag')){
+
+                try {$TagText = "$($UserInput.Substring(5,$($UserInput.Length - 1)))"}
+                catch {
+                    Write-host "$OptionKey syntax was incorrect. Use :help" -ForegroundColor Yellow
+                    continue :main
+                    
+                }
+
+                If ($TagText -match ','){[array]$Tags = ($TagText -split ',').Trim().Where({$_ -ne ""})}
+                Else {[array]$Tags += $TagText.Trim()}
+
+                If ($null -eq $Tags -or $Tags.Count -eq 0){
+                    Write-host ":$OptionKey was provided no tags. Use :help" -ForegroundColor Yellow
+                    continue :main
+
+                }
+
+                If ($OptionKey -eq 'atag:'){
+                    $Tags.Foreach({
+                        
+                        $Tag = $_
+                        $Dialog.Info.Tags += "$Tag"}
+                        
+                        )}
+                        
+                If ($OptionKey -eq 'rtag:'){
+                    
+                    $Tags.Foreach({
+                    
+                        $Tag = $_
+                        $Dialog.Info.Tags = $Dialog.Info.Tags | Where-Object {$_ -ine "$Tag"}}
+                    
+                    )}
+
             }
 
             Else { 

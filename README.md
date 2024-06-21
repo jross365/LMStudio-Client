@@ -73,6 +73,21 @@ Check out my **development journal** (below) to see where I am and what I'm work
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 06/21/2024
+
+I was forced to compromise and integrate tags-management directly into **Start-LMChat**. I wanted to integrate it into **Set-LMCLIOption**, but the way I'd have to go about it would be roundabout and "hacky". I would have had to integrate some string splits and joins to keep the *-UserInput* parameter consistent with all of the other options, where the Dialog File path and the tags could be moved into the function and interpreted correctly. It would have keep the code for **Start-LMChat** shorter, but at a high cost to how I've tried to write this module.
+
+The options are named as follows:
+
+**:tags** - Show the assigned tags
+**:atag** - Add tags
+**:rtag** - Remove tags
+
+*Add* and *Remove* can also take comma-separated tags.
+
+⬜️ I need to test the new tags parameters, and confirm they not only get written to the Dialog File, but they also appear in the History File.
+
+---
 ### 06/16/2024
 
 I fixed the two problems with the **Edit-LMSystemPrompt** function, involving the **-Remove** parameter. Bulk removal (and re-adding for any that weren't selected) has been sorted.
@@ -108,7 +123,7 @@ The next step is to address the following bugs and features:
 
 ✅ Convert **Get-LMGreeting** to only use the Config File
 
-⬜️ Add Set Tags (**:tags**) to **Set-LMCLIOption**, **Get-LMHelp**
+🚧 Add Set Tags (**:tags**) to **Set-LMCLIOption**, **Get-LMHelp**
 
 ⬜️ Test and validate the **:priv** command
 
