@@ -1025,14 +1025,14 @@ function Remove-LMHistoryEntry {
 
 #$This function imports a dialog file, converts it to a non-fixed sized format [array => arraylist], and then returns it
 function Import-LMDialogFile {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory=$true)]
-        [ValidateScript({ if (!(Test-Path -Path $_)) { throw "Dialog file path does not exist" } else { $true } })]
-        [string]$FilePath,
+[CmdletBinding()]
+param (
+    [Parameter(Mandatory=$true)]
+    [ValidateScript({ if (!(Test-Path -Path $_)) { throw "Dialog file path does not exist" } else { $true } })]
+    [string]$FilePath,
 
-        [Parameter(Mandatory=$false)][switch]$AsTest
-        )
+    [Parameter(Mandatory=$false)][switch]$AsTest
+    )
 
 begin {
 
@@ -1168,17 +1168,47 @@ function Get-LMModel {
 }
 
 #Searches the HistoryFile for strings and provides multiple ways to output the contents
-function Search-LMChatDialog { #NOT STARTED
+function Search-LMChatDialog { #Started, ways to go
+[CmdletBinding()]
+param (
+    [Parameter(Mandatory=$true)]
+    [ValidateSet('Any','Exact')]
+    [string]$Match,
 
-    #Params: 
-     #History File (not mandatory, defaults to Global:LMstudiovars)
-     #Before: Integer, dialogs (line pairs) to capture before each word or phrase-line
-     #After: Integer, dialogs (line pairs) to capture after each word or phrase-line
-     #Potential parameter: "MarkWord" - console (and textual symbol) indicators to show the word's use
-     #ResultSetSize: Integer, how many results to show in each "set" (press enter to continue)
-     #SaveTo: File location to save the output
-     #ReturnResults - return the results (as an array?)
-    #
+    [Parameter(Mandatory=$true)]
+    [ValidateScript({ if ($_.GetType().Name -ne "String" -and $_.GetType().BaseType.Name -ne "Array") { throw "'-SearchTerms' parameter type must be a string or an array" } else { $true } })]
+    $SearchTerms,
+
+    [Parameter(Mandatory=$False)]
+    [ValidateSet('Assistant','User','All')]
+    [string]$SearchScope = "All",
+
+    [Parameter(Mandatory=$false)]
+    [ValidateScript({ if ($_.GetType().Name -ne "DateTime" -and (try {$ConvToBDate = Get-Date "$_" -ErrorAction Stop; return $true} catch {return $false}) -eq $False) { throw "'-Before' parameter is not a valid date" } else { $true } })]
+    $BeforeDate,
+
+    [Parameter(Mandatory=$false)]
+    [ValidateScript({ if ($_.GetType().Name -ne "DateTime" -and (try {$ConvToADate = Get-Date "$_" -ErrorAction Stop; return $true} catch {return $false}) -eq $False) { throw "'-After' parameter is not a valid date" } else { $true } })]
+    $AfterDate,
+
+    [Parameter(Mandatory=$false)]
+    [int]$PriorContext = 0,
+
+    [Parameter(Mandatory=$false)]
+    [int]$LatterContext = 0,
+    
+    [Parameter(Mandatory=$false)]
+    [int]$ResultSetSize = 0
+
+    #Need output parameter(s)
+
+)
+begin {}
+
+process {}
+
+end {}
+
 }
 
 #This function invokes Windows Forms Open and SaveAs for files:

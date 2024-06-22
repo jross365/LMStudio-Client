@@ -73,6 +73,17 @@ Check out my **development journal** (below) to see where I am and what I'm work
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 06/22/2024
+
+Got a start on **Search-LMHistory**. This could get very complicated.
+
+So far I'm working on the parameters. I need to set the output parameters (File/Console?). I think this function is going to be quite long.
+
+One thing I want to do is replace the search terms with CAPITALIZED versions of the word to make the output stand out. I could also include markdown (asterisk asterisk).
+
+Things to do today, will pick this up.
+
+---
 ### 06/21/2024
 
 I was forced to compromise and integrate tags-management directly into **Start-LMChat**. I wanted to integrate it into **Set-LMCLIOption**, but the way I'd have to go about it would be roundabout and "hacky". I would have had to integrate some string splits and joins to keep the *-UserInput* parameter consistent with all of the other options, where the Dialog File path and the tags could be moved into the function and interpreted correctly. It would have keep the code for **Start-LMChat** shorter, but at a high cost to how I've tried to write this module.
