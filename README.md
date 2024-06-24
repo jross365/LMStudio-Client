@@ -73,6 +73,19 @@ Check out my **development journal** (below) to see where I am and what I'm work
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 06/23/2024
+
+I didn't have a lot of time today, but I worked more on **Search-LMHistory**.
+
+The *begin {}* block fundamentals are complete (checking/importing files, defining variables). I've got the initial *foreach {}* loop defined in the *process {}* block. This is where comparison operator logic comes into play (**-Match**).
+
+I've added a few more token parameters, like **-SaveAs** and **-WriteProgress**. I *may* 💡 include a **-WriteWarnings** parameter to output what dialog files are missing or bad, if any.
+
+Most of the formatting/output will be in the *end {}* block. I may include a 💡 **-NoConsole** switch parameter to suppress console output (and to avoid retaining data in memory).
+
+That's all for now!
+
+---
 ### 06/22/2024
 
 Got a start on **Search-LMHistory**. This could get very complicated.
@@ -91,7 +104,9 @@ I was forced to compromise and integrate tags-management directly into **Start-L
 The options are named as follows:
 
 **:tags** - Show the assigned tags
+
 **:atag** - Add tags
+
 **:rtag** - Remove tags
 
 *Add* and *Remove* can also take comma-separated tags.

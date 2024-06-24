@@ -1172,7 +1172,7 @@ function Search-LMChatDialog { #Started, ways to go
 [CmdletBinding()]
 param (
     [Parameter(Mandatory=$true)]
-    [ValidateSet('Any','Exact')]
+    [ValidateSet('Any','All','Exact')]
     [string]$Match,
 
     [Parameter(Mandatory=$true)]
@@ -1182,6 +1182,10 @@ param (
     [Parameter(Mandatory=$False)]
     [ValidateSet('Assistant','User','All')]
     [string]$SearchScope = "All",
+
+    [Parameter(Mandatory=$False)]
+    [ValidateScript({ if (!(Test-Path -Path $_)) { throw "History file path does not exist" } else { $true } })]
+    [string]$SaveAs,
 
     [Parameter(Mandatory=$false)]
     [ValidateScript({ if ($_.GetType().Name -ne "DateTime" -and (try {$ConvToBDate = Get-Date "$_" -ErrorAction Stop; return $true} catch {return $false}) -eq $False) { throw "'-Before' parameter is not a valid date" } else { $true } })]
@@ -1198,14 +1202,61 @@ param (
     [int]$LatterContext = 0,
     
     [Parameter(Mandatory=$false)]
-    [int]$ResultSetSize = 0
+    [int]$ResultSetSize = 0,
 
-    #Need output parameter(s)
+    [Parameter(Mandatory=$False)]
+    [ValidateScript({ if (!(Test-Path -Path $_)) { throw "History file path does not exist" } else { $true } })]
+    [string]$FilePath,
+
+    [Parameter(Mandatory=$false)]
+    [switch]$WriteProgress,
+
+    [Parameter(Mandatory=$false)]
+    [switch]$ShowAsCapitalLetters
 
 )
-begin {}
+begin {
+    If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "Config file variables not loaded, run [Import-ConfigFile] to load them"}
 
-process {}
+    If (!($PSBoundParameters.ContainsKey('FilePath'))){
+        
+        $FilePath = $Global:LMStudioVars.FilePaths.HistoryFilePath
+        $DirectoryPath = $Global:LMStudioVars.FilePaths.DialogFolderPath
+
+    }
+    Else {$DirectoryPath = $FilePath.TrimEnd('.index') + "-DialogFiles"}
+
+    try {$RootFolder = (Get-Item $FilePath -ErrorAction Stop).Directory.FullName}
+    catch {throw "History file error: $($_.Exception.Message)"}
+
+    try {$History = Import-LMHistoryFile -FilePath $FilePath}
+    catch {throw "Unable to import history file [$FilePath]"}
+
+    If (!(Test-Path $DirectoryPath)){throw "Dialog Files folder doesn't exist [$DirectoryPath]"}
+    
+}
+
+process {
+
+    $Results = New-Object System.Collections.ArrayList
+
+    :dialogloop Foreach ($Entry in $History){
+
+        $DialogFilePath = $RootFolder + '\' + ($Entry.FilePath)
+
+        try {$Dialog = Import-LMDialogFile -FilePath $DialogFilePath}
+        catch {
+            Write-Warning "Failed to import $($Entry.FilePath)"
+            continue dialogloop
+            
+        }
+
+        #06/23/2024: LEFT OFF HERE
+
+
+    }
+
+}
 
 end {}
 
