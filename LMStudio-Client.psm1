@@ -1199,7 +1199,7 @@ param (
     [int]$PriorContext = 0,
 
     [Parameter(Mandatory=$false)]
-    [int]$LatterContext = 0,
+    [int]$AfterContext = 0,
     
     [Parameter(Mandatory=$false)]
     [int]$ResultSetSize = 0,
@@ -1216,8 +1216,11 @@ param (
 
 )
 begin {
+    #region Check Config
     If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "Config file variables not loaded, run [Import-ConfigFile] to load them"}
+    #endregion
 
+    #region Validate core input variables
     If (!($PSBoundParameters.ContainsKey('FilePath'))){
         
         $FilePath = $Global:LMStudioVars.FilePaths.HistoryFilePath
@@ -1231,9 +1234,41 @@ begin {
 
     try {$History = Import-LMHistoryFile -FilePath $FilePath}
     catch {throw "Unable to import history file [$FilePath]"}
-
-    If (!(Test-Path $DirectoryPath)){throw "Dialog Files folder doesn't exist [$DirectoryPath]"}
     
+    If (!(Test-Path $DirectoryPath)){throw "Dialog Files folder doesn't exist [$DirectoryPath]"}
+    #endregion
+
+    #region Prep SearchTerms, if string
+    If ($SearchTerms.GetType().Name -eq "String"){$SearchTerms = $SearchTerms.Split(',').Trim()}
+    #endregion
+
+    #region Convert Dates and filter History file by them
+    If ($PSBoundParameters.ContainsKey('BeforeDate')){
+    
+        try {$BeforeDate = Get-Date $BeforeDate -ErrorAction Stop}
+        catch {throw "-BeforeDate parameter is not a valid date/time"}
+
+        $History = $History.Where({(Get-Date ($_.Created)) -le $BeforeDate})
+        
+        $BeforeActive = $True
+    }
+    Else {$BeforeActive = $False}
+
+    If ($PSBoundParameters.ContainsKey('AfterDate')){
+
+        try {$AfterDate = Get-Date $AfterDate -ErrorAction Stop}
+        catch {throw "-AfterDate parameter is not a valid date/time"}
+
+        $History = $History.Where({(Get-Date ($_.Modified)) -ge $AfterDate})
+
+        $AfterActive = $True
+
+    }
+    Else {$AfterActive = $False}
+
+    If ($History.Count -eq 0){throw "No records exist in the provided date filters."}
+    #endregion
+
 }
 
 process {
@@ -1242,6 +1277,7 @@ process {
 
     :dialogloop Foreach ($Entry in $History){
 
+        #region Import Dialog file
         $DialogFilePath = $RootFolder + '\' + ($Entry.FilePath)
 
         try {$Dialog = Import-LMDialogFile -FilePath $DialogFilePath}
@@ -1250,9 +1286,39 @@ process {
             continue dialogloop
             
         }
+        #endregion
 
-        #06/23/2024: LEFT OFF HERE
+        #region Filter Dialog entries by After/Before dates
+        If ($AfterActive){$Dialog.Messages = $Dialog.Messages.Where({(Get-Date $_.TimeStamp) -ge $AfterDate})}
 
+        If ($BeforeActive){$Dialog.Messages = $Dialog.Messages.Where({Get-Date $_.TimeStamp} -le $BeforeDate)}
+
+        If ($Dialog.Messages.Count -eq 0){
+
+            continue dialogloop
+
+        }
+        #endregion
+
+        $SearchMatches = New-Object System.Collections.ArrayList
+
+        #06/24 LEFT OFF HERE
+        switch ($SearchScope){
+
+            {$_ -ieq 'Assistant'}{
+
+                
+            }
+
+            {$_ -ieq 'User'}{}
+
+            {$_ -ieq 'All'}{}
+
+
+        }
+
+
+        #endregion
 
     }
 

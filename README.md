@@ -73,6 +73,13 @@ Check out my **development journal** (below) to see where I am and what I'm work
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 06/24/2024
+
+I'm making slow progress with **Search-LMHistory**. It's a lot of parameters to account for, and placing the parameters is what is shaping the code.
+
+It's coming together!
+
+---
 ### 06/23/2024
 
 I didn't have a lot of time today, but I worked more on **Search-LMHistory**.
