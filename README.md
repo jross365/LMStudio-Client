@@ -73,6 +73,10 @@ Check out my **development journal** (below) to see where I am and what I'm work
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 06/25/2024
+More the same: chipping away at the code in bite-sized chunks. Working on matching Dialog content.
+
+---
 ### 06/24/2024
 
 I'm making slow progress with **Search-LMHistory**. It's a lot of parameters to account for, and placing the parameters is what is shaping the code.

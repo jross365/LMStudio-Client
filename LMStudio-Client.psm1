@@ -1277,6 +1277,8 @@ process {
 
     :dialogloop Foreach ($Entry in $History){
 
+        $MatchBuffer = New-Object System.Collections.ArrayList
+
         #region Import Dialog file
         $DialogFilePath = $RootFolder + '\' + ($Entry.FilePath)
 
@@ -1302,23 +1304,37 @@ process {
 
         $SearchMatches = New-Object System.Collections.ArrayList
 
-        #06/24 LEFT OFF HERE
         switch ($SearchScope){
 
-            {$_ -ieq 'Assistant'}{
+            {$_ -ieq 'Assistant'}{$SearchCondition = {$_.Role -eq 'assistant'}}
 
-                
-            }
+            {$_ -ieq 'User'}{$SearchCondition = {$_.Role -eq 'user'}}
 
-            {$_ -ieq 'User'}{}
-
-            {$_ -ieq 'All'}{}
-
+            Default {$SearchCondition = {$_.Role -match 'user|assistant'}}
 
         }
 
+        Foreach ($Message in ($Dialog.Messages.Where($SearchCondition))){
 
-        #endregion
+            switch ($Match){
+
+                #Any of the words can be present in the message
+                {$_ -ieq 'Any'}{$Expression = Invoke-Expression $('{$_.Content -imatch ' + "'" + "$($SearchTerms -join '|')" + "'}")}
+
+                #All of the words must be present in the message
+                {$_ -ieq 'All'}{$Expression = Invoke-Expression $('{$_.Content -imatch ' + "$($SearchTerms.ForEach({"'" + $_ + "'"}) -join ' -and $_.Content -imatch ')" + "}")}
+
+                #The words must be present in the provided order: need to improve this one
+                {$_ -ieq 'Exact'}{$Expression = Invoke-Expression $('{$_.Content -imatch ' + "'" + "$($SearchTerms -join ' ')" + "'}")}
+
+            }
+
+            #Match against Dialog.Messages.Content here 06/25/2024
+
+            
+
+        }
+
 
     }
 
