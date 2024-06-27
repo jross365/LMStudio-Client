@@ -73,6 +73,23 @@ Check out my **development journal** (below) to see where I am and what I'm work
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 06/26/2024
+A few more nibbles on **Search-LMHistory**.
+
+I'm putting some thought into how to arrange and represent the results. This is a copy/paste of a reminder comment I put into the code today:
+
+```
+#The way I'm going to do this:
+# 1. Capitalize the match words in the match message ($MessageIndex)
+# 2. Insert each Message into MatchBuffer, plus two new fields: MessagesIndex - index of each message; IsMatching - whether the Message is the matched message)
+# 3. For any duplicates:
+     # a. If there is a matched message, remove the other, non-matched messages
+     # b. If there is not a matched message, remove all duplicates (keep 1)
+# 4. Sort by MessageIndex, descending
+# 5. Present (format TBD)
+```
+
+---
 ### 06/25/2024
 More the same: chipping away at the code in bite-sized chunks. Working on matching Dialog content.
 

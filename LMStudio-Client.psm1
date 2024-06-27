@@ -1328,9 +1328,63 @@ process {
                 {$_ -ieq 'Exact'}{$Expression = Invoke-Expression $('{$_.Content -imatch ' + "'" + "$($SearchTerms -join ' ')" + "'}")}
 
             }
-
             #Match against Dialog.Messages.Content here 06/25/2024
+            $DialogFields = $Dialog.Messages[0].PSObject.Properties.Name
 
+            Foreach ($Message in ($Dialog.Messages.Where($Expression))){
+                
+                $MessageIndex = $Dialog.Messages.IndexOf($Message)
+
+                switch ($SearchScope){
+                    
+                    {$_ -ieq 'Assistant'}{
+                        $StartIndex = $MessageIndex - (($PriorContext * 2) + 1)
+                        $EndIndex = $MessageIndex + ($AfterContext * 2)
+                    }
+                    
+                    {$_ -ieq 'User'}{
+                        $StartIndex = $MessageIndex - (($PriorContext * 2))
+                        $EndIndex = $MessageIndex + (($AfterContext * 2) + 1)
+                    }
+
+                    Default {
+
+                        If ($Message.Role -eq 'user'){
+                            $StartIndex = $MessageIndex
+                            $EndIndex = $MessageIndex + 1
+                        }
+
+                        If ($Message.Role -eq 'assistant'){
+                            $StartIndex = $MessageIndex - 1
+                            $EndIndex = $MessageIndex
+
+                        }
+
+                    }
+
+                }
+
+                $SelectedMessages = $Dialog.Messages[$StartIndex..$EndIndex]
+
+                #The way I'm going to do this:
+                # 1. Capitalize the match words in the match message ($MessageIndex)
+                # 2. Insert each Message into MatchBuffer, plus two new fields: MessagesIndex - index of each message; IsMatching - whether the Message is the matched message)
+                # 3. For any duplicates:
+                    # a. If there is a matched message, remove the other, non-matched messages
+                    # b. If there is not a matched message, remove all duplicates (keep 1)
+                # 4. Sort by MessageIndex, descending
+                # 5. Present (format TBD)
+
+                $MatchBuffer.Add(
+                    [pscustomobject]@{"Index" = $MessageIndex; #""
+
+
+                    }
+
+                )
+            
+            
+            }
             
 
         }
