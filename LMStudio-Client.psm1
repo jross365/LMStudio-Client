@@ -1212,7 +1212,7 @@ param (
     [switch]$WriteProgress,
 
     [Parameter(Mandatory=$false)]
-    [switch]$ShowAsCapitalLetters
+    [switch]$ShowAsCapitals
 
 )
 begin {
@@ -1239,7 +1239,7 @@ begin {
     #endregion
 
     #region Prep SearchTerms, if string
-    If ($SearchTerms.GetType().Name -eq "String"){$SearchTerms = $SearchTerms.Split(',').Trim()}
+    If ($SearchTerms.GetType().Name -eq "String"){[array]$SearchTerms = $SearchTerms.Split(',').Trim()}
     #endregion
 
     #region Convert Dates and filter History file by them
@@ -1275,9 +1275,50 @@ process {
 
     $Results = New-Object System.Collections.ArrayList
 
+    #Match against Dialog.Messages.Content here 06/25/2024
+    $DialogFields = $(New-LMTemplate -Type DialogMessage ).psobject.properties.Name
+
+    #region Define static filter from dynamic parameters
+    $Expression = "{"
+
+    switch ($Match){
+
+        #Any of the words can be present in the message
+        {$_ -ieq 'Any'}{$Expression += $('($_.Content -imatch ' + "'" + "$($SearchTerms -join '|')" + "')")}
+
+        #All of the words must be present in the message
+        {$_ -ieq 'All'}{$Expression += $('($_.Content -imatch ' + "$($SearchTerms.ForEach({"'" + $_ + "'"}) -join ' -and $_.Content -imatch ')" + ")")}
+
+        #The words must be present in the provided order: need to improve this one
+        {$_ -ieq 'Exact'}{$Expression += $('($_.Content -imatch ' + "'" + "$($SearchTerms -join ' ')" + "')")}
+
+    }
+
+    $Expression += ' -and '
+
+    switch ($SearchScope){
+
+        {$_ -ieq 'Assistant'}{$Expression += '($_.Role -eq "assistant")'}
+
+        {$_ -ieq 'User'}{$Expression += '($_.Role -eq "user")'}
+
+        Default {
+            
+            $Filter = "'user|assistant'"
+            $Expression += ('($_.Role -imatch ' + "$Filter)")
+            
+        }
+
+    }
+
+    $Expression += "}"
+    $SearchCondition = Invoke-Expression $Expression
+    #endregion
+
     :dialogloop Foreach ($Entry in $History){
 
-        $MatchBuffer = New-Object System.Collections.ArrayList
+        #This is our per-dialog matched messages storage
+        $SearchMatches = New-Object System.Collections.ArrayList
 
         #region Import Dialog file
         $DialogFilePath = $RootFolder + '\' + ($Entry.FilePath)
@@ -1292,105 +1333,89 @@ process {
 
         #region Filter Dialog entries by After/Before dates
         If ($AfterActive){$Dialog.Messages = $Dialog.Messages.Where({(Get-Date $_.TimeStamp) -ge $AfterDate})}
-
         If ($BeforeActive){$Dialog.Messages = $Dialog.Messages.Where({Get-Date $_.TimeStamp} -le $BeforeDate)}
-
-        If ($Dialog.Messages.Count -eq 0){
+        If ($Dialog.Messages.Count -eq 0){ #Extra space in here for Write-Progress, etc
 
             continue dialogloop
 
         }
         #endregion
 
-        $SearchMatches = New-Object System.Collections.ArrayList
+        :msgloop Foreach ($Message in ($Dialog.Messages.Where($SearchCondition))){
 
-        switch ($SearchScope){
+            $MessageIndex = $Dialog.Messages.IndexOf($Message)
 
-            {$_ -ieq 'Assistant'}{$SearchCondition = {$_.Role -eq 'assistant'}}
-
-            {$_ -ieq 'User'}{$SearchCondition = {$_.Role -eq 'user'}}
-
-            Default {$SearchCondition = {$_.Role -match 'user|assistant'}}
-
-        }
-
-        Foreach ($Message in ($Dialog.Messages.Where($SearchCondition))){
-
-            switch ($Match){
-
-                #Any of the words can be present in the message
-                {$_ -ieq 'Any'}{$Expression = Invoke-Expression $('{$_.Content -imatch ' + "'" + "$($SearchTerms -join '|')" + "'}")}
-
-                #All of the words must be present in the message
-                {$_ -ieq 'All'}{$Expression = Invoke-Expression $('{$_.Content -imatch ' + "$($SearchTerms.ForEach({"'" + $_ + "'"}) -join ' -and $_.Content -imatch ')" + "}")}
-
-                #The words must be present in the provided order: need to improve this one
-                {$_ -ieq 'Exact'}{$Expression = Invoke-Expression $('{$_.Content -imatch ' + "'" + "$($SearchTerms -join ' ')" + "'}")}
-
-            }
-            #Match against Dialog.Messages.Content here 06/25/2024
-            $DialogFields = $Dialog.Messages[0].PSObject.Properties.Name
-
-            Foreach ($Message in ($Dialog.Messages.Where($Expression))){
+            switch ($SearchScope){
                 
-                $MessageIndex = $Dialog.Messages.IndexOf($Message)
+                {$_ -ieq 'Assistant'}{
+                    $StartIndex = $MessageIndex - (($PriorContext * 2) + 1)
+                    $EndIndex = $MessageIndex + ($AfterContext * 2)
+                }
+                
+                {$_ -ieq 'User'}{
+                    $StartIndex = $MessageIndex - (($PriorContext * 2))
+                    $EndIndex = $MessageIndex + (($AfterContext * 2) + 1)
+                }
 
-                switch ($SearchScope){
-                    
-                    {$_ -ieq 'Assistant'}{
-                        $StartIndex = $MessageIndex - (($PriorContext * 2) + 1)
-                        $EndIndex = $MessageIndex + ($AfterContext * 2)
+                Default {
+
+                    If ($Message.Role -eq 'user'){
+                        $StartIndex = $MessageIndex
+                        $EndIndex = $MessageIndex + 1
                     }
-                    
-                    {$_ -ieq 'User'}{
-                        $StartIndex = $MessageIndex - (($PriorContext * 2))
-                        $EndIndex = $MessageIndex + (($AfterContext * 2) + 1)
-                    }
 
-                    Default {
-
-                        If ($Message.Role -eq 'user'){
-                            $StartIndex = $MessageIndex
-                            $EndIndex = $MessageIndex + 1
-                        }
-
-                        If ($Message.Role -eq 'assistant'){
-                            $StartIndex = $MessageIndex - 1
-                            $EndIndex = $MessageIndex
-
-                        }
+                    If ($Message.Role -eq 'assistant'){
+                        $StartIndex = $MessageIndex - 1
+                        $EndIndex = $MessageIndex
 
                     }
 
                 }
 
-                $SelectedMessages = $Dialog.Messages[$StartIndex..$EndIndex]
-
-                #The way I'm going to do this:
-                # 1. Capitalize the match words in the match message ($MessageIndex)
-                # 2. Insert each Message into MatchBuffer, plus two new fields: MessagesIndex - index of each message; IsMatching - whether the Message is the matched message)
-                # 3. For any duplicates:
-                    # a. If there is a matched message, remove the other, non-matched messages
-                    # b. If there is not a matched message, remove all duplicates (keep 1)
-                # 4. Sort by MessageIndex, descending
-                # 5. Present (format TBD)
-
-                $MatchBuffer.Add(
-                    [pscustomobject]@{"Index" = $MessageIndex; #""
-
-
-                    }
-
-                )
-            
-            
             }
+
+            $SelectedMessages = $Dialog.Messages[$StartIndex..$EndIndex]
+
+            Foreach ($SelMsg in $SelectedMessages){
+
+                $MsgObj = New-Object System.Object
+                $DialogFields.ForEach({$MsgObj | Add-Member -MemberType NoteProperty -Name $_ -Value ($SelMsg.$_)})
+
+                $MsgObj | Add-Member -MemberType NoteProperty -Name "MatchedEntry" -Value ([boolean]($Dialog.Messages.IndexOf($SelMsg) -eq $MessageIndex))
+                
+                $MsgObj | Add-Member -MemberType NoteProperty -Name "DialogIndex" -Value ($Dialog.Messages.IndexOf($SelMsg))
+
+                #Add Entry to MatchBuffer
+                $SearchMatches.Add($MsgObj) | Out-Null
+
+            }
+
+        } #close :msgloop
+
+        If ($SearchMatches.Count -eq 0 -or $null -eq $SearchMatches){continue dialogloop}
+        Else { #Sort and deduplicate $SearchMatches, remove conflicts
+
+            #The following Sort/Select should reduce $SearchMatches to a maximum of 2 entries per index ($MatchedEntry -eq $True, $MatchedEntry -eq $False)
+            $SearchMatches = $SearchMatches | Sort-Object DialogIndex | Select-Object * -Unique
             
+            $MatchedIndexes = $Searchmatches.DialogIndex | Sort-Object -Unique
+
+            :indexloop Foreach ($Index in $MatchedIndexes){
+
+                #We can use .Where() here because there will always be no less than 2 entries
+                $IndexMatches = $SearchMatches.Where({$_.DialogIndex -eq $Index})
+
+                #If we have only 1, we're good
+                If ($IndexMatches.Count -eq 1){continue indexloop} 
+                
+                #06/30 LEFT OFF HERE, Sort-Object/Select-Object is changing [arraylist] to [array] or '`collection'
+                #Else {$SearchMatches  (($IndexMatches.Where({$_.MatchedEntry -eq $False})))} 
+
+            }
 
         }
 
-
-    }
+    } #close :dialogloop
 
 }
 
