@@ -1317,9 +1317,6 @@ process {
 
     :dialogloop Foreach ($Entry in $History){
 
-        #This is our per-dialog matched messages storage
-        $SearchMatches = New-Object System.Collections.ArrayList
-
         #region Import Dialog file
         $DialogFilePath = $RootFolder + '\' + ($Entry.FilePath)
 
@@ -1341,38 +1338,29 @@ process {
         }
         #endregion
 
-        :msgloop Foreach ($Message in ($Dialog.Messages.Where($SearchCondition))){
+        #This is our matched messages collection and future presentation
+        $SearchMatches = New-Object System.Collections.ArrayList
+
+        $MatchingMessages = $Dialog.Messages.Where($SearchCondition)
+
+        $IndexHash = @{}
+
+        :msgloop Foreach ($Message in $MatchingMessages){
 
             $MessageIndex = $Dialog.Messages.IndexOf($Message)
 
-            switch ($SearchScope){
-                
-                {$_ -ieq 'Assistant'}{
-                    $StartIndex = $MessageIndex - (($PriorContext * 2) + 1)
-                    $EndIndex = $MessageIndex + ($AfterContext * 2)
-                }
-                
-                {$_ -ieq 'User'}{
-                    $StartIndex = $MessageIndex - (($PriorContext * 2))
-                    $EndIndex = $MessageIndex + (($AfterContext * 2) + 1)
-                }
-
-                Default {
-
-                    If ($Message.Role -eq 'user'){
-                        $StartIndex = $MessageIndex
-                        $EndIndex = $MessageIndex + 1
-                    }
-
-                    If ($Message.Role -eq 'assistant'){
-                        $StartIndex = $MessageIndex - 1
-                        $EndIndex = $MessageIndex
-
-                    }
-
-                }
-
+            If ($Message.Role -eq 'user'){
+                $StartIndex = $MessageIndex - (($PriorContext * 2))
+                $EndIndex =  $MessageIndex + (($AfterContext * 2) + 1)
             }
+
+            If ($Message.Role -eq 'assistant'){
+                $StartIndex = $MessageIndex - (($PriorContext * 2) + 1)
+                $EndIndex = $MessageIndex + ($AfterContext * 2)
+            }
+
+            If ($StartIndex -lt 0){$StartIndex = 0}
+            If ($EndIndex -gt ($Dialog.Messages.Count - 1)){$EndIndex = $Dialog.Messages.Count - 1}
 
             $SelectedMessages = $Dialog.Messages[$StartIndex..$EndIndex]
 
@@ -1386,11 +1374,19 @@ process {
                 $MsgObj | Add-Member -MemberType NoteProperty -Name "DialogIndex" -Value ($Dialog.Messages.IndexOf($SelMsg))
 
                 #Add Entry to MatchBuffer
-                $SearchMatches.Add($MsgObj) | Out-Null
+                If ($null -eq $IndexHash.$($MsgObj.DialogIndex).$($MsgObj.MatchedEntry)){
+
+                    $SearchMatches.Add($MsgObj) | Out-Null
+                    $IndexHash.Add($($MsgObj.DialogIndex),$($MsgObj.MatchedEntry))
+
+                }                
 
             }
 
         } #close :msgloop
+
+        Remove-Variable MatchingMessages -ErrorAction SilentlyContinue
+        [gc]::Collect()
 
         If ($SearchMatches.Count -eq 0 -or $null -eq $SearchMatches){continue dialogloop}
         Else { #Sort and deduplicate $SearchMatches, remove conflicts

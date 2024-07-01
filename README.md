@@ -78,6 +78,18 @@ I'm working on sorting, filtering and deduplicating match and match-adjacent Dia
 
 More later.
 
+**Follow-Up:**
+
+Squashed a 🐛 where I was incorrectly counting the maximum index for the range of indexes needed, per the **-PriorContext** and **-AfterContext** parameters.
+
+I also eliminated an unnecessary switch, and simplified how the code manages the prior/after messages (which evaluates whether the selected message is a *user* or *assistant* message).
+
+And, I added a hash table to keep track of what messages have been added to the **$SelectedMessages** arraylist. I *could* write this to eliminate deduplication, but for the time being it's a performance *improvement* (not a *solution*.)
+
+💡 **After I get through everything else**, I may want to revisit this optimization (evaluating duplicacy and superfluousness in **$SelectedMessages** before appending a new object.)
+
+That's all for now.
+
 ---
 ### 06/26/2024
 A few more nibbles on **Search-LMHistory**.
