@@ -73,6 +73,16 @@ Check out my **development journal** (below) to see where I am and what I'm work
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 07/01/2024
+I worked out deduplication and ordering. Now I need to conquer the problem of capitalizing the matched letters. I may need to redesign my matching system and capitulate to building regex expressions.
+
+I was able to rid of one superfluous **Else {}** statement.
+
+I also found a simple (*and now, obvious*) way to handle type preservation when using **Select-Object** and **Sort-Object**: explicitly specify the type [system.collections.arraylist]. Duh.
+
+That's all for now.
+
+---
 ### 06/30/2024
 I'm working on sorting, filtering and deduplicating match and match-adjacent Dialog messages. It's not terribly complicated, but I do have some Invoke-Expression trickery in there, and it's better to look at the code than to try to explain it in this instance.
 

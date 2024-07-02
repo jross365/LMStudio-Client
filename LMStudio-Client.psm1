@@ -1370,46 +1370,52 @@ process {
                 $DialogFields.ForEach({$MsgObj | Add-Member -MemberType NoteProperty -Name $_ -Value ($SelMsg.$_)})
 
                 $MsgObj | Add-Member -MemberType NoteProperty -Name "MatchedEntry" -Value ([boolean]($Dialog.Messages.IndexOf($SelMsg) -eq $MessageIndex))
-                
                 $MsgObj | Add-Member -MemberType NoteProperty -Name "DialogIndex" -Value ($Dialog.Messages.IndexOf($SelMsg))
-
                 #Add Entry to MatchBuffer
                 If ($null -eq $IndexHash.$($MsgObj.DialogIndex).$($MsgObj.MatchedEntry)){
 
                     $SearchMatches.Add($MsgObj) | Out-Null
                     $IndexHash.Add($($MsgObj.DialogIndex),$($MsgObj.MatchedEntry))
 
-                }                
+                }
 
             }
 
         } #close :msgloop
 
-        Remove-Variable MatchingMessages -ErrorAction SilentlyContinue
+        Remove-Variable MatchingMessages,IndexHash -ErrorAction SilentlyContinue
         [gc]::Collect()
 
         If ($SearchMatches.Count -eq 0 -or $null -eq $SearchMatches){continue dialogloop}
-        Else { #Sort and deduplicate $SearchMatches, remove conflicts
 
-            #The following Sort/Select should reduce $SearchMatches to a maximum of 2 entries per index ($MatchedEntry -eq $True, $MatchedEntry -eq $False)
-            $SearchMatches = $SearchMatches | Sort-Object DialogIndex | Select-Object * -Unique
-            
-            $MatchedIndexes = $Searchmatches.DialogIndex | Sort-Object -Unique
+        #The following Sort/Select should reduce $SearchMatches to a maximum of 2 entries per index ($MatchedEntry -eq $True, $MatchedEntry -eq $False)
+        [system.collections.arraylist]$SearchMatches = $SearchMatches | Sort-Object DialogIndex | Select-Object * -Unique
+        
+        $MatchedIndexes = $Searchmatches.DialogIndex | Sort-Object -Unique
 
-            :indexloop Foreach ($Index in $MatchedIndexes){
+        :indexloop Foreach ($Index in $MatchedIndexes){
 
-                #We can use .Where() here because there will always be no less than 2 entries
-                $IndexMatches = $SearchMatches.Where({$_.DialogIndex -eq $Index})
+            #We can use .Where() here because there will always be no less than 2 entries
+            $IndexMatches = $SearchMatches.Where({$_.DialogIndex -eq $Index})
 
-                #If we have only 1, we're good
-                If ($IndexMatches.Count -eq 1){continue indexloop} 
-                
-                #06/30 LEFT OFF HERE, Sort-Object/Select-Object is changing [arraylist] to [array] or '`collection'
-                #Else {$SearchMatches  (($IndexMatches.Where({$_.MatchedEntry -eq $False})))} 
+            #If we have only 1, we're good
+            switch ($IndexMatches.Count){
+                {$_ -eq 1}{continue indexloop}
 
+                {$_ -ge 2}{
+                    #This preserves [pscustomobject] typing,
+                    $NonMatchedObj = $IndexMatches[$IndexMatches.IndexOf($IndexMatches.Where({$_.MatchedEntry -eq $False}))]
+                    # which we need to remove it from $SearchMatches:
+                    $SearchMatches.Remove($NonMatchedObj) | Out-Null
+                }
+
+                Default {continue indexloop}
             }
 
         }
+        #region Capitalize(?) Matches
+
+        #endregions
 
     } #close :dialogloop
 
