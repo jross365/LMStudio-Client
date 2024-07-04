@@ -1183,10 +1183,6 @@ param (
     [ValidateSet('Assistant','User','All')]
     [string]$SearchScope = "All",
 
-    [Parameter(Mandatory=$False)]
-    [ValidateScript({ if (!(Test-Path -Path $_)) { throw "History file path does not exist" } else { $true } })]
-    [string]$SaveAs,
-
     [Parameter(Mandatory=$false)]
     [ValidateScript({ if ($_.GetType().Name -ne "DateTime" -and (try {$ConvToBDate = Get-Date "$_" -ErrorAction Stop; return $true} catch {return $false}) -eq $False) { throw "'-Before' parameter is not a valid date" } else { $true } })]
     $BeforeDate,
@@ -1200,9 +1196,6 @@ param (
 
     [Parameter(Mandatory=$false)]
     [int]$AfterContext = 0,
-    
-    [Parameter(Mandatory=$false)]
-    [int]$ResultSetSize = 0,
 
     [Parameter(Mandatory=$False)]
     [ValidateScript({ if (!(Test-Path -Path $_)) { throw "History file path does not exist" } else { $true } })]
@@ -1236,13 +1229,15 @@ begin {
     catch {throw "Unable to import history file [$FilePath]"}
     
     If (!(Test-Path $DirectoryPath)){throw "Dialog Files folder doesn't exist [$DirectoryPath]"}
+
+    $DialogFields = $(New-LMTemplate -Type DialogMessage ).psobject.properties.Name
     #endregion
 
     #region Prep SearchTerms, if string
     If ($SearchTerms.GetType().Name -eq "String"){[array]$SearchTerms = $SearchTerms.Split(',').Trim()}
     #endregion
 
-    #region Convert Dates and filter History file by them
+    #region Convert Dates and filter History file by date
     If ($PSBoundParameters.ContainsKey('BeforeDate')){
     
         try {$BeforeDate = Get-Date $BeforeDate -ErrorAction Stop}
@@ -1269,14 +1264,39 @@ begin {
     If ($History.Count -eq 0){throw "No records exist in the provided date filters."}
     #endregion
 
+    #region Build search information Object
+    $SearchInfo = [pscustomobject]@{
+        "Search Timestamp" = (Get-Date).ToString()
+        "Match [Any/All/Exact]" = $Match
+        "Search Terms" = $SearchTerms -join ' '
+        "Search Scope [Assistant/User/All]" = $SearchScope
+        "Search After Date" = $null
+        "Search Before Date" = $null
+        "Prior Context" = $PriorContext
+        "After Context" = $AfterContext
+    }
+    If ($null -eq $AfterDate){$SearchInfo.'Search After Date' = "-"}
+    Else {$SearchInfo.'Search After Date' = $AfterDate.ToString()}
+    
+    If ($null -eq $BeforeDate){$SearchInfo.'Search Before Date' = "-"}
+    Else {$SearchInfo.'Search Before Date' = $BeforeDate.ToString()}
+
+    #endregion
+
+    #region Prep Results
+    [string]$Results = $null
+    
+    $Results += ($SearchInfo | Format-List | Out-String)
+
+    $L = 0
+    $SearchInfo | out-string -Stream | Foreach-Object {If ($_.Length -gt $L){$L = $_.Length}}
+    $Line = "$((1..$L).ForEach({"-"}) -join '')"
+    $Results += $Line
+    #endregion
+
 }
 
 process {
-
-    $Results = New-Object System.Collections.ArrayList
-
-    #Match against Dialog.Messages.Content here 06/25/2024
-    $DialogFields = $(New-LMTemplate -Type DialogMessage ).psobject.properties.Name
 
     #region Define static filter from dynamic parameters
     $Expression = "{"
@@ -1290,7 +1310,15 @@ process {
         {$_ -ieq 'All'}{$Expression += $('($_.Content -imatch ' + "$($SearchTerms.ForEach({"'" + $_ + "'"}) -join ' -and $_.Content -imatch ')" + ")")}
 
         #The words must be present in the provided order: need to improve this one
-        {$_ -ieq 'Exact'}{$Expression += $('($_.Content -imatch ' + "'" + "$($SearchTerms -join ' ')" + "')")}
+        {$_ -ieq 'Exact'}{
+            
+            $ReplacePhrase = ($SearchTerms -join ' ').ToUpper()
+            [regex]$Pattern = '(?:((?i)' + $($SearchTerms -join '(?-i))\W*((?i)') + '(?-i)))'
+            #[regex]$Pattern = '(' + $($SearchTerms -join '(?-i))\W*((?i)') + ')'
+
+            #$Expression += $('($_.Content -imatch ' + "'" + "$($SearchTerms -join ' ')" + "')")
+            $Expression += $('($_.Content -imatch ' + "'" + "$($Pattern.ToString())" + "')")
+        }
 
     }
 
@@ -1338,15 +1366,16 @@ process {
         }
         #endregion
 
-        #This is our matched messages collection and future presentation
         $SearchMatches = New-Object System.Collections.ArrayList
-
         $MatchingMessages = $Dialog.Messages.Where($SearchCondition)
 
+        If ($null -eq $MatchingMessages -or $MatchingMessages.Count -eq 0){continue dialogloop}
+        
         $IndexHash = @{}
-
+        #region Grab desired context, add Match/Index fields
         :msgloop Foreach ($Message in $MatchingMessages){
 
+            #region Calculate and Select Prior/After Context
             $MessageIndex = $Dialog.Messages.IndexOf($Message)
 
             If ($Message.Role -eq 'user'){
@@ -1363,7 +1392,9 @@ process {
             If ($EndIndex -gt ($Dialog.Messages.Count - 1)){$EndIndex = $Dialog.Messages.Count - 1}
 
             $SelectedMessages = $Dialog.Messages[$StartIndex..$EndIndex]
+            #endregion
 
+            #region Append MatchedEntry [true|false], DialogIndex [int]
             Foreach ($SelMsg in $SelectedMessages){
 
                 $MsgObj = New-Object System.Object
@@ -1380,15 +1411,19 @@ process {
                 }
 
             }
+            #endregion
 
         } #close :msgloop
+        #endregion
 
+        #region Cleanup and continue on empty
         Remove-Variable MatchingMessages,IndexHash -ErrorAction SilentlyContinue
         [gc]::Collect()
 
         If ($SearchMatches.Count -eq 0 -or $null -eq $SearchMatches){continue dialogloop}
+        #endregion
 
-        #The following Sort/Select should reduce $SearchMatches to a maximum of 2 entries per index ($MatchedEntry -eq $True, $MatchedEntry -eq $False)
+        #region Deduplicate matches
         [system.collections.arraylist]$SearchMatches = $SearchMatches | Sort-Object DialogIndex | Select-Object * -Unique
         
         $MatchedIndexes = $Searchmatches.DialogIndex | Sort-Object -Unique
@@ -1398,7 +1433,7 @@ process {
             #We can use .Where() here because there will always be no less than 2 entries
             $IndexMatches = $SearchMatches.Where({$_.DialogIndex -eq $Index})
 
-            #If we have only 1, we're good
+            #If we have only 1 instance of an index, we're good:
             switch ($IndexMatches.Count){
                 {$_ -eq 1}{continue indexloop}
 
@@ -1413,9 +1448,43 @@ process {
             }
 
         }
-        #region Capitalize(?) Matches
+        #endregion
 
-        #endregions
+        #region Capitalize Matches
+        If ($ShowAsCapitals.IsPresent){
+
+            :caploop Foreach ($MatchIndex in (0..($SearchMatches.Count - 1))){
+
+                If (!($SearchMatches[$MatchIndex].MatchedEntry)){continue caploop}
+
+                switch ($Match){
+
+                    {$_ -eq "Exact"}{$SearchMatches[$MatchIndex].Content = $SearchMatches[$MatchIndex].Content -replace $Pattern,$ReplacePhrase}
+    
+                    {($_ -eq "Any") -or ($_ -eq "All")}{
+
+                        $SearchTerms | ForEach-Object {
+
+                            $Term = $_
+
+                            $SearchMatches[$MatchIndex].Content = $SearchMatches[$MatchIndex].Content -ireplace "$Term","$($Term.ToUpper())"
+                        }
+
+                    }
+    
+                    Default {continue caploop}
+    
+                }
+
+            }
+
+        }
+        #endregion
+
+        #region Group contiguous entries
+        #07/04 - LEFT OFF HERE
+
+        #endregion
 
     } #close :dialogloop
 

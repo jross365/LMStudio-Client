@@ -71,6 +71,17 @@ Check out my **development journal** (below) to see where I am and what I'm work
 ⬜️ **- Feature/Improvement Incomplete**  ✅ **- Feature/Improvement Complete**
 
 💡 **- Idea  🐛 - Bug**
+---
+### 07/04/2024
+Solving the challenge of exact pattern matching and capitalizing matches turned out not to be too troublesome, and I think I have it together.
+
+I'm now working on presenting the results in a text format that's human friendly. I've constructed the file's header (which lists the parameters used for the search). For the actual matches, I plan on grouping them according to contiguous indexes (1-4 grouped, 7-10 grouped, ) separated by dashes.
+
+Unrelated to **Search-LMDialog**, but 💡 I think it would be cool if the "You:" and "AI:" prompts could be customized with labels, stored in the LMConfig variables.
+
+I'm committed to ⬜️ changing the options (**:gret**, **:help**) to allow for variable length strings (allowing for **:greet**, **:help**, etc.). This will make the options/settings more user friendly.
+
+I need to finish a draft version of **Search-LMDialog** first, and then I can update/improve the options.
 
 ---
 ### 07/01/2024
