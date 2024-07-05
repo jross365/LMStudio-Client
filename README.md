@@ -71,6 +71,14 @@ Check out my **development journal** (below) to see where I am and what I'm work
 ⬜️ **- Feature/Improvement Incomplete**  ✅ **- Feature/Improvement Complete**
 
 💡 **- Idea  🐛 - Bug**
+
+---
+### 07/05/2024
+Messages are now being appended to $Results more or less in the way I want them.
+
+⬜️ I need to append the dialog file information to the Results so the user knows where the text was found.
+
+
 ---
 ### 07/04/2024
 Solving the challenge of exact pattern matching and capitalizing matches turned out not to be too troublesome, and I think I have it together.

@@ -1274,6 +1274,7 @@ begin {
         "Search Before Date" = $null
         "Prior Context" = $PriorContext
         "After Context" = $AfterContext
+        "Matches Capitalized" = ([boolean]($ShowAsCapitals.IsPresent))
     }
     If ($null -eq $AfterDate){$SearchInfo.'Search After Date' = "-"}
     Else {$SearchInfo.'Search After Date' = $AfterDate.ToString()}
@@ -1290,7 +1291,7 @@ begin {
 
     $L = 0
     $SearchInfo | out-string -Stream | Foreach-Object {If ($_.Length -gt $L){$L = $_.Length}}
-    $Line = "$((1..$L).ForEach({"-"}) -join '')"
+    $Line = "$((1..$L).ForEach({"-"}) -join '')`n"
     $Results += $Line
     #endregion
 
@@ -1440,7 +1441,7 @@ process {
                 {$_ -ge 2}{
                     #This preserves [pscustomobject] typing,
                     $NonMatchedObj = $IndexMatches[$IndexMatches.IndexOf($IndexMatches.Where({$_.MatchedEntry -eq $False}))]
-                    # which we need to remove it from $SearchMatches:
+                    # which we need, to remove it from $SearchMatches:
                     $SearchMatches.Remove($NonMatchedObj) | Out-Null
                 }
 
@@ -1481,9 +1482,33 @@ process {
         }
         #endregion
 
-        #region Group contiguous entries
-        #07/04 - LEFT OFF HERE
+        #region Write Dialog File Info Header to Results
+        # 07/05 LEFT OFF HERE
 
+        #endregion
+
+        #region Write dialogs out by contiguous entry-groups
+        $LastIndex = $SearchMatches.Count - 1
+
+        Foreach ($SelIndex in (0..$LastIndex)){
+
+            $SelMsg = $SearchMatches[$SelIndex]
+
+            switch ($SelMsg.MatchedEntry){
+
+                $True {$MatchMarker = " <MATCH>"}
+                $False {$MatchMarker = $null}
+
+            }
+
+            $Results += "[$($SelMsg.TimeStamp)]$MatchMarker $($SelMsg.Role.ToUpper())`:`n"
+            $Results += $SelMsg.Content
+            $Results += "`n`n"
+            
+            If ($SelIndex -eq $LastIndex){(0..1) | Foreach-Object {$Results += $Line}}
+            ElseIf ($SearchMatches[($SelIndex + 1)].DialogIndex -gt (($SearchMatches[$SelIndex].DialogIndex + 1))){$Results += $Line}
+            
+        }
         #endregion
 
     } #close :dialogloop
