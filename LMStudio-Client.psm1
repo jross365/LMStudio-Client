@@ -1264,7 +1264,7 @@ begin {
     If ($History.Count -eq 0){throw "No records exist in the provided date filters."}
     #endregion
 
-    #region Build search information Object
+    #region Build search info Object
     $SearchInfo = [pscustomobject]@{
         "Search Timestamp" = (Get-Date).ToString()
         "Match [Any/All/Exact]" = $Match
@@ -1283,21 +1283,6 @@ begin {
     Else {$SearchInfo.'Search Before Date' = $BeforeDate.ToString()}
 
     #endregion
-
-    #region Prep Results
-    [string]$Results = $null
-    
-    $Results += ($SearchInfo | Format-List | Out-String)
-
-    $L = 0
-    $SearchInfo | out-string -Stream | Foreach-Object {If ($_.Length -gt $L){$L = $_.Length}}
-    $Line = "$((1..$L).ForEach({"-"}) -join '')`n"
-    $Results += $Line
-    #endregion
-
-}
-
-process {
 
     #region Define static filter from dynamic parameters
     $Expression = "{"
@@ -1344,6 +1329,21 @@ process {
     $SearchCondition = Invoke-Expression $Expression
     #endregion
 
+    #region Prep Results
+    [string]$Results = $null
+    
+    $Results += ($SearchInfo | Format-List | Out-String)
+
+    $L = 0
+    $SearchInfo | out-string -Stream | Foreach-Object {If ($_.Length -gt $L){$L = $_.Length}}
+    $Line = "$((1..$L).ForEach({"-"}) -join '')`n"
+    (0..1).ForEach({$Results += $Line})
+    #endregion
+
+}
+
+process {
+
     :dialogloop Foreach ($Entry in $History){
 
         #region Import Dialog file
@@ -1352,8 +1352,7 @@ process {
         try {$Dialog = Import-LMDialogFile -FilePath $DialogFilePath}
         catch {
             Write-Warning "Failed to import $($Entry.FilePath)"
-            continue dialogloop
-            
+            continue dialogloop            
         }
         #endregion
 
@@ -1367,14 +1366,38 @@ process {
         }
         #endregion
 
-        $SearchMatches = New-Object System.Collections.ArrayList
+        #region Search the Dialog Messages
         $MatchingMessages = $Dialog.Messages.Where($SearchCondition)
 
         If ($null -eq $MatchingMessages -or $MatchingMessages.Count -eq 0){continue dialogloop}
-        
-        $IndexHash = @{}
+        #endregion
+
         #region Grab desired context, add Match/Index fields
+        $SearchMatches = New-Object System.Collections.ArrayList #THIS IS THE IMPORTANT ARRAYLIST
+        $IndexHash = @{}
+        $AuxiliaryIndexes = New-Object System.Collections.ArrayList
+
         :msgloop Foreach ($Message in $MatchingMessages){
+            
+            #region Identify which words match (Any/All)
+            switch ($Match){
+
+                {$_ -eq "All"}{$MatchedTerms = "[All: $($SearchTerms -join ', ')]"}
+                {$_ -eq "Exact"}{$MatchedTerms = "[Exact: $($SearchTerms -join ' ')"}
+                {$_ -eq "Any"}{
+
+                    $MatchedTerms = "[Any: "
+
+                    Foreach ($Term in $SearchTerms){If ($Message.Content -imatch "$Term"){$MatchedTerms += "$Term, "}}
+
+                    $MatchedTerms = $MatchedTerms.TrimEnd(', ')
+
+                    $MatchedTerms += "]"
+
+                }
+
+            }
+            #endregion
 
             #region Calculate and Select Prior/After Context
             $MessageIndex = $Dialog.Messages.IndexOf($Message)
@@ -1392,67 +1415,62 @@ process {
             If ($StartIndex -lt 0){$StartIndex = 0}
             If ($EndIndex -gt ($Dialog.Messages.Count - 1)){$EndIndex = $Dialog.Messages.Count - 1}
 
-            $SelectedMessages = $Dialog.Messages[$StartIndex..$EndIndex]
+            ($StartIndex..$EndIndex).ForEach({$AuxiliaryIndexes.Add($_) | out-null}) 
             #endregion
 
-            #region Append MatchedEntry [true|false], DialogIndex [int]
-            Foreach ($SelMsg in $SelectedMessages){
+            #region Create New Object, Append to SearchMatches
+            $MsgObj = New-Object System.Object
 
-                $MsgObj = New-Object System.Object
-                $DialogFields.ForEach({$MsgObj | Add-Member -MemberType NoteProperty -Name $_ -Value ($SelMsg.$_)})
-
-                $MsgObj | Add-Member -MemberType NoteProperty -Name "MatchedEntry" -Value ([boolean]($Dialog.Messages.IndexOf($SelMsg) -eq $MessageIndex))
-                $MsgObj | Add-Member -MemberType NoteProperty -Name "DialogIndex" -Value ($Dialog.Messages.IndexOf($SelMsg))
-                #Add Entry to MatchBuffer
-                If ($null -eq $IndexHash.$($MsgObj.DialogIndex).$($MsgObj.MatchedEntry)){
-
-                    $SearchMatches.Add($MsgObj) | Out-Null
-                    $IndexHash.Add($($MsgObj.DialogIndex),$($MsgObj.MatchedEntry))
-
-                }
-
-            }
+            $DialogFields.ForEach({$MsgObj | Add-Member -MemberType NoteProperty -Name $_ -Value ($Message.$_)})
+            $MsgObj | Add-Member -MemberType NoteProperty -Name "MatchedEntry" -Value $True
+            $MsgObj | Add-Member -MemberType NoteProperty -Name "DialogIndex" -Value ($Dialog.Messages.IndexOf($Message))
+            $MsgObj | Add-Member -MemberType NoteProperty -Name "MatchPhrase" -Value $MatchedTerms
+            $SearchMatches.Add($MsgObj) | Out-Null
             #endregion
 
         } #close :msgloop
         #endregion
 
-        #region Cleanup and continue on empty
-        Remove-Variable MatchingMessages,IndexHash -ErrorAction SilentlyContinue
-        [gc]::Collect()
+        #region Sort/Unique Auxiliary Indexes, append corresponding messages to SelectedMessages
+        $AuxiliaryIndexes = $AuxiliaryIndexes | Sort-Object -Unique
 
-        If ($SearchMatches.Count -eq 0 -or $null -eq $SearchMatches){continue dialogloop}
-        #endregion
+        $AuxiliaryIndexes = ((Compare-Object -ReferenceObject $SearchMatches.DialogIndex -DifferenceObject $AuxiliaryIndexes) | Where-Object {$_.SideIndicator -eq '=>'}).InputObject
 
-        #region Deduplicate matches
-        [system.collections.arraylist]$SearchMatches = $SearchMatches | Sort-Object DialogIndex | Select-Object * -Unique
-        
-        $MatchedIndexes = $Searchmatches.DialogIndex | Sort-Object -Unique
+        If ($AuxiliaryIndexes.Count -gt 0){
 
-        :indexloop Foreach ($Index in $MatchedIndexes){
+            $MatchedIndexes
 
-            #We can use .Where() here because there will always be no less than 2 entries
-            $IndexMatches = $SearchMatches.Where({$_.DialogIndex -eq $Index})
+            $AuxiliaryIndexes.Foreach({
 
-            #If we have only 1 instance of an index, we're good:
-            switch ($IndexMatches.Count){
-                {$_ -eq 1}{continue indexloop}
+                $Index = $_
 
-                {$_ -ge 2}{
-                    #This preserves [pscustomobject] typing,
-                    $NonMatchedObj = $IndexMatches[$IndexMatches.IndexOf($IndexMatches.Where({$_.MatchedEntry -eq $False}))]
-                    # which we need, to remove it from $SearchMatches:
-                    $SearchMatches.Remove($NonMatchedObj) | Out-Null
-                }
+                $AuxMessage = $Dialog.Messages[$Index]
 
-                Default {continue indexloop}
-            }
+                $MsgObj = New-Object System.Object
+
+                $DialogFields.ForEach({$MsgObj | Add-Member -MemberType NoteProperty -Name $_ -Value ($AuxMessage.$_)})
+                $MsgObj | Add-Member -MemberType NoteProperty -Name "MatchedEntry" -Value $False
+                $MsgObj | Add-Member -MemberType NoteProperty -Name "DialogIndex" -Value $Index
+                $MsgObj | Add-Member -MemberType NoteProperty -Name "MatchPhrase" -Value $null
+                $SearchMatches.Add($MsgObj) | Out-Null
+
+            })
 
         }
         #endregion
 
+        #region Cleanup and continue on empty, Sort by DialogIndex
+        Remove-Variable MatchingMessages,IndexHash -ErrorAction SilentlyContinue
+        [gc]::Collect()
+
+        If ($SearchMatches.Count -eq 0 -or $null -eq $SearchMatches){continue dialogloop}
+
+        $SearchMatches = $SearchMatches | Sort-Object DialogIndex -Unique
+
+        #endregion
+
         #region Capitalize Matches
-        If ($ShowAsCapitals.IsPresent){
+        If (!$ShowAsCapitals.IsPresent){
 
             :caploop Foreach ($MatchIndex in (0..($SearchMatches.Count - 1))){
 
@@ -1464,16 +1482,12 @@ process {
     
                     {($_ -eq "Any") -or ($_ -eq "All")}{
 
-                        $SearchTerms | ForEach-Object {
-
-                            $Term = $_
+                        Foreach ($Term in $SearchTerms){
 
                             $SearchMatches[$MatchIndex].Content = $SearchMatches[$MatchIndex].Content -ireplace "$Term","$($Term.ToUpper())"
                         }
 
                     }
-    
-                    Default {continue caploop}
     
                 }
 
@@ -1483,7 +1497,23 @@ process {
         #endregion
 
         #region Write Dialog File Info Header to Results
-        # 07/05 LEFT OFF HERE
+        $DialogInfo = [pscustomobject]@{
+            "Title" = $Entry.Title
+            "Tags" = $Entry.Tags.Where({$_ -ne "dummyvalue"}) -join ', '
+            "Created" = $Entry.Created
+            "Modified" = $Entry.Modified
+            "Opener" = $Entry.Opener
+            "FilePath" = $Entry.FilePath
+            "Model" = $Entry.Model            
+        }
+
+        #$Results += ($SearchInfo | Format-List | Out-String) #For testing
+        $Results += ($DialogInfo | Format-List | Out-String)
+
+        $L = 0
+        $DialogInfo | out-string -Stream | Foreach-Object {If ($_.Length -gt $L){$L = $_.Length}}
+        $Line = "$((1..$L).ForEach({"-"}) -join '')`n"
+        (0..1).ForEach({$Results += $Line})
 
         #endregion
 
@@ -1496,12 +1526,12 @@ process {
 
             switch ($SelMsg.MatchedEntry){
 
-                $True {$MatchMarker = " <MATCH>"}
+                $True {$MatchMarker = "MATCH $($SelMsg.MatchPhrase)`n"}
                 $False {$MatchMarker = $null}
 
             }
 
-            $Results += "[$($SelMsg.TimeStamp)]$MatchMarker $($SelMsg.Role.ToUpper())`:`n"
+            $Results += "[$($SelMsg.TimeStamp)] $($SelMsg.Role.ToUpper())`:`n$MatchMarker"
             $Results += $SelMsg.Content
             $Results += "`n`n"
             
@@ -1515,7 +1545,7 @@ process {
 
 }
 
-end {}
+end {return $Results}
 
 }
 

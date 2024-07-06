@@ -76,8 +76,40 @@ Check out my **development journal** (below) to see where I am and what I'm work
 ### 07/05/2024
 Messages are now being appended to $Results more or less in the way I want them.
 
-⬜️ I need to append the dialog file information to the Results so the user knows where the text was found.
+✅ I need to append the dialog file information to the Results so the user knows where the text was found.
 
+**Follow-Up:**
+I put a lot of work into **Search-LMDialog** today. I fixed a bunch of bugs, set up the output format, and added a **MATCH** tag (*with the matched terms*) to be displayed in the output.
+
+Capitalizing is also working as intended.
+
+I've run the function as a function and it does match and return many instances, but it doesn't always catch every instance. This tells me something's not working right with selecting and pruning with the deduplication step.
+
+🐛 **ContextDepth** is no longer showing up in Dialog Files. This is probably easy to fix, and I need to figure it out.
+
+I may play around with the display format for the **MATCH** tag in the text, but the hardest part of this function is working.
+
+⬜️ The next thing to do will be to run the code against *every* accumulated Dialog File I have, and review the output to confirm it's working as intended.
+
+⬜️ After that, I need to implement the **-WriteProgress** output.
+
+**Follow-Up:**
+✅ I made this code block and blocks more sensible:
+
+```
+  :msgloop Foreach ($Message in $MatchingMessages){
+            ...}
+```
+
+Instead of trying to figure out and add the Selected Messages (matched and prior/after context messages), I should only add the relevant information (**MatchedEntry, DialogIndex and MatchPhrase**) to the existing matching message object, which will be appended to **SelectedMessages**.
+
+I will append any auxiliary message indexes to **$AuxilliaryIndexes**, and sort/unique the list.
+
+Then, I will remove any indexes listed in **$AuxiliaryIndexes** that are also in the **$MatchingMessages** array.
+
+The remaining messages at indexes in **$AuxiliaryIndexes** will be appended to **$SelectedMessages**.
+
+Then sort the thing by **DialogIndex**, and I no longer need to worry about deduplication.
 
 ---
 ### 07/04/2024
