@@ -937,7 +937,10 @@ function Remove-LMHistoryEntry {
         [switch]$BulkRemoval,
     
         [Parameter(Mandatory=$false)]
-        [switch]$DeleteDialogFiles
+        [switch]$DeleteDialogFiles,
+
+        [Parameter(Mandatory=$false)]
+        [boolean]$Confirm
     
     )
 
@@ -949,6 +952,11 @@ function Remove-LMHistoryEntry {
             $FilePath = $Global:LMStudioVars.FilePaths.HistoryFilePath
 
              If (!(Test-Path $FilePath)){throw "Provided history file path is not valid or accessible ($FilePath)"}
+        #endregion
+
+        #region Set $Confirm (if not set)
+        If (!($PSBoundParameters.ContainsKey('Confirm'))){$Confirm = $True}
+
         #endregion
 
         #region Define Root Folder
@@ -990,7 +998,7 @@ function Remove-LMHistoryEntry {
 
                         $DialogFilePath = $RootFolder + ($Entry.FilePath)
 
-                        If (Test-Path $DialogFilePath){Remove-Item -Path $DialogFilePath -Confirm:$true} #side with caution                        
+                        If (Test-Path $DialogFilePath){Remove-Item -Path $DialogFilePath -Confirm:$Confirm}
                     }
 
                 }
@@ -1008,7 +1016,7 @@ function Remove-LMHistoryEntry {
 
                     $DialogFilePath = $RootFolder + ($Entry.FilePath)
 
-                    If (Test-Path $DialogFilePath){Remove-Item -Path $DialogFilePath -Confirm:$true} #side of caution                        
+                    If (Test-Path $DialogFilePath){Remove-Item -Path $DialogFilePath -Confirm:$Confirm} #side of caution                        
                 }
             }
 
@@ -1172,7 +1180,7 @@ function Get-LMModel {
 }
 
 #Searches the HistoryFile for strings and provides multiple ways to output the contents
-function Search-LMChatDialog { #Started, ways to go
+function Search-LMChatDialog { #COMPLETE
 [CmdletBinding()]
 param (
     [Parameter(Mandatory=$true)]
@@ -1201,18 +1209,15 @@ param (
     [Parameter(Mandatory=$false)]
     [int]$AfterContext = 0,
 
-    [Parameter(Mandatory=$False)]
-    [ValidateScript({ if (!(Test-Path -Path $_)) { throw "History file path does not exist" } else { $true } })]
-    [string]$FilePath,
-
-    [Parameter(Mandatory=$false)]
-    [switch]$WriteProgress,
-
     [Parameter(Mandatory=$false)]
     [switch]$ShowAsCapitals,
 
     [Parameter(Mandatory=$false)]
-    [switch]$AsObject
+    [switch]$AsObject,
+
+    [Parameter(Mandatory=$False)]
+    [ValidateScript({ if (!(Test-Path -Path $_)) { throw "History file path does not exist" } else { $true } })]
+    [string]$FilePath
 
 )
 begin {
@@ -1227,7 +1232,11 @@ begin {
         $DirectoryPath = $Global:LMStudioVars.FilePaths.DialogFolderPath
 
     }
-    Else {$DirectoryPath = $FilePath.TrimEnd('.index') + "-DialogFiles"}
+    Else {
+        $DirectoryPath = $FilePath.TrimEnd('.index') + "-DialogFiles"
+        If (!(Test-Path $DirectoryPath)){throw "Dialog file directory $DirectoryPath dooesn't exist"}
+    
+    }
 
     try {$RootFolder = (Get-Item $FilePath -ErrorAction Stop).Directory.FullName}
     catch {throw "History file error: $($_.Exception.Message)"}
@@ -1337,14 +1346,32 @@ begin {
     #endregion
 
     #region Prep Results
-    [string]$Results = $null
-    
-    $Results += ($SearchInfo | Format-List | Out-String)
+    switch ($AsObject.IsPresent){
 
-    $L = 0
-    $SearchInfo | out-string -Stream | Foreach-Object {If ($_.Length -gt $L){$L = $_.Length}}
-    $Line = "$((1..$L).ForEach({"-"}) -join '')`n"
-    (0..1).ForEach({$Results += $Line})
+        $True {
+
+            $Results = New-Object PSCustomObject
+
+            $Results | Add-Member -MemberType NoteProperty -Name SearchSettings -Value $SearchInfo
+            $Results | Add-Member -MemberType NoteProperty -Name SearchResults -Value @{}
+            $Results.SearchResults.Add("Index",$(New-Object System.Collections.ArrayList))
+
+        }
+
+        $False {
+
+            [string]$Results = $null
+    
+            $Results += ($SearchInfo | Format-List | Out-String)
+        
+            $L = 0
+            $SearchInfo | out-string -Stream | Foreach-Object {If ($_.Length -gt $L){$L = $_.Length}}
+            $Line = "$((1..$L).ForEach({"-"}) -join '')`n"
+            (0..1).ForEach({$Results += $Line})
+
+        }
+
+    }
     #endregion
 
 }
@@ -1514,37 +1541,53 @@ process {
             "Model" = $Entry.Model            
         }
 
-        $Results += ($DialogInfo | Format-List | Out-String)
+        switch ($AsObject.IsPresent){
 
-        $L = 0
-        $DialogInfo | out-string -Stream | Foreach-Object {If ($_.Length -gt $L){$L = $_.Length}}
-        $Line = "$((1..$L).ForEach({"-"}) -join '')`n"
-        (0..1).ForEach({$Results += $Line})
+            $True {
 
-        #endregion
+                $Results.SearchResults.Index.Add($DialogInfo) | Out-Null
+                $Results.SearchResults.Add($Entry.FilePath, $SearchMatches)
+            }
 
-        #region Write dialogs out by contiguous entry-groups
-        $LastIndex = $SearchMatches.Count - 1
+            $False {
 
-        Foreach ($SelIndex in (0..$LastIndex)){
+                    $Results += ($DialogInfo | Format-List | Out-String)
 
-            $SelMsg = $SearchMatches[$SelIndex]
+                    $L = 0
+                    $DialogInfo | out-string -Stream | Foreach-Object {If ($_.Length -gt $L){$L = $_.Length}}
+                    $Line = "$((1..$L).ForEach({"-"}) -join '')`n"
+                    (0..1).ForEach({$Results += $Line})
+            
+                    #endregion
+            
+                    #region Write dialogs out by contiguous entry-groups
+                    $LastIndex = $SearchMatches.Count - 1
+            
+                    Foreach ($SelIndex in (0..$LastIndex)){
+            
+                        $SelMsg = $SearchMatches[$SelIndex]
+            
+                        switch ($SelMsg.MatchedEntry){
+            
+                            $True {$MatchMarker = "| MATCH $($SelMsg.MatchPhrase)`n"}
+                            $False {$MatchMarker = $null}
+            
+                        }
+            
+                        $Results += "[$($SelMsg.TimeStamp)] $MatchMarker`n"
+                        $Results += "$($SelMsg.Role.ToUpper()): $($SelMsg.Content)"
+                        $Results += "`n`n"
+                        
+                        If ($SelIndex -eq $LastIndex){(0..1) | Foreach-Object {$Results += $Line}}
+                        ElseIf ($SearchMatches[($SelIndex + 1)].DialogIndex -gt (($SearchMatches[$SelIndex].DialogIndex + 1))){$Results += $Line}
 
-            switch ($SelMsg.MatchedEntry){
-
-                $True {$MatchMarker = "MATCH $($SelMsg.MatchPhrase)`n"}
-                $False {$MatchMarker = $null}
+                }
 
             }
 
-            $Results += "[$($SelMsg.TimeStamp)] | $MatchMarker`n"
-            $Results += "$($SelMsg.Role.ToUpper()): $($SelMsg.Content)"
-            $Results += "`n`n"
-            
-            If ($SelIndex -eq $LastIndex){(0..1) | Foreach-Object {$Results += $Line}}
-            ElseIf ($SearchMatches[($SelIndex + 1)].DialogIndex -gt (($SearchMatches[$SelIndex].DialogIndex + 1))){$Results += $Line}
-            
         }
+
+    
         #endregion
 
     } #close :dialogloop
@@ -1554,6 +1597,7 @@ process {
 end {return $Results}
 
 }
+
 
 #This function invokes Windows Forms Open and SaveAs for files:
 function Invoke-LMSaveOrOpenUI {
@@ -4025,10 +4069,6 @@ function Get-LMResponse {
         $BodySettings.Add('max_tokens', $Settings.max_tokens)
         $BodySettings.Add('stream', $False)
         $BodySettings.Add('SystemPrompt', $Settings.SystemPrompt)
-        #endregion
-
-        #region Set Opener
-
         #endregion
 
         #region Send $Dialog.Messages to Convert-DialogToBody:

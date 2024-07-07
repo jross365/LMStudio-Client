@@ -56,6 +56,8 @@ Start-LMChat
 
 ## Notes/Addendum:
 
+**07/07/2024** The current version of the code does **not** work with Powershell 5. I will attempt to resolve this issue, and I'm not sure when it was first introduced.
+
 I will write the documentation after I've implemented all primary features and fixed critical bugs and problems.
 
 Check out my **development journal** (below) to see where I am and what I'm working on. 
@@ -71,6 +73,36 @@ Check out my **development journal** (below) to see where I am and what I'm work
 ⬜️ **- Feature/Improvement Incomplete**  ✅ **- Feature/Improvement Complete**
 
 💡 **- Idea  🐛 - Bug**
+
+---
+### 07/07/2024
+Implementing **-AsObject** was simpler than I expected. It works as intended.
+
+I also removed **-WriteProgress**, as the searches complete very quickly, even with numerous search terms. I don't see any benefit to adding steps for processing, given how quick it is.
+
+💡 It would be sensible for **Search-LMChatDialog** to *only* return an object, and for the object to be converted to human-friendly text via a dedicated function (**Convert-LMSearchResults**?). I'm not putting time into making this happen just yet, but it's here for future reference.
+
+✅ I added a **-Confirm** parameter to **Remove-LMHistoryEntry**. It's a [boolean] that defaults to $True.
+
+I've started looking into what it would take to provide multi-length strings for setting options, such as
+
+* :maxtokens instead of :mtok
+* :contextdepth instead of :cond
+* :setprompt instead of :selp
+* :newprompt instead of :newp
+* :addtag instead of :atag
+* :deltag instead of :dtag
+* :greet instead of :gret
+* :stream instead of :strm
+* :saveprompt instead of :save
+* :showmd instead of :mark
+
+etcetera. Piggy-backing this improvement, I would also prefer to move the tag-adding and tag-removing code out of the **:main** loop of **Start-LMChat**. I need to think through how I might do this (to be determined.)
+
+Oh yeah, PS5 support's been broken for a while now. Not sure what broke it or when, but I'll try to fix it.
+
+That's all for now.
+
 
 ---
 ### 07/06/2024
@@ -118,7 +150,7 @@ I may play around with the display format for the **MATCH** tag in the text, but
 
 ✅ The next thing to do will be to run the code against *every* accumulated Dialog File I have, and review the output to confirm it's working as intended.
 
-⬜️ After that, I need to implement the **-WriteProgress** output.
+❌ After that, I need to implement the **-WriteProgress** output.
 
 **Follow-Up:**
 ✅ I made this code block and blocks more sensible:
@@ -292,14 +324,14 @@ The next step is to address the following bugs and features:
 
 ✅ Test and validate the **:priv** command
 
-⬜️ Write the **Search-LMHistory** function
+✅ Write the **Search-LMHistory** function
 
 
 **And these are "admin" tasks:** (*copied over from 05/31/2024*)
 
 ⬜️ Better prompts and questions for the greeting generator
 
-**⬜️ Check my functions, and identify which have never been used by any other function**
+⬜️ **Check my functions, and identify which have never been used by any other function**
 
 ⬜️ Separate out Public and Private functions (second-to-last thing to do)
 
@@ -351,11 +383,11 @@ Finished testing parameters for **Set-LMCLIOption**, and added the **:gret** par
 I optimized a *lot* of the test conditions for allowing the command to go through. Some tests were made less redundant or eliminated; I found smarter ways to combine sets of tests without making the code hard to understand, and I was able to standardize certain validation patterns for different kinds of inputs.
 
 🐛 **Edit-LMSystemPrompt -Remove -Bulk** does not work. Without **-Bulk** it works fine. I figured this out when trying to clean up after testing the **:newp** input.
-⬜️ I need to fix it. I've wanted to build a better way to remove bulk items, and to remove duplicate items in particular without removing the original or "first" one.
+✅ I need to fix it. I've wanted to build a better way to remove bulk items, and to remove duplicate items in particular without removing the original or "first" one.
 
 I still need to build **:priv** and **:quit** into **Start-LMChat**.
 
-⬜️ I also like the idea of completely moving **Get-LMGreeting** over to only use the Config File. I put it off before, but I think I want to do it to make the module consistent.
+✅ I also like the idea of completely moving **Get-LMGreeting** over to only use the Config File. I put it off before, but I think I want to do it to make the module consistent.
 
 💡 I would like to add a cheesy ASCII Art banner on start for **Start-LMChat** as well. Very 90s/2000s.
 
