@@ -951,6 +951,10 @@ function Remove-LMHistoryEntry {
              If (!(Test-Path $FilePath)){throw "Provided history file path is not valid or accessible ($FilePath)"}
         #endregion
 
+        #region Define Root Folder
+        $RootFolder = $Global:LMStudioVars.FilePaths.DialogFolderPath.TrimEnd(($Global:LMStudioVars.FilePaths.DialogFolderPath -split '\\' | Select-Object -Last 1))
+        #endregion
+
         #region Import History File as Array List
         $History = New-Object System.Collections.ArrayList
 
@@ -984,9 +988,9 @@ function Remove-LMHistoryEntry {
 
                     If ($DeleteDialogFiles.IsPresent){
 
-                        $DialogFilePath = $Global:LMStudioVars.FilePaths.HistoryFilePath.TrimEnd('.index') + ($Entry.FilePath)
+                        $DialogFilePath = $RootFolder + ($Entry.FilePath)
 
-                        If (Test-Path $DialogFilePath){Remove-Item -Path $DialogFilePath -Confirm:$true} #side of caution                        
+                        If (Test-Path $DialogFilePath){Remove-Item -Path $DialogFilePath -Confirm:$true} #side with caution                        
                     }
 
                 }
@@ -1002,7 +1006,7 @@ function Remove-LMHistoryEntry {
 
                 If ($DeleteDialogFiles.IsPresent){
 
-                    $DialogFilePath = $Global:LMStudioVars.FilePaths.HistoryFilePath.TrimEnd('.index') + ($Entry.FilePath)
+                    $DialogFilePath = $RootFolder + ($Entry.FilePath)
 
                     If (Test-Path $DialogFilePath){Remove-Item -Path $DialogFilePath -Confirm:$true} #side of caution                        
                 }
@@ -1205,7 +1209,10 @@ param (
     [switch]$WriteProgress,
 
     [Parameter(Mandatory=$false)]
-    [switch]$ShowAsCapitals
+    [switch]$ShowAsCapitals,
+
+    [Parameter(Mandatory=$false)]
+    [switch]$AsObject
 
 )
 begin {
@@ -1470,7 +1477,7 @@ process {
         #endregion
 
         #region Capitalize Matches
-        If (!$ShowAsCapitals.IsPresent){
+        If ($ShowAsCapitals.IsPresent){
 
             :caploop Foreach ($MatchIndex in (0..($SearchMatches.Count - 1))){
 
@@ -1507,7 +1514,6 @@ process {
             "Model" = $Entry.Model            
         }
 
-        #$Results += ($SearchInfo | Format-List | Out-String) #For testing
         $Results += ($DialogInfo | Format-List | Out-String)
 
         $L = 0
@@ -1531,8 +1537,8 @@ process {
 
             }
 
-            $Results += "[$($SelMsg.TimeStamp)] $($SelMsg.Role.ToUpper())`:`n$MatchMarker"
-            $Results += $SelMsg.Content
+            $Results += "[$($SelMsg.TimeStamp)] | $MatchMarker`n"
+            $Results += "$($SelMsg.Role.ToUpper()): $($SelMsg.Content)"
             $Results += "`n`n"
             
             If ($SelIndex -eq $LastIndex){(0..1) | Foreach-Object {$Results += $Line}}
@@ -3398,7 +3404,7 @@ function Start-LMChat {
                     $Dialog.Messages[0].temperature = $Global:LMStudioVars.ChatSettings.temperature
                     $Dialog.Messages[0].max_tokens = $Global:LMStudioVars.ChatSettings.max_tokens
                     $Dialog.Messages[0].stream = $Global:LMStudioVars.ChatSettings.stream
-                    $Dialog.Messages[0].ContextDepth = $ContextDepth
+                    $Dialog.Messages[0].ContextDepth = $Global:LMStudioVars.ChatSettings.ContextDepth
                     $Dialog.Messages[0].Content = $Global:LMStudioVars.ChatSettings.SystemPrompt
 
                     # Set the directory path for the chat file:
@@ -3676,7 +3682,7 @@ function Start-LMChat {
             $UserMessage.temperature = $Global:LMStudioVars.ChatSettings.temperature
             $UserMessage.max_tokens = $Global:LMStudioVars.ChatSettings.max_tokens
             $UserMessage.stream = $Global:LMStudioVars.ChatSettings.stream
-            $UserMessage.ContextDepth = $ContextDepth
+            $UserMessage.ContextDepth = $Global:LMStudioVars.ChatSettings.ContextDepth
             $UserMessage.Role = "user"
             $UserMessage.Content = "$UserInput"
 
@@ -3685,7 +3691,7 @@ function Start-LMChat {
 
 
             #region Send $Dialog.Messages to Convert-DialogToBody:
-            $Body = Convert-LMDialogToBody -DialogMessages ($Dialog.Messages) -ContextDepth $ContextDepth -Settings $BodySettings
+            $Body = Convert-LMDialogToBody -DialogMessages ($Dialog.Messages) -ContextDepth $Global:LMStudioVars.ChatSettings.ContextDepth -Settings $BodySettings
             #endregion
 
             Write-Host ""
@@ -3709,7 +3715,7 @@ function Start-LMChat {
             $AssistantMessage.temperature = $Global:LMStudioVars.ChatSettings.temperature
             $AssistantMessage.max_tokens = $Global:LMStudioVars.ChatSettings.max_tokens
             $AssistantMessage.stream = $Global:LMStudioVars.ChatSettings.stream
-            $AssistantMessage.ContextDepth = $ContextDepth
+            $AssistantMessage.ContextDepth = $Global:LMStudioVars.ChatSettings.ContextDepth
             $AssistantMessage.Role = "assistant"
             $AssistantMessage.Content = "$LMOutput"
             #endregion

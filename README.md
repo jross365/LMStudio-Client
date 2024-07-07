@@ -73,6 +73,33 @@ Check out my **development journal** (below) to see where I am and what I'm work
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 07/06/2024
+I fixed the **ContextDepth** issue this morning, it was exactly what I thought it was: I'd forgotten to move the **$ContextDepth** variable over to **$Global:LMStudioVars.ChatSettings.ContextDepth** in several places.
+
+I also discovered that 🐛 **Remove-LMHistoryEntry -DeleteDialogFiles** wasn't deleting dialog files. After correcting my code, I used this procedure to recreate the History File, and then re-deleted the files I wanted:
+
+```
+# Reconstructs the History File from the files in the Dialog Folder:
+Repair-LMHistoryFile -FilePath $global:LMStudioVars.FilePaths.HistoryFilePath
+
+# Presents a UI to select History File entries for deletion, along with corresponding files:
+Remove-LMHistoryEntry -BulkRemoval -DeleteDialogFiles
+```
+I've written this entire module to be usable in this way. I will write documentation, I promise.
+
+It occurred to me that I should provide a way to return the results of **Search-LMDialog**, and so I've added an **-AsObject** parameter. The most expedient way to build this feature is to return an object with something along the following structure:
+
+```
+$Object.SearchSettings                  #A record of the input parameters
+$Object.SearchResults                   #A hashtable to store the search results
+$Object.SearchResults.Index             # An array which contains the file information and corresponding key name for each file which contains matches
+$Object.SearchResults.$DialogFileName   #A hashtable key named for the Dialog File, which contains the $SearchMatches output
+```
+This design choice leads to a bit more work, but it adds to the utility of the tool: it allows me (or anyone else) to use the function as a tool for other purposes besides re-reading.
+
+That's all for now.
+
+---
 ### 07/05/2024
 Messages are now being appended to $Results more or less in the way I want them.
 
@@ -85,11 +112,11 @@ Capitalizing is also working as intended.
 
 I've run the function as a function and it does match and return many instances, but it doesn't always catch every instance. This tells me something's not working right with selecting and pruning with the deduplication step.
 
-🐛 **ContextDepth** is no longer showing up in Dialog Files. This is probably easy to fix, and I need to figure it out.
+✅ **ContextDepth** is no longer showing up in Dialog Files. This is probably easy to fix, and I need to figure it out.
 
 I may play around with the display format for the **MATCH** tag in the text, but the hardest part of this function is working.
 
-⬜️ The next thing to do will be to run the code against *every* accumulated Dialog File I have, and review the output to confirm it's working as intended.
+✅ The next thing to do will be to run the code against *every* accumulated Dialog File I have, and review the output to confirm it's working as intended.
 
 ⬜️ After that, I need to implement the **-WriteProgress** output.
 
