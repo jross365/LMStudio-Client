@@ -77,6 +77,42 @@ Check out my **development journal** (below) to see where I am and what I'm work
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 07/08/2024
+Finished moving option selections over from a series of **If (){}** statements to the **switch {}** statement. Preliminary testing shows it works great.
+
+~~The next step is to move options over to keyword **:opt**.~~ Decided not to do it this way; it's "power-user friendly" but very "regular-user unfriendly".
+
+**Follow-Up:**
+
+Substantial improvements; added **:addtags** and **:remtags**, and did a thorough test. There is a new function called **Set-LMTags**, which enabled me to move all the tag management logic out of **Start-LMChat**.
+
+**Set-LMTags** not only updates the tags in the Dialog File, but provides an **-UpdateHistoryFile** switch which also updates the tags listed in the History File for the Dialog File.
+
+Here are some other enhancements I have planned:
+
+⬜️ ":clear" option to clear out options output and refresh the console's continuity/appearance
+
+⬜️ ":title" option to set the title on the dialog file and corresponding history (*may do this with a **Set-LMTitle** function, similar to **Set-LMTags**)
+
+⬜️ Need to show history/dialog file paths with an option (":files"?)
+
+⬜️ Rename options in **Set-LMCLIOptions** to the new names
+
+⬜️ Update **Show-LMHelp** to reflect the new names
+
+💡 Would like to set the "**You**" and "**AI**" prompts to whatever a user wants them to be, via **$Global:LMStudioVars.ChatSettings.Username** and **$Global:LMStudioVars.ChatSettings.AsstName** values.
+
+The last idea would require updates to the Config File Template, which is easy (*everything hinges off of the template*). Regenerating a new Config File is also easy and painless; however, I should include an **Upgrade-LMConfigFile** function (or something similar) to "port over" settings for older Config Files over to the latest/greatest.
+
+💡 Instead of an archaic message box via **Get-LMHelp**, I should launch a browser to navigate to the GitHub documentation via something like this:
+
+```
+Start-Process "Https://github.com/jross365/LMStudio-Client/Docs/Start-LMChat-Options.md"
+```
+
+I'll chip away at the above items. That's all for now.
+
+---
 ### 07/07/2024
 Implementing **-AsObject** was simpler than I expected. It works as intended.
 

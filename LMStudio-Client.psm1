@@ -350,9 +350,15 @@ function Set-LMConfigOptions {
     [CmdletBinding()]
     param(
         # Param1 help description
-        [Parameter(Mandatory=$true)][ValidateSet('ServerInfo', 'ChatSettings', 'FilePaths',"URIs")][string]$Branch,
-        [Parameter(Mandatory=$true)][hashtable]$Options,
-        [Parameter(Mandatory=$false, ParameterSetName='SaveChanges')][switch]$Commit
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('ServerInfo', 'ChatSettings', 'FilePaths',"URIs")]
+        [string]$Branch,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]$Options,
+        
+        [Parameter(Mandatory=$false, ParameterSetName='SaveChanges')]
+        [switch]$Commit
     )
 
     If ((Confirm-LMGlobalVariables -ReturnBoolean) -ne $True){throw "Something went wrong when running Confirm-LMGlobalVariables (didn't return True)"}
@@ -863,9 +869,7 @@ function Update-LMHistoryFile { #Complete, requires testing
 
     process {
 
-        $History = New-Object System.Collections.ArrayList
-
-        try {(Import-LMHistoryFile -FilePath $FilePath) | Foreach-Object {$History.Add($_) | Out-Null}}
+        try {[System.Collections.ArrayList]$History = Import-LMHistoryFile -FilePath $FilePath}
         catch {throw "History File import (for write) failed: $($_.Exception.Message)"}
 
         $MatchingEntries = $History | Where-Object {($_.Created -eq $Entry.Created) -and ($_.FilePath -eq $Entry.FilePath)}
@@ -2912,6 +2916,101 @@ function Select-LMHistoryEntry {
 
 }
 
+#This function assigns tags to a Dialog File
+function Set-LMTags {
+    [CmdletBinding()]
+    param (
+        
+    [Parameter(Mandatory=$true)]
+    [ValidateScript({ if (!(Test-Path -Path $_)) { throw "File path does not exist" } else { $true } })]
+    [string]$DialogFilePath,
+
+    [Parameter(Mandatory=$true)]
+    [ValidateSet("Add","Remove")]
+    [string]$Action,
+
+    [Parameter(Mandatory=$true)]
+    [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+    [string]$Tags,
+    
+    [Parameter(Mandatory=$false)]
+    [switch]$UpdateHistoryFile
+
+    )
+    
+    begin {
+
+        try {$Dialog = Import-LMDialogFile -FilePath $DialogFilePath}
+        catch {throw "[Set-LMTags] Unable to import dialog file $DialogFilePath"}
+    
+        If ($Tags -match ','){[array]$TagsArray = ($Tags -split ',').Trim().Where({$_ -ne ""})}
+        Else {
+            $TagsArray = @()
+            $Tags | Foreach-Object {$TagsArray += "$($_.Trim())"}
+        }
+
+        If ($TagsArray.Count -eq 0){throw "[Set-LMTags] Provided tags is malformed or empty"}
+
+    }
+
+    process {
+
+        switch ($Action){
+
+            {$_ -ieq "Add"}{
+         
+                $TagsArray.Foreach({
+                                
+                    $Tag = $_
+                    $Dialog.Info.Tags += "$Tag"
+                
+                })
+
+            }
+
+            {$_ -ieq "Remove"}{
+
+                $TagsArray.Foreach({
+                            
+                    $Tag = $_
+                    $Dialog.Info.Tags = $Dialog.Info.Tags | Where-Object {$_ -ine "$Tag"}
+            
+                })
+
+            }
+
+        }
+
+    }
+
+    end {
+
+        If (($Dialog.Info.Tags).Where({$_ -ine 'dummyvalue'}) -ge 2){$Dialog.Info.Tags = $Dialog.Info.Tgs | Where-Object {$_ -ine 'dummyvalue'}}
+        
+        try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
+        catch {throw "[Set-LMTags] Dialog file save failed; Disabling file saving (:Save to recreate a Dialog file)"}
+
+        if ($UpdateHistoryFile.IsPresent){
+
+            $DialogConversion = $False
+            try {
+                $Entry = Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath
+                $DialogConversion = $True
+            }
+            catch {Write-Warning "[Set-LMTags] Unable to convert Dialog to History Entry"}
+            
+            If ($DialogConversion){
+            
+                try {Update-LMHistoryFile -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
+                catch {Write-Warning "[Set-LMTags] Unable to append Dialog updates to History file; Disabling file-saving (:Save to recreate a Dialog file)"}
+            
+            }
+
+        }
+
+    }
+}
+
 #This function intakes a user prompt, interprets an option and executes a command
 function Set-LMCLIOption {
     [CmdletBinding()]
@@ -2927,7 +3026,7 @@ function Set-LMCLIOption {
     
         $Fault = $False
     
-        try {$Setting = $UserInput.Substring(0,5)}
+        try {$Setting = $UserInput.Split(' ')[0].Trim()}
         catch {
             $ResultObj.Message = "Option input is invalid. Try ':help' for more information."
             $Fault = $True
@@ -3588,7 +3687,7 @@ function Start-LMChat {
 
         }
 
-        #The magic is here:
+    #The magic is here:
     :main do { 
 
             $UseMarkDown = $global:LMStudioVars.ChatSettings.MarkDown
@@ -3606,17 +3705,22 @@ function Start-LMChat {
             #region Check input for option:
             $OptTriggered = $False
 
-            try {$OptionKey = $UserInput.Substring(0,5).TrimEnd()}
-            catch {$OptionKey = "X"} #Error suppression: I know this is a "bad practice", but I don't like the clunkiness or lack of control for toggling the ErrorActionPreference
+            #try {$OptionKey = $UserInput.Substring(0,5).TrimEnd()}
+            try {$OptionTrigger = $UserInput.SubString(0,1)}
+            catch {$OptionTrigger = "X"} #Error suppression: I know this is a "bad practice", but I don't like the clunkiness or lack of control with toggling the ErrorActionPreference
 
             # If ':wxyz ', trimmed at the end (':wxyz') has a length of 5 characters:
             # 07/07: Going to make :opt the required $UserInput.SubString(0,4) to trigger options
-            If ($OptionKey.Length -eq 5 -and $OptionKey[0] -eq ':'){
-                
+            If ($OptionTrigger -eq ':'){
+
+                $InputSplit = $UserInput.Split(' ')
+                $OptionKey = $InputSplit[0].Trim()
+
                 switch ($OptionKey){
 
                     {$OptionKey -ieq ':quit'}{break main}
-                    {$OptionKey -ieq ':priv'}{
+
+                    {$OptionKey -ieq ':privmode'}{
 
                         If ($PrivacyMode.IsPresent){Write-Host "Privacy mode is already on."; continue main}
 
@@ -3650,139 +3754,82 @@ function Start-LMChat {
                         }
 
                     }
-                    {$OptionKey -ieq ':tags'}{} #07/07: IN THE PROCESS OF MOVING THESE OVER TO THE NEW SWITCH
+
+                    {$OptionKey -ieq ':tags'}{
+                        Write-Host "Tags: " -ForegroundColor Magenta -NoNewline
+                        Write-Host "$($Dialog.Info.Tags -join ', ')"
+        
+                        continue main
+                    }
+
+                    {$OptionKey -ieq ':addtags'}{
+                        
+                        If ($DialogFileExists -and !($PrivacyOn)){
+                        
+                            try {Set-LMTags -DialogFilePath $DialogFilePath -Action Add -Tags $InputSplit[1] -UpdateHistoryFile}
+                            catch {
+                                Write-Warning "$($_.Exception.Message)"
+                                $DialogFileExists = $False
+                                continue main
+                            }
+                        }
+                        Else {
+                            Write-Warning "Dialog file is marked as nonexistent; no tags were updated"
+                            continue main
+                        }
+
+                        try {$Dialog = Import-LMDialogFile -FilePath $DialogFilePath}
+                        catch {
+                            Write-Warning "$($_.Exception.Message)"
+                            $DialogFileExists = $False
+                        }
+                    }
+                    
+                    {$OptionKey -ieq ':remtags'}{
+                        
+                        If ($DialogFileExists -and !($PrivacyOn)){
+                        
+                            try {Set-LMTags -DialogFilePath $DialogFilePath -Action Remove -Tags $InputSplit[1] -UpdateHistoryFile}
+                            catch {
+                                Write-Warning "$($_.Exception.Message)"
+                                $DialogFileExists = $False
+                                continue main
+                            }
+                        }
+                        Else {
+                            Write-Warning "Dialog file is marked as nonexistent; no tags were updated"
+                            continue main
+                        }
+
+                        try {$Dialog = Import-LMDialogFile -FilePath $DialogFilePath}
+                        catch {
+                            Write-Warning "$($_.Exception.Message)"
+                            $DialogFileExists = $False
+                        }
+                        
+                    }
+
+                    Default {
+
+                        $Option = Set-LMCLIOption -UserInput $UserInput
+
+                        switch ($Option.Result){
+    
+                            $True {Write-Host "Set option succeeded" -ForegroundColor Green}
+                            $False {Write-Host "Set option failed: $($Option.Message)" -ForegroundColor Green}
+                            Default {Write-Host "Strange or no result returned from [Set-LMCLIOption]" -ForegroundColor Yellow}
+    
+                        }
+    
+                        continue main
+
+                    }
 
                 }
             
                 $OptTriggered = $True            
                 continue main
             }
-            #07/07: IN THE PROCESS OF MOVING THESE OVER TO THE NEW SWITCH (ABOVE)
-            #region Show tags:
-            ElseIf ($OptTriggered -and $OptionKey -ieq ':tags'){
-
-                Write-Host "Tags: " -ForegroundColor Magenta -NoNewline
-                Write-Host "$($Dialog.Info.Tags -join ', ')"
-
-                continue main
-
-            }
-            #endregion
-            #region Add/Remove tags:
-            ElseIf ($OptTriggered -and ($OptionKey -ieq ':atag' -or $OptionKey -ieq ':rtag')){
-
-                try {$TagText = "$($UserInput.Substring(5,$($UserInput.Length - 5)))"}
-                catch {
-                    Write-host "$OptionKey syntax was incorrect. Use :help" -ForegroundColor Yellow
-                    continue :main
-                    
-                }
-
-                If ($TagText -match ','){[array]$Tags = ($TagText -split ',').Trim().Where({$_ -ne ""})}
-                Else {
-                
-                    $Tags = @()
-                    $Tags += "$($TagText.Trim())"
-
-                }
-
-                If ($null -eq $Tags -or $Tags.Count -eq 0){
-                    Write-host ":$OptionKey was provided no tags. Use :help" -ForegroundColor Yellow
-                    continue :main
-
-                }
-
-                $TagUpdate = $False
-
-                If ($OptionKey -eq ':atag'){
-
-                    $Tags.Foreach({
-                        
-                        $Tag = $_
-                        $Dialog.Info.Tags += "$Tag"
-                    
-                    })
-
-                    $TagUpdate = $True
-                }
-                        
-                If ($OptionKey -eq ':rtag'){
-                    
-                    $Tags.Foreach({
-                    
-                        $Tag = $_
-                        $Dialog.Info.Tags = $Dialog.Info.Tags | Where-Object {$_ -ine "$Tag"}
-                
-                    })
-
-                    $TagUpdate = $True
-                
-                }
-
-                If ($TagUpdate){
-
-                    #region Update Dialog File, History File
-                    If ($DialogFileExists -and $PrivacyOn -eq $False){
-
-                        # Save the Dialog File
-                        try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
-                        catch {
-                            Write-Warning "Dialog file save failed; Disabling file saving (:Save to recreate a Dialog file)"
-                            $DialogFileExists = $False
-                        }
-
-                        # Update the History File
-                        If ($DialogFileExists){ 
-                        
-                            try {Update-LMHistoryFile -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
-                            catch { #Sleep and then try once more, in case we're stepping on our own feet (multiple)
-                                
-                                Start-Sleep -Seconds 2
-
-                                try {Update-LMHistoryFile -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
-                                catch {
-                                
-                                    Write-Warning "Unable to append Dialog updates to History file; Disabling file-saving (:Save to recreate a Dialog file)"
-                                    $DialogFileExists = $False
-                                }
-                            }
-
-                        }
-
-                    }
-                    Else {Write-Host "Unable to complete $OptionKey\: Dialog File cannot be saved" -ForegroundColor Yellow}
-
-                    #endregion
-
-
-                }
-
-                Remove-Variable TagUpdate,Tag,Tags,OptionKey,TagText -ErrorAction SilentlyContinue
-                continue :main
-
-            }
-            #endregion
-
-            Else { 
-
-                If ($OptTriggered){
-
-                    $Option = Set-LMCLIOption -UserInput $UserInput
-
-                    switch ($Option.Result){
-
-                        $True {Write-Host "Set option succeeded" -ForegroundColor Green}
-                        $False {Write-Host "Set option failed: $($Option.Message)" -ForegroundColor Green}
-                        Default {Write-Host "Strange or no result returned from [Set-LMCLIOption]" -ForegroundColor Yellow}
-
-                    }
-
-                    continue main
-
-                }
-
-            }
-
             #>
             #endregion
 
