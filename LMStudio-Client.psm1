@@ -700,7 +700,9 @@ function Import-LMHistoryFile { #Complete
 
         If ($HistoryContent.Count -eq 1){$NewHistory.Add((New-LMTemplate -Type HistoryEntry)) | Out-Null}
 
-        $HistoryContent | ForEach-Object {$NewHistory.Add($_) | Out-Null}
+        
+        Foreach ($Dialog in $HistoryContent){$NewHistory.Add($Dialog) | Out-Null}
+        
     }
     #endregion
 
@@ -940,7 +942,11 @@ function Remove-LMHistoryEntry {
         [switch]$DeleteDialogFiles,
 
         [Parameter(Mandatory=$false)]
-        [boolean]$Confirm
+        [boolean]$Confirm,
+
+        [Parameter(Mandatory=$False)]
+        [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+        [string]$DialogFilePath
     
     )
 
@@ -949,77 +955,127 @@ function Remove-LMHistoryEntry {
         #region Check history file location in global variables, or use provided FilePath
         If ((Confirm-LMGlobalVariables -ReturnBoolean) -ne $True){throw "Something went wrong when running Confirm-LMGlobalVariables (didn't return True)"}
         
-            $FilePath = $Global:LMStudioVars.FilePaths.HistoryFilePath
+        $FilePath = $Global:LMStudioVars.FilePaths.HistoryFilePath
 
-             If (!(Test-Path $FilePath)){throw "Provided history file path is not valid or accessible ($FilePath)"}
+        If (!(Test-Path $FilePath)){throw "Provided history file path is not valid or accessible ($FilePath)"}
         #endregion
 
         #region Set $Confirm (if not set)
         If (!($PSBoundParameters.ContainsKey('Confirm'))){$Confirm = $True}
-
         #endregion
+
+        #region Evaluate the $DialogFilePath
+        If ($PSBoundParameters.ContainsKey('DialogFilePath')){
+
+            $UseUI = $False
+
+            switch (($DialogFilePath -split '\\').Count){
+
+                {$_ -le 1}{throw "[Remove-LMHistoryEntry] Provided path is invalid"}
+                {$_ -ge 3}{$DialogFilePath = ($DialogFilePath -split '\\' | Select-Object -Last 2) -join '\'}
+
+            }
+
+        }
+        Else {$UseUI = $True}
+        #endregion
+
+        write-host "Use UI: $UseUI"
 
         #region Define Root Folder
         $RootFolder = $Global:LMStudioVars.FilePaths.DialogFolderPath.TrimEnd(($Global:LMStudioVars.FilePaths.DialogFolderPath -split '\\' | Select-Object -Last 1))
         #endregion
 
-        #region Import History File as Array List
-        $History = New-Object System.Collections.ArrayList
+        #region Import History File
+        try {[system.collections.arraylist]$History = Import-LMHistoryFile $FilePath}
+        catch {throw "Couldn't import History File: $($_.Exception.Message)"}
 
         #Create "Cancel" entry
-        $CancelEntry = New-LMTemplate -Type HistoryEntry 
-        $CancelEntry.Title = "Select This Entry To Cancel"
-        ("Created", "Modified", "Opener","Model","FilePath").ForEach({$CancelEntry.$_ = ""})
-        $History.Add($CancelEntry) | Out-Null
-
-        try {Get-Content $FilePath -ErrorAction Stop | ConvertFrom-Json -ErrorAction stop | Foreach-Object {$History.Add($_) | Out-Null}}
-        catch {throw "Couldn't import History File: $($_.Exception.Message)"}
+        If ($UseUI){
+            $CancelEntry = New-LMTemplate -Type HistoryEntry 
+            $CancelEntry.Title = "Select This Entry To Cancel"
+            ("Created", "Modified", "Opener","Model","FilePath").ForEach({$CancelEntry.$_ = ""})
+            $History.Add($CancelEntry) | Out-Null
+        }
         #endregion
 
         }
 
     process {
 
-        switch ($BulkRemoval.IsPresent){
+        switch ($UseUI){
 
             $True {
 
-                $RemoveEntries = $History | Select-Object @{N="Created"; E={Get-Date ($_.Created)}}, @{N="Modified"; E={Get-Date ($_.Modified)}}, Title, Opener, FilePath, @{N = "Tags"; E = {(($_.Tags) -join ', ') -replace 'dummyvalue, ','' -replace 'dummyvalue',''}} | Out-GridView -Title "Select History Entries for Removal/Deletion" -OutputMode Multiple
+                switch ($BulkRemoval.IsPresent){
 
-                $CancelEntries = $RemoveEntries | Where-Object {$_.Title -eq "Select This Entry To Cancel"}
-
-                If ($CancelEntries.Count -gt 0){return "Cancelled."}
-
-                Foreach ($Entry in $RemoveEntries){
-
-                    $History = $History | Where-Object {$_.FilePath -ne $Entry.FilePath}
-
-                    If ($DeleteDialogFiles.IsPresent){
-
-                        $DialogFilePath = $RootFolder + ($Entry.FilePath)
-
-                        If (Test-Path $DialogFilePath){Remove-Item -Path $DialogFilePath -Confirm:$Confirm}
+                    $True {
+    
+                        $RemoveEntries = $History | Select-Object @{N="Created"; E={Get-Date ($_.Created)}}, @{N="Modified"; E={Get-Date ($_.Modified)}}, Title, Opener, FilePath, @{N = "Tags"; E = {(($_.Tags) -join ', ') -replace 'dummyvalue, ','' -replace 'dummyvalue',''}} | Out-GridView -Title "Select History Entries for Removal/Deletion" -OutputMode Multiple
+    
+                        $CancelEntries = $RemoveEntries | Where-Object {$_.Title -eq "Select This Entry To Cancel"}
+    
+                        If ($CancelEntries.Count -gt 0 -or $null -eq $RemoveEntries){return "Cancelled."}
+    
+                        Foreach ($Entry in $RemoveEntries){
+    
+                            $History = $History | Where-Object {$_.FilePath -ne $Entry.FilePath}
+    
+                            If ($DeleteDialogFiles.IsPresent){
+    
+                                $DialogFilePath = $RootFolder + ($Entry.FilePath)
+    
+                                If (Test-Path $DialogFilePath){Remove-Item -Path $DialogFilePath -Confirm:$Confirm}
+                            }
+    
+                        }
+    
                     }
-
+    
+                    $False {
+    
+                        $Entry = $History | Out-GridView -Title "Select History Entry for Removal/Deletion" -OutputMode Single
+    
+                        If ($Entry.Title -eq "Select This Entry To Cancel" -or $null -eq $Entry){return "Cancelled."}
+                        $History.Remove($Entry) | Out-Null
+    
+                        If ($DeleteDialogFiles.IsPresent){
+    
+                            $DialogFilePath = $RootFolder + ($Entry.FilePath)
+    
+                            If (Test-Path $DialogFilePath){Remove-Item -Path $DialogFilePath -Confirm:$Confirm} #side of caution                        
+                        }
+                    }
+    
                 }
 
             }
 
             $False {
 
-                $Entry = $History | Out-GridView -Title "Select History Entry for Removal/Deletion" -OutputMode Single
+                $Entry = $History.Where({$_.FilePath -ieq "$DialogFilePath"})
 
-                If ($Entry.Title -eq "Select This Entry To Cancel"){return "Cancelled."}
-                $History.Remove($Entry) | Out-Null
+                If (($null -eq $Entry) -or ($Entry.Count -eq 0)){throw "[Remove-LMHistoryEntry] Dialog File Path $FilePath was not found"}
+                
+                $History = $History.Remove($Entry) | Out-Null
 
                 If ($DeleteDialogFiles.IsPresent){
-
+    
                     $DialogFilePath = $RootFolder + ($Entry.FilePath)
 
-                    If (Test-Path $DialogFilePath){Remove-Item -Path $DialogFilePath -Confirm:$Confirm} #side of caution                        
+                    If (Test-Path $DialogFilePath){Remove-Item -Path $DialogFilePath -Confirm:$Confirm}
                 }
+
             }
 
+        }
+        
+        If ($UseUI){
+            
+
+
+        }
+        Else { #If (!($UseUI))
 
         }
     }
@@ -3554,42 +3610,54 @@ function Start-LMChat {
             catch {$OptionKey = "X"} #Error suppression: I know this is a "bad practice", but I don't like the clunkiness or lack of control for toggling the ErrorActionPreference
 
             # If ':wxyz ', trimmed at the end (':wxyz') has a length of 5 characters:
-            If ($OptionKey.Length -eq 5 -and $OptionKey[0] -eq ':'){$OptTriggered = $True}
-
-            If ($OptTriggered -and $OptionKey -ieq ':quit'){break main}
-            
-            ElseIf ($OptTriggered -and $OptionKey -ieq ':priv'){
+            # 07/07: Going to make :opt the required $UserInput.SubString(0,4) to trigger options
+            If ($OptionKey.Length -eq 5 -and $OptionKey[0] -eq ':'){
                 
-                Write-Warning "Privacy Mode can't be turned back off for the duration of this session."
-                Write-Host "NOTICE: " -ForegroundColor Green -NoNewline
-                Write-Host "The dialog file will also be deleted. " -NoNewline
+                switch ($OptionKey){
 
-                $ConfirmPriv = Confirm-LMYesNo
+                    {$OptionKey -ieq ':quit'}{break main}
+                    {$OptionKey -ieq ':priv'}{
 
-                switch ($ConfirmPriv){
+                        If ($PrivacyMode.IsPresent){Write-Host "Privacy mode is already on."; continue main}
 
-                    $True {
-
-                        If ($DialogFileExists -and !($ResumeChat.IsPresent)){
-                            
-                            try {Remove-Item -Path ($Global:LMStudioVars.FilePaths.HistoryFilePath)}
-                            catch {Write-Warning "Unable to delete history file $($Global:LMStudioVars.FilePaths.HistoryFilePath)"}
-
-                            $PrivacyOn = $True
-
+                        Write-Warning "Privacy Mode can't be turned back off for the duration of this session."
+                        Write-Host "NOTICE: " -ForegroundColor Green -NoNewline
+                        Write-Host "The dialog file will also be deleted. " -NoNewline
+        
+                        $ConfirmPriv = Confirm-LMYesNo
+        
+                        switch ($ConfirmPriv){
+        
+                            $True {
+        
+                                If ($DialogFileExists -and !($ResumeChat.IsPresent)){
+                                    
+                                    try {Remove-LMHistoryEntry -DialogFilePath $DialogFilePath -DeleteDialogFiles}#Remove-Item -Path $DialogFilePath -ErrorAction Stop}
+                                    catch {Write-Warning "Unable to delete history file $DialogFilePath"}
+        
+                                    $PrivacyOn = $True
+        
+                                    }
                             }
-                    }
+        
+                            $False {
+                                
+                                Write-Host "Privacy Mode cancelled."
+                                continue main
+                            
+                            }
+        
+                        }
 
-                    $False {
-                        
-                        Write-Host "Privacy Mode cancelled."
-                        continue main
-                    
                     }
+                    {$OptionKey -ieq ':tags'}{} #07/07: IN THE PROCESS OF MOVING THESE OVER TO THE NEW SWITCH
 
                 }
+            
+                $OptTriggered = $True            
+                continue main
             }
-
+            #07/07: IN THE PROCESS OF MOVING THESE OVER TO THE NEW SWITCH (ABOVE)
             #region Show tags:
             ElseIf ($OptTriggered -and $OptionKey -ieq ':tags'){
 
@@ -3600,7 +3668,6 @@ function Start-LMChat {
 
             }
             #endregion
-
             #region Add/Remove tags:
             ElseIf ($OptTriggered -and ($OptionKey -ieq ':atag' -or $OptionKey -ieq ':rtag')){
 
@@ -3821,7 +3888,7 @@ function Start-LMChat {
     }
 
     end {} #Everything in end {} is better off in clean {}, in this case
-
+    <#
     clean {
 
         Remove-Variable Dialog -ErrorAction SilentlyContinue
@@ -3837,7 +3904,7 @@ function Start-LMChat {
         [gc]::Collect()
 
     }
-
+    #>
 }
 
 function Get-LMResponse {

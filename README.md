@@ -56,7 +56,9 @@ Start-LMChat
 
 ## Notes/Addendum:
 
-**07/07/2024** The current version of the code does **not** work with Powershell 5. I will attempt to resolve this issue, and I'm not sure when it was first introduced.
+**07/07/2024** ~~The current version of the code does **not** work with Powershell 5. I will attempt to resolve this issue, and I'm not sure when it was first introduced.~~ This issue is caused by the use of the **clean {}** block in Powershell, which I learned was only introduced in 7.3.
+
+I've commented out the **clean {}** block (for now). 
 
 I will write the documentation after I've implemented all primary features and fixed critical bugs and problems.
 
@@ -103,6 +105,15 @@ Oh yeah, PS5 support's been broken for a while now. Not sure what broke it or wh
 
 That's all for now.
 
+**Follow-Up**
+I had to add a feature to **Remove-LMHistoryEntry** so I could intelligently trigger *Privacy Mode*. Now, if you specify **-DialogFilePath**, the function will key off of the provided path to delete the entry (and the file, if specified).
+The entire purpose of adding this in was to support the **:priv** command (which I'm in the process of moving into a *switch* statement.)
+
+⬜️ I need to finish moving over the **:<option>** options over to the new *switch* statement. I left off at this line [3662]:
+
+```
+{$OptionKey -ieq ':tags'}{} #07/07: IN THE PROCESS OF MOVING THESE OVER TO THE NEW SWITCH
+```
 
 ---
 ### 07/06/2024
