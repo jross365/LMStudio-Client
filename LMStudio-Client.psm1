@@ -2916,7 +2916,7 @@ function Select-LMHistoryEntry {
 
 }
 
-#This function assigns tags to a Dialog File
+#This function assigns a title to a Dialog File and History File
 function Set-LMTags {
     [CmdletBinding()]
     param (
@@ -2942,6 +2942,13 @@ function Set-LMTags {
 
         try {$Dialog = Import-LMDialogFile -FilePath $DialogFilePath}
         catch {throw "[Set-LMTags] Unable to import dialog file $DialogFilePath"}
+
+        If ($UpdateHistoryFile.IsPresent){
+
+            try {$History = Import-LMHistoryFile -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath}
+            catch {throw "[Set-LMTags] Unable to import history file"}
+
+        }
     
         If ($Tags -match ','){[array]$TagsArray = ($Tags -split ',').Trim().Where({$_ -ne ""})}
         Else {
@@ -3011,6 +3018,69 @@ function Set-LMTags {
     }
 }
 
+function Set-LMTitle {
+    [CmdletBinding()]
+    param (
+        
+    [Parameter(Mandatory=$true)]
+    [ValidateScript({ if (!(Test-Path -Path $_)) { throw "File path does not exist" } else { $true } })]
+    [string]$DialogFilePath,
+
+    [Parameter(Mandatory=$true)]
+    [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
+    [string]$Title,
+    
+    [Parameter(Mandatory=$false)]
+    [switch]$UpdateHistoryFile
+
+    )
+    
+    begin {
+
+        try {$Dialog = Import-LMDialogFile -FilePath $DialogFilePath}
+        catch {throw "[Set-LMTitle] Unable to import dialog file $DialogFilePath"}
+
+        If ($UpdateHistoryFile.IsPresent){
+
+            try {$History = Import-LMHistoryFile -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath}
+            catch {throw "[Set-LMTitle] Unable to import history file"}
+
+        }
+
+    }
+
+    process {
+
+        $Dialog.Info.Title = "$Title" #lol
+
+    }
+
+    end {
+
+        try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
+        catch {throw "[Set-LMTitle] Dialog file save failed; Disabling file saving (:Save to recreate a Dialog file)"}
+
+        if ($UpdateHistoryFile.IsPresent){
+
+            $DialogConversion = $False
+            try {
+                $Entry = Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath
+                $DialogConversion = $True
+            }
+            catch {Write-Warning "[Set-LMTitle] Unable to convert Dialog to History Entry"}
+            
+            If ($DialogConversion){
+            
+                try {Update-LMHistoryFile -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
+                catch {Write-Warning "[Set-LMTitle] Unable to append Dialog updates to History file; Disabling file-saving (:Save to recreate a Dialog file)"}
+            
+            }
+
+        }
+
+    }
+}
+
 #This function intakes a user prompt, interprets an option and executes a command
 function Set-LMCLIOption {
     [CmdletBinding()]
@@ -3053,7 +3123,7 @@ function Set-LMCLIOption {
     
             } #Test Good
     
-            {$_ -ieq ":selp"}{ #Test Good
+            {$_ -ieq ":selprompt"}{ #Test Good
     
                 try {Select-LMSystemPrompt -Pin}
                 catch {
@@ -3119,7 +3189,7 @@ function Set-LMCLIOption {
                 
             } #:temp
     
-            {$_ -ieq ":mtok"}{ #Test Good
+            {$_ -ieq ":maxtoks"}{ #Test Good
     
                 try {$MtokValue = $UserInput.SubString(5,(($UserInput.Length - 5)))}
                 catch {
@@ -3171,7 +3241,7 @@ function Set-LMCLIOption {
                 
             } #:temp
     
-            {$_ -ieq ":strm"}{ #Test Good
+            {$_ -ieq ":stream"}{ #Test Good
     
                 try {$StreamValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
                 catch {
@@ -3211,7 +3281,7 @@ function Set-LMCLIOption {
     
             }
     
-            {$_ -ieq ":save"}{ #Test Good
+            {$_ -ieq ":saveprompt"}{ #Test Good
     
                 try {$SaveValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
                 catch {
@@ -3251,7 +3321,7 @@ function Set-LMCLIOption {
     
             }
     
-            {$_ -ieq ":mark"}{ #Test Good
+            {$_ -ieq ":markdown"}{ #Test Good
     
                 try {$MarkValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
                 catch {
@@ -3291,7 +3361,7 @@ function Set-LMCLIOption {
     
             }
     
-            {$_ -ieq ":gret"}{ #Test Good
+            {$_ -ieq ":greeting"}{ #Test Good
     
                 try {$GreetValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
                 catch {
@@ -3331,7 +3401,7 @@ function Set-LMCLIOption {
     
             }
     
-            {$_ -ieq ":cond"}{ #Test Good
+            {$_ -ieq ":condepth"}{ #Test Good
     
                 try {$CondValue = ([int]($UserInput.SubString(5,($UserInput.Length - 5))))}
                 catch {
@@ -3389,7 +3459,7 @@ function Set-LMCLIOption {
                 
             } #:temp
     
-            {$_ -ieq ":newp"}{ #Test Good
+            {$_ -ieq ":newprompt"}{ #Test Good
     
                 $PromptValue = $UserInput.Substring(5,($UserInput.Length -5))
     
@@ -3416,6 +3486,8 @@ function Set-LMCLIOption {
                 break
                 
             } #:temp
+
+            #{$_ -ieq ""}{}
     
             Default {
     
@@ -3715,7 +3787,7 @@ function Start-LMChat {
 
                 $InputSplit = $UserInput.Split(' ')
                 $OptionKey = $InputSplit[0].Trim()
-
+                
                 switch ($OptionKey){
 
                     {$OptionKey -ieq ':quit'}{break main}
@@ -3765,10 +3837,11 @@ function Start-LMChat {
                     {$OptionKey -ieq ':addtags'}{
                         
                         If ($DialogFileExists -and !($PrivacyOn)){
-                        
+
                             try {Set-LMTags -DialogFilePath $DialogFilePath -Action Add -Tags $InputSplit[1] -UpdateHistoryFile}
                             catch {
                                 Write-Warning "$($_.Exception.Message)"
+                                Write-Warning "Dialog file has been marked as nonexistent; no tags were updated"
                                 $DialogFileExists = $False
                                 continue main
                             }
@@ -3778,11 +3851,6 @@ function Start-LMChat {
                             continue main
                         }
 
-                        try {$Dialog = Import-LMDialogFile -FilePath $DialogFilePath}
-                        catch {
-                            Write-Warning "$($_.Exception.Message)"
-                            $DialogFileExists = $False
-                        }
                     }
                     
                     {$OptionKey -ieq ':remtags'}{
@@ -3807,6 +3875,33 @@ function Start-LMChat {
                             $DialogFileExists = $False
                         }
                         
+                    }
+
+                    {$OptionKey -ieq ':title'}{
+                        
+                        If ($DialogFileExists -and !($PrivacyOn)){
+
+                            If ($InputSplit[1].Length -eq 0 -or $null -eq $InputSplit[1]){
+
+                                Write-Host "No title provided; use :title <your title>"
+                                continue main
+
+                            }
+
+                            $Title = $InputSplit[1..($InputSplit.GetUpperBound(0))] -join ' '
+                        
+                            try {Set-LMTitle -DialogFilePath $DialogFilePath -Title $Title -UpdateHistoryFile}
+                            catch {
+                                Write-Warning "$($_.Exception.Message)"
+                                $DialogFileExists = $False
+                                continue main
+                            }
+                        }
+                        Else {
+                            Write-Warning "Dialog file is marked as nonexistent; no tags were updated"
+                            continue main
+                        }
+
                     }
 
                     Default {
@@ -3934,7 +4029,20 @@ function Start-LMChat {
         until ($BreakDialog -eq $True)
     }
 
-    end {} #Everything in end {} is better off in clean {}, in this case
+    end {
+       
+        Remove-Variable Body -ErrorAction SilentlyContinue
+
+        (Get-Job -ErrorAction SilentlyContinue) | Foreach-Object {
+        
+            $_ | Stop-Job -ErrorAction SilentlyContinue
+            $_ | Remove-Job -ErrorAction SilentlyContinue
+
+        }
+
+        [gc]::Collect()
+
+    } #Everything in end {} is better off in clean {}, but clean isn't in PS5
     <#
     clean {
 

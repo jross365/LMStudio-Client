@@ -92,11 +92,11 @@ Here are some other enhancements I have planned:
 
 ⬜️ ":clear" option to clear out options output and refresh the console's continuity/appearance
 
-⬜️ ":title" option to set the title on the dialog file and corresponding history (*may do this with a **Set-LMTitle** function, similar to **Set-LMTags**)
+✅ ":title" option to set the title on the dialog file and corresponding history (*may do this with a ✅ **Set-LMTitle** function, similar to **Set-LMTags**)
 
 ⬜️ Need to show history/dialog file paths with an option (":files"?)
 
-⬜️ Rename options in **Set-LMCLIOptions** to the new names
+✅ Rename options in **Set-LMCLIOptions** to the new names
 
 ⬜️ Update **Show-LMHelp** to reflect the new names
 
@@ -111,6 +111,12 @@ Start-Process "Https://github.com/jross365/LMStudio-Client/Docs/Start-LMChat-Opt
 ```
 
 I'll chip away at the above items. That's all for now.
+
+**Follow-Up:**
+
+I've knocked out several things on the list that I planned to do to do. I'm considering switching over to GitHub-based documentation for the help, if anything so the console session isn't monopolized by a UI message box.
+
+That's all for now.
 
 ---
 ### 07/07/2024
@@ -142,6 +148,7 @@ Oh yeah, PS5 support's been broken for a while now. Not sure what broke it or wh
 That's all for now.
 
 **Follow-Up**
+
 I had to add a feature to **Remove-LMHistoryEntry** so I could intelligently trigger *Privacy Mode*. Now, if you specify **-DialogFilePath**, the function will key off of the provided path to delete the entry (and the file, if specified).
 The entire purpose of adding this in was to support the **:priv** command (which I'm in the process of moving into a *switch* statement.)
 
