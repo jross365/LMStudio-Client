@@ -77,6 +77,20 @@ Check out my **development journal** (below) to see where I am and what I'm work
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 07/09/2024
+Taking a break today.
+
+ I need to write a ⬜️ **Get-LMDialogContent** (or similarly named) function to read and display the content of any given dialog file, as it would be displayed in a chat prompt. Maybe include some parameters like *-Markdown* and *-ResultSetSize*, etc.
+
+The function would be intended for both saving/manipulating, and for displaying.
+
+This will help me with the **:clear** option I need to write, and I think it would supplement some of the code that support the Markdown option. It would also make it easier to read the chat contents of files.
+
+💡 I also am considering removing every input parameter and supporting code that allows a user to specify a manual history file. It's marginal in its utility relative to the complexity overhead and opportunities for bugs and errors.
+
+That's all for now.
+
+---
 ### 07/08/2024
 Finished moving option selections over from a series of **If (){}** statements to the **switch {}** statement. Preliminary testing shows it works great.
 
