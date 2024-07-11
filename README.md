@@ -77,6 +77,24 @@ Check out my **development journal** (below) to see where I am and what I'm work
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 07/10/2024
+A quick note for me:
+
+⬜️ **Line 3643** is an unnecessary If !(Test-Path (History File)) code block.
+
+* For **-ResumeChat**, I need ⬜️ to track the date/timestamp of the last entry in the dialog.
+
+The reason is because if the user enables **PrivacyMode**, we need to restore the dialog file to its previous state.
+
+After I've stored the date of the last entry, I need to remove all newer entries from the dialog content, restore the modified date, and update the history file. *Sheeeeew.* 
+
+💡 This set of requirements for **PrivacyMode** originated from my writing an Options instructional, to be launched by the command **:help**.
+
+I realized that if Privacy Mode were enabled in a *-ResumeChat* -started session, I didn't have code to clean up the Dialog File. That's a problem for a feature with the word "privacy" in it.
+
+That's all for now.
+
+---
 ### 07/09/2024
 Taking a break today.
 

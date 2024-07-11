@@ -3639,6 +3639,7 @@ function Start-LMChat {
             #This section requires everything goes right (terminates with [throw] if it doesn't)
             $true { 
                     #If the history file doesn't exist, find it:
+                    # I CAN DELETE THIS, i THINK (IMPORT-LMCONFIG -VERIFY MAKES IT SUPERFLUOUS) 07/10
                     If (!(Test-Path $Global:LMStudioVars.FilePaths.HistoryFilePath)){
             
                         #Prompt to browse and "open" it
@@ -3781,8 +3782,6 @@ function Start-LMChat {
             try {$OptionTrigger = $UserInput.SubString(0,1)}
             catch {$OptionTrigger = "X"} #Error suppression: I know this is a "bad practice", but I don't like the clunkiness or lack of control with toggling the ErrorActionPreference
 
-            # If ':wxyz ', trimmed at the end (':wxyz') has a length of 5 characters:
-            # 07/07: Going to make :opt the required $UserInput.SubString(0,4) to trigger options
             If ($OptionTrigger -eq ':'){
 
                 $InputSplit = $UserInput.Split(' ')
