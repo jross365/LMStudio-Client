@@ -3111,7 +3111,7 @@ function Set-LMCLIOption {
     
             {$_ -ieq ":help"}{
                 
-                Show-LMHelp
+                start-process "https://github.com/jross365/LMStudio-Client/blob/main/Docs/Start-LMChat-Options.md"
                 break
     
             } #Test Good
@@ -3664,6 +3664,9 @@ function Start-LMChat {
                     $Global:LMStudioVars.ChatSettings.Greeting = $False
                     $DialogFileExists = $True
 
+                    #We need to store the index of the last entry in the resumed dialog, in case we enable :privmode
+                    $LastEntryIndex = $Dialog.Messages.Count - 1
+
             } #Close Case $True
 
             #This section can accommodate a failure to create a new Dialog file
@@ -3804,15 +3807,42 @@ function Start-LMChat {
                         switch ($ConfirmPriv){
         
                             $True {
-        
-                                If ($DialogFileExists -and !($ResumeChat.IsPresent)){
-                                    
-                                    try {Remove-LMHistoryEntry -DialogFilePath $DialogFilePath -DeleteDialogFiles}#Remove-Item -Path $DialogFilePath -ErrorAction Stop}
-                                    catch {Write-Warning "Unable to delete history file $DialogFilePath"}
-        
-                                    $PrivacyOn = $True
-        
+
+                                switch ($ResumeChat.IsPresent){
+
+                                    $True {
+
+                                        $Dialog.Messages = $Dialog.Messages[0..$LastEntryIndex]
+                                        $Dialog.Info.Modified = $Dialog.Messages[$LastEntryIndex].TimeStamp
+
+                                        try {
+                                            $Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop
+                                            $DialogReverted = $True
+                                        }
+                                        catch {
+                                            Write-Warning "Dialog file save failed; New chats prior to :privmode will remain in file"
+                                            $DialogFileExists = $False
+                                            $DialogReverted = $False
+                                        }
+
+                                        If ($DialogReverted){
+
+                                            try {Update-LMHistoryFile -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
+                                            catch {Write-Warning "History file update failed; New dates prior to :privmode will remain in file"}
+
+                                        }
                                     }
+
+                                    $False {
+
+                                        try {Remove-LMHistoryEntry -DialogFilePath $DialogFilePath -DeleteDialogFiles}#Remove-Item -Path $DialogFilePath -ErrorAction Stop}
+                                        catch {Write-Warning "Unable to delete history file $DialogFilePath"}
+                                    }
+
+                                }
+
+                                $PrivacyOn = $True
+
                             }
         
                             $False {

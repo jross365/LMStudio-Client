@@ -77,12 +77,24 @@ Check out my **development journal** (below) to see where I am and what I'm work
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 07/11/2024
+Instead of storing the timestamp of the last entry, I wrote in storing the last index (**$LastEntryIndex**). I also wrote in the Dialog File reversion and History File reversion. This little detour turned out to not be too difficult to complete.
+
+It ⬜️ needs testing, but it's simple enough that there's very little to go wrong.
+
+I also substituted this in for **:help**:
+
+```start-process "https://github.com/jross365/LMStudio-Client/blob/main/Docs/Start-LMChat-Options.md"```
+
+I'll begin working on Start-LMChat-Options.md, shortly. That's all for tonight.
+
+---
 ### 07/10/2024
 A quick note for me:
 
-⬜️ **Line 3643** is an unnecessary If !(Test-Path (History File)) code block.
+❌ **Line 3643** is an unnecessary If !(Test-Path (History File)) code block.
 
-* For **-ResumeChat**, I need ⬜️ to track the date/timestamp of the last entry in the dialog.
+* For **-ResumeChat**, I need ✅ to track the date/timestamp of the last entry in the dialog.
 
 The reason is because if the user enables **PrivacyMode**, we need to restore the dialog file to its previous state.
 
@@ -184,7 +196,7 @@ That's all for now.
 I had to add a feature to **Remove-LMHistoryEntry** so I could intelligently trigger *Privacy Mode*. Now, if you specify **-DialogFilePath**, the function will key off of the provided path to delete the entry (and the file, if specified).
 The entire purpose of adding this in was to support the **:priv** command (which I'm in the process of moving into a *switch* statement.)
 
-⬜️ I need to finish moving over the **:<option>** options over to the new *switch* statement. I left off at this line [3662]:
+✅ I need to finish moving over the **:<option>** options over to the new *switch* statement. I left off at this line [3662]:
 
 ```
 {$OptionKey -ieq ':tags'}{} #07/07: IN THE PROCESS OF MOVING THESE OVER TO THE NEW SWITCH
