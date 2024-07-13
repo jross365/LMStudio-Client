@@ -77,6 +77,18 @@ Check out my **development journal** (below) to see where I am and what I'm work
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 07/12/2024
+🐛 Setting **:maxtoks** doesn't work. I need to figure out and fix it, sooner than later.
+
+I figured this out while writing documentation for the **Start-LMChat** Options.
+
+⬜️ I need to create a good way to display settings (including things like title, tags, dialog file, etc) so that a user can copy them out. The old fashioned message box doesn't allow for copying anything out of the prompt.
+
+I'm working through the [**Start-LMChat-Options.md**](./Docs/Start-LMChat-Options.md) documentation, which is now what **Show-LMHelp** opens when you provide the **:help** input.
+
+That's all for now.
+
+---
 ### 07/11/2024
 Instead of storing the timestamp of the last entry, I wrote in storing the last index (**$LastEntryIndex**). I also wrote in the Dialog File reversion and History File reversion. This little detour turned out to not be too difficult to complete.
 

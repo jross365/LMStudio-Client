@@ -1868,7 +1868,9 @@ NUMBERS
 }
 
 #provides a graphical display of the Client chat settings
-function Show-LMSettings { #Complete
+function Show-LMSettings ([string]$DialogFile) { #Complete
+    If ($DialogFile.Length -eq 0 -or $null -eq $DialogFile){$DialogFile = "[unspecified]"}
+
     Add-Type -AssemblyName PresentationCore,PresentationFramework
     $ButtonType = [System.Windows.MessageBoxButton]::OK
     $MessageboxTitle = “LMStudio-PSClient Settings”
@@ -1889,6 +1891,13 @@ Greeting on Start:                     $($Global:LMStudioVars.ChatSettings.Greet
 
 System Prompt:
 $($Global:LMStudioVars.ChatSettings.SystemPrompt)
+
+FILES
+History File:
+$($Global:LMStudioVars.FilePaths.HistoryFilePath)
+
+Dialog File:
+$DialogFile
 
 "@
     
@@ -3118,7 +3127,7 @@ function Set-LMCLIOption {
     
             {$_ -ieq ":show"}{
                 
-                Show-LMSettings
+                Show-LMSettings -DialogFile $DialogFilePath
                 break
     
             } #Test Good
