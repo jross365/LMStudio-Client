@@ -10,6 +10,15 @@ Exits the application
 ```
 
 
+### :cls
+Clears the screen of option messages and other artifacts
+
+**Usage:**
+```
+:cls
+```
+
+
 ### **:privmode**
 Enables Privacy Mode
 

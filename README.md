@@ -77,6 +77,16 @@ Check out my **development journal** (below) to see where I am and what I'm work
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 07/13/2024
+I've ✅ added **:cls** (*clear*) to the options, which was easy: I just had to rediscover this function I wrote:
+
+```Show-LMDialog -DialogMessages $Dialog.Messages -AsMarkdown```
+
+✅ The **:help** page on GitHub is also complete. It could use some polish, maybe some categories.
+
+✅ **:title** and **:settitle** are also in place. **:title** shows the title, and **:settitle** sets it.
+
+---
 ### 07/12/2024
 🐛 Setting **:maxtoks** doesn't work. I need to figure out and fix it, sooner than later.
 
@@ -122,7 +132,7 @@ That's all for now.
 ### 07/09/2024
 Taking a break today.
 
- I need to write a ⬜️ **Get-LMDialogContent** (or similarly named) function to read and display the content of any given dialog file, as it would be displayed in a chat prompt. Maybe include some parameters like *-Markdown* and *-ResultSetSize*, etc.
+ I need to write a ❌ **Get-LMDialogContent** (or similarly named) function to read and display the content of any given dialog file, as it would be displayed in a chat prompt. Maybe include some parameters like *-Markdown* and *-ResultSetSize*, etc.
 
 The function would be intended for both saving/manipulating, and for displaying.
 

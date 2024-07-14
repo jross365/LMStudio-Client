@@ -3200,7 +3200,7 @@ function Set-LMCLIOption {
     
             {$_ -ieq ":maxtoks"}{ #Test Good
     
-                try {$MtokValue = $UserInput.SubString(5,(($UserInput.Length - 5)))}
+                try {$MtokValue = $UserInput.SubString(9,(($UserInput.Length - 9)))}
                 catch {
                     $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
                     $Fault = $True
@@ -3208,7 +3208,7 @@ function Set-LMCLIOption {
     
                 If (!$Fault){
     
-                    If (($UserInput.Length -gt 11) -or ($MtokValue -notmatch '([-]\d+|\d)')){
+                    If ($MtokValue -notmatch '([-]\d+|\d)'){
                         $ResultObj.Message = "Incorrect syntax: expected :mtok number of 1 or greater, or -1, expected"
                         $Fault = $True
                     }
@@ -3863,6 +3863,19 @@ function Start-LMChat {
         
                         }
 
+                    }
+
+                    {$OptionKey -ieq ":cls"}{
+                        
+                        If ($UseMarkDown){Show-LMDialog -DialogMessages $Dialog.Messages -AsMarkdown}
+                        Else {Show-LMDialog -DialogMessages $Dialog.Messages}
+
+                        continue main
+
+                        Else {Show-LMDialog -DialogMessages $Dialog.Messages}
+
+                        continue main
+                    
                     }
 
                     {$OptionKey -ieq ':tags'}{
