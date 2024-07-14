@@ -1,7 +1,7 @@
-### Start-LMChat Commands
+## Start-LMChat Commands
 
 
-#### :quit 
+### :quit 
 Exits the application
 
 **Usage:**
@@ -10,7 +10,7 @@ Exits the application
 ```
 
 
-#### **:privmode**
+### **:privmode**
 Enables Privacy Mode
 
 Once enabled, Privacy Mode cannot be disabled for the duration of the chat session.
@@ -25,7 +25,7 @@ If the Start-LMChat session was resumed (*-ResumeChat*), **:privmode** restores 
 ```
 
 
-#### **:show**
+### **:show**
 Shows the current settings:
 
 - Server
@@ -47,7 +47,7 @@ Shows the current settings:
 ```
 
 
-#### **:selprompt**
+### **:selprompt**
 Presents a UI prompt to select a system prompt.
 
 When a prompt is selected, the prompt is also *pinned* to your Config File. *Pinning* makes the selected prompt persistent, until it is changed.
@@ -58,7 +58,7 @@ When a prompt is selected, the prompt is also *pinned* to your Config File. *Pin
 ```
 
 
-#### **:temp** <0.0 - 2.0>
+### **:temp** <0.0 - 2.0>
 Sets the LLM temperature to a range between 0.0 and 2.0.
 
 Lower is *less* creative. Higher is *more* creative.
@@ -69,7 +69,7 @@ Lower is *less* creative. Higher is *more* creative.
 ```
 
 
-#### **:maxtoks** <-1 | 1+>
+### **:maxtoks** <-1 | 1+>
 Sets the Max Tokens to either **-1** (*no limit*), or an integer of **1 or greater**.
 
 Max Tokens sets the maximum number of "characters" that makes up a combined User Prompt and Assistant Response.
@@ -79,7 +79,7 @@ Max Tokens sets the maximum number of "characters" that makes up a combined User
 :maxtoks 3650
 ```
 
-#### **:stream ** <true | false>
+### **:stream ** <true | false>
 Sets token streaming to either **true** (*on*) or **false** (*off*).
 
 Streaming is the feature that writes characters as they are received. It has a **.Net Framework 4.5** (*minimum*) dependency, which not all people may have.
@@ -92,7 +92,7 @@ If you have problems with streaming, setting this to *false* will disable it. Wh
 ```
 
 
-#### **:saveprompt** <true | false>
+### **:saveprompt** <true | false>
 Sets the Save Prompt for the Dialog File to either **true** (*on*) or **false** (*off*).
 
 When set to *true*, Start-LMChat will present a save prompt every time you initiate a brand new dialog. (*Doesn't apply with -ResumeChat*)
@@ -105,7 +105,7 @@ When set to *false*, Start-LMChat will automatically select and save the Dialog 
 ```
 
 
-#### **:markdown** <true | false>
+### **:markdown** <true | false>
 Sets markdown interpretation of LLM output to either **true** (*on*) or **false** (*off*).
 
 Markdown is the markup language that displays text in the format within this document, for example.
@@ -120,7 +120,7 @@ If you do not want to install PSH7, or you're having problems with markdown inte
 ```
 
 
-#### **:greeting** <true | false>
+### **:greeting** <true | false>
 Turns the greeting (at start) to either **true** (*on*) or **false** (*off*).
 
 It's completely understandable if people don't want this feature. It was a prototyping toy I made to get the design basis of this module together, and to work through initial implementation issues.
@@ -130,7 +130,7 @@ It's completely understandable if people don't want this feature. It was a proto
 :greeting false
 ```
 
-#### **:condepth** <2+>
+### **:condepth** <2+>
 Sets the context depth to an **even number** of **2** or greater.
 
 **Context Depth** is the number of previous user prompts and assistant responses that are provided with each additional response. These previous exchanges provide the LLM of the context of each question.
@@ -145,7 +145,7 @@ A smaller Context Depth will consume fewer tokens, leaving more tokens to be use
 ```
 
 
-#### **:newprompt** <system prompt text>
+### **:newprompt** <system prompt text>
 Creates, saves and pins a new System Prompt.
 
 **Usage:**
@@ -154,7 +154,7 @@ Creates, saves and pins a new System Prompt.
 ```
 
 
-#### **:title**
+### **:title**
 Lists the title of the chat dialog. Title is visible in the Dialog File and History File.
 
 **Usage:**
@@ -163,7 +163,7 @@ Lists the title of the chat dialog. Title is visible in the Dialog File and Hist
 ```
 
 
-#### **:settitle** <dialog title>
+### **:settitle** <dialog title>
 Sets the title of the chat dialog. Title is visible in the Dialog File and History File.
 
 **Usage:**
@@ -172,7 +172,7 @@ Sets the title of the chat dialog. Title is visible in the Dialog File and Histo
 ```
 
 
-#### **:tags**
+### **:tags**
 Lists tags assigned to the chat dialog. Tags are visible in the Dialog File and History File.
 
 **Usage:**
@@ -181,7 +181,7 @@ Lists tags assigned to the chat dialog. Tags are visible in the Dialog File and 
 ```
 
 
-#### **:addtags** <string>
+### **:addtags** <string>
 Assigns tags to the chat dialog. Tags are visible in the Dialog File and History File.
 
 If more than one tag, comma-separate them.
@@ -192,7 +192,7 @@ addtags cowboy,western,film
 ```
 
 
-#### **:remtags** <string>
+### **:remtags** <string>
 Removes tags from the chat dialog. Tags are visible in the Dialog File and History File.
 
 **Usage:**
