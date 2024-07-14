@@ -3473,7 +3473,7 @@ function Set-LMCLIOption {
                 $PromptValue = $UserInput.Substring(5,($UserInput.Length -5))
     
                 If ($PromptValue.Length -eq 0){
-                    $ResultObj.Message = "No string was provided after :newp"
+                    $ResultObj.Message = "No string was provided after :newprompt"
                     $Fault = $True
     
                 }
@@ -3916,6 +3916,12 @@ function Start-LMChat {
                     }
 
                     {$OptionKey -ieq ':title'}{
+
+                        Write-Host "Title: " -ForegroundColor Magenta -NoNewline
+                        Write-Host "$($Dialog.Info.Title)"
+                    }
+
+                    {$OptionKey -ieq ':settitle'}{
                         
                         If ($DialogFileExists -and !($PrivacyOn)){
 
