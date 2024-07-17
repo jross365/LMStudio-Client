@@ -36,42 +36,7 @@ If the Start-LMChat session was resumed (*-ResumeChat*), **:privmode** restores 
 :privmode
 ```
 
-# Chat Settings
-
-### **:show**
-
-Shows the current settings:
-
-- Server
-- Port
-- Temperature
-- Max Tokens
-- Context Depth
-- Interpret Markdown (true/false)
-- Stream Console Output (true/false)
-- Prompt for Initial Save (true/false)
-- Greeting on Start (true/false)
-- System Prompt
-- History File
-- Dialog File
-
-**Usage:**
-
-```
-:show
-```
-
-### **:selprompt**
-
-Presents a UI prompt to select a system prompt.
-
-When a prompt is selected, the prompt is also *pinned* to your Config File. *Pinning* makes the selected prompt persistent, until it is changed.
-
-**Usage:**
-
-```
-:selprompt
-```
+# Server Instructions
 
 ### **:temp** <0.0 - 2.0>
 
@@ -97,7 +62,42 @@ Max Tokens sets the maximum number of "characters" that makes up a combined User
 :maxtoks 3650
 ```
 
-### **:stream ** <true | false>
+
+### **:selprompt**
+
+Presents a UI prompt to select a system prompt.
+
+When a prompt is selected, the prompt is also *pinned* to your Config File. *Pinning* makes the selected prompt persistent, until it is changed.
+
+**Usage:**
+
+```
+:selprompt
+```
+
+
+
+### **:condepth** <2+>
+
+Sets the context depth to an **even number** of **2** or greater.
+
+**Context Depth** is the number of previous user prompts and assistant responses that are provided with each additional response. These previous exchanges provide the LLM of the context of each question.
+
+A larger Context Depth will consume more tokens (*used by the user prompt and assistant responses included in each submission*), resulting in shorter responses that are more context-relevant.
+
+A smaller Context Depth will consume fewer tokens, leaving more tokens to be used for the assistant response, but with a diminished context.
+
+**Usage:**
+
+```
+:condepth 6
+```
+
+
+
+# Session/Output Settings
+
+### **:stream** <true | false>
 
 Sets token streaming to either **true** (*on*) or **false** (*off*).
 
@@ -153,21 +153,36 @@ It's completely understandable if people don't want this feature. It was a proto
 :greeting false
 ```
 
-### **:condepth** <2+>
 
-Sets the context depth to an **even number** of **2** or greater.
 
-**Context Depth** is the number of previous user prompts and assistant responses that are provided with each additional response. These previous exchanges provide the LLM of the context of each question.
 
-A larger Context Depth will consume more tokens (*used by the user prompt and assistant responses included in each submission*), resulting in shorter responses that are more context-relevant.
+# Interactivity
 
-A smaller Context Depth will consume fewer tokens, leaving more tokens to be used for the assistant response, but with a diminished context.
+### **:show**
+
+Shows the current settings:
+
+- Server
+- Port
+- Temperature
+- Max Tokens
+- Context Depth
+- Interpret Markdown (true/false)
+- Stream Console Output (true/false)
+- Prompt for Initial Save (true/false)
+- Greeting on Start (true/false)
+- System Prompt
+- History File
+- Dialog File
+- Dialog Info Fields
 
 **Usage:**
 
 ```
-:condepth 6
+:show
 ```
+
+
 
 ### **:newprompt** <system prompt text>
 
