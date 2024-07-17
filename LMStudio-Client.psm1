@@ -1870,39 +1870,66 @@ NUMBERS
 #provides a graphical display of the Client chat settings
 function Show-LMSettings ([string]$DialogFile) { #Complete
     If ($DialogFile.Length -eq 0 -or $null -eq $DialogFile){$DialogFile = "[unspecified]"}
-
-    Add-Type -AssemblyName PresentationCore,PresentationFramework
-    $ButtonType = [System.Windows.MessageBoxButton]::OK
-    $MessageboxTitle = “LMStudio-PSClient Settings”
-$Messageboxbody = @"
-SERVER INFORMATION
-Server: $($Global:LMStudioVars.ServerInfo.Server)
-Port: $($Global:LMStudioVars.ServerInfo.Port)
-
-CHAT SETTINGS
-Temperature (0.0 - 2.0):         $($Global:LMStudioVars.ChatSettings.temperature)
-Max Tokens (-1 or above):      $($Global:LMStudioVars.ChatSettings.max_tokens)
-Context Depth:                        $($Global:LMStudioVars.ChatSettings.ContextDepth)
-Interpret Markdown:               $($Global:LMStudioVars.ChatSettings.Markdown)
-Stream Console Output:          $($Global:LMStudioVars.ChatSettings.stream)
-
-Prompt for Initial Save:            $($Global:LMStudioVars.ChatSettings.SavePrompt)
-Greeting on Start:                     $($Global:LMStudioVars.ChatSettings.Greeting)
-
-System Prompt:
-$($Global:LMStudioVars.ChatSettings.SystemPrompt)
-
-FILES
-History File:
-$($Global:LMStudioVars.FilePaths.HistoryFilePath)
-
-Dialog File:
-$DialogFile
-
-"@
     
-    $MessageIcon = [System.Windows.MessageBoxImage]::Information
-    [System.Windows.MessageBox]::Show($Messageboxbody,$MessageboxTitle,$ButtonType,$MessageIcon)
+    $OutputText = New-Object System.Collections.ArrayList
+    
+    $OutputText.Add("***Server Settings***") | Out-Null
+    $OutputText.Add("#####################") | Out-Null
+    
+    $OutputText.Add(($Global:LMStudioVars.ServerInfo | Format-List | Out-String -Stream).Where({$_.Length -gt 0})) | Out-Null
+
+    $OutputText.Add("`n") | Out-Null
+
+    $OutputText.Add("***Chat Settings***") | Out-Null
+    $OutputText.Add("###################") | Out-Null
+    $OutputText.Add(($Global:LMStudioVars.ChatSettings | format-list | Out-String -Stream).Where({$_.Length -gt 0})) | Out-Null
+
+    $OutputText.Add("`n") | Out-Null
+
+    $OutputText.Add("***File Paths***") | Out-Null
+    $OutputText.Add("################") | Out-Null
+    $OutputText.Add(($Global:LMStudioVars.FilePaths | format-list | Out-String -Stream).Where({$_.Length -gt 0})) | Out-Null
+
+
+    #region THIS IS WHERE THE DIALOG FILE PATH RETRIEVAL GOES (07/16)
+    # $DialogOpened = $False
+    # try {
+    #      $DialogFile = Import-LMDialogFile -FilePath $Global:LMStudioVars.FilePaths.LastDialogFile
+    #      $DialogOpened = $True
+    # }
+    # 
+    # catch {$DialogOpened = $False}
+    #endregion
+
+    If ($DialogFile -ne '[unspecified]'){
+        
+        $DialogOpened = $False
+        try {
+            $DialogInfo = (Import-LMDialogFile -FilePath $DialogFile).Info
+            $DialogOpened = $True
+        }
+        catch {$DialogOpened = $False}
+
+        If ($DialogOpened){
+
+            $OutputText.Add("DialogFilePath : $DialogFile") | Out-Null
+            $OutputText.Add("`n") | Out-Null
+            $OutputText.Add("***Dialog File Settings***") | Out-Null
+            $OutputText.Add("##########################") | Out-Null
+            $DialogInfo.GetEnumerator().Name | ForEach-Object {$OutputText.Add("$_ : $($DialogInfo.$_ | Out-String -Stream)") | Out-Null}
+
+        }
+
+    }
+
+    $OutputText | Out-File $Env:TMP\lmspsc.txt
+
+    Start-Process $Env:TMP\lmspsc.txt
+
+    Start-Sleep -Seconds 2
+
+    Remove-Item $env:TMP\lmspsc.txt
+
 
 }
 #This function generates a greeting prompt for an LLM, for load in the LMChatClient
@@ -3865,7 +3892,7 @@ function Start-LMChat {
 
                     }
 
-                    {$OptionKey -ieq ":cls"}{
+                    {$OptionKey -ieq ":clear"}{
                         
                         If ($UseMarkDown){Show-LMDialog -DialogMessages $Dialog.Messages -AsMarkdown}
                         Else {Show-LMDialog -DialogMessages $Dialog.Messages}
