@@ -9,6 +9,36 @@
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 07/18/2024
+Before doing anything else, I split up ✅ **Edit-LMSystemPrompt** into the ✅ **Add-** and ✅ **Remove-** functions that they should have been from the very beginning.
+
+I've fixed:
+
+✅ :settitle
+✅ :addtags
+✅ :remtags
+
+The problem was that I wasn't re-importing the Dialog File after setting the title/tags on the file. The resulting incongruence is that the options would set them in the file, but in the next instance of the loop they'd be overwritten to the old values in the "living" $Dialog instance.
+
+I added a flag to re-import the Dialog File, which those options now trigger.
+
+✅:maxtoks now works correctly
+
+✅ I updated **Start-LMChat -ResumeChat** to **Start-LMChat -Resume**
+
+I scrolled back to three weeks of the journal to find problems I knew about but hadn't fixed, and I couldn't find any. So I suppose I can at least make this module import-able, before splitting it up into individual files.
+
+✅ I also created a **psd1** file, so this 
+
+---
+### 07/17/2024
+Title and tags parameters are **not** working in **Start-LMChat**. I have to fix this tomorrow (the date this is under).
+
+- I think I fixed **Set-LMTags -Action Add**, we'll see.
+
+- **Set-LMTitle** works as intended, I need to review how **:settitle** works.
+
+
 ### 07/16/2024
 I had a decent idea:
 💡 I should store the Dialog File path in **$global:LMStudioVars:FilePaths**.
@@ -27,12 +57,12 @@ This idea came to me while working on the output for **Show-LMSettings**.
 
 I think this idea *should* be implemented, but it's **not my first priority**.
 
-⬜️ I need to split up **Edit-LMSystemPrompt** into two separate functions (*The usability of the function is atrocious*):
+✅ I need to split up **Edit-LMSystemPrompt** into two separate functions (*The usability of the function is atrocious*):
 
-- ⬜️ **Add-LMSystemPrompt**
-- ⬜️ **Remove-LMSystemPrompt**
+- ✅ **Add-LMSystemPrompt**
+- ✅ **Remove-LMSystemPrompt**
 
-⬜️ I need to rename the **-ResumeChat** parameter to **-Resume**
+✅ I need to rename the **-ResumeChat** parameter to **-Resume**
 
 Documentation really should be priority right now, though.
 The code is usable. It's going to be improved over time, and things smoothed out and simplified. But it's genuinely functional.
@@ -53,7 +83,7 @@ I've ✅ added **:clear** to the options, which was easy: I just had to rediscov
 
 ---
 ### 07/12/2024
-🐛 Setting **:maxtoks** doesn't work. I need to figure out and fix it, sooner than later.
+✅🐛 Setting **:maxtoks** doesn't work. I need to figure out and fix it, sooner than later.
 
 I figured this out while writing documentation for the **Start-LMChat** Options.
 

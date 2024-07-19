@@ -2651,15 +2651,9 @@ function Select-LMSystemPrompt {
 }
 
 #This function allows you to add or remove system prompt entries
-function Edit-LMSystemPrompt {
+function Add-LMSystemPrompt {
     [CmdletBinding(DefaultParameterSetName="Auto")]
     param (
-        [Parameter(Mandatory=$false, ParameterSetName='Add')]
-        [switch]$Add,
-        [Parameter(Mandatory=$false, ParameterSetName='Remove')]
-        [switch]$Remove,
-        [Parameter(Mandatory=$false, ParameterSetName='Remove')]
-        [switch]$Bulk,
         [Parameter(Mandatory=$false, ParameterSetName='Add')]
         [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
         [string]$Name,
@@ -2669,12 +2663,10 @@ function Edit-LMSystemPrompt {
     )
     begin {
 
-        If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "Config file variables not loaded. Run [Import-ConfigFile] to load them"}
+        If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "[Add-SystemPrompt Config file variables not loaded. Run Import-ConfigFile to load them"}
         Else {$SysPromptFile = $global:LMStudioVars.FilePaths.SystemPromptPath}
     
         if (!(Test-Path $Global:LMStudioVars.FilePaths.SystemPromptPath)){throw "System prompt file does not exist [$($Global:LMStudioVars.FilePaths.SystemPromptPath)]"}
-
-        If (!($Add.IsPresent) -and !($Remove.IsPresent)){throw "You must specify -Add or -Remove"}
 
         try {$SystemPrompts = Import-Csv $SysPromptFile -ErrorAction Stop}
         catch {throw "Unable to import system.prompts file [$SysPromptFile]"}
@@ -2682,72 +2674,95 @@ function Edit-LMSystemPrompt {
     }
 
     process {
-        
-        If ($Add.IsPresent){
 
-            If (!$PSBoundParameters.ContainsKey('Name')){
+        If (!$PSBoundParameters.ContainsKey('Name')){
 
-                $Name = Read-Host "Please enter a Name"
+            $Name = Read-Host "Please enter a Name"
 
-                if ($null -eq $Name -or $Name.Length -eq 0){throw "Invalid name provided"}
-
-            }
-
-            If (!$PSBoundParameters.ContainsKey('Prompt')){
-
-                $Prompt = Read-Host "Please enter a Prompt"
-
-                if ($null -eq $Prompt -or $Prompt.Length -eq 0){throw "Invalid prompt provided"}
-
-            }
-
-            $SystemPrompts += ([pscustomobject]@{"Name" = $Name; "Prompt" = $Prompt})
+            if ($null -eq $Name -or $Name.Length -eq 0){throw "Invalid name provided"}
 
         }
 
-        if ($Remove.IsPresent){
+        If (!$PSBoundParameters.ContainsKey('Prompt')){
 
-            switch ($Bulk.IsPresent){
+            $Prompt = Read-Host "Please enter a Prompt"
 
-                $True {
-                    try {$RemovePrompts = Select-LMSystemPrompt -AsObject -Bulk}
-                    catch {throw $_.Exception.Message}
-                       
-                    $PromptGroups = $RemovePrompts | Group-Object Name,Prompt
+            if ($null -eq $Prompt -or $Prompt.Length -eq 0){throw "Invalid prompt provided"}
 
-                    Foreach ($Group in $PromptGroups){
+        }
 
-                        $PromptObj = $Group.Group[0]
-                        $PromptName = $PromptObj.Name
-                        $PromptBody = $PromptObj.Prompt
+        $SystemPrompts += ([pscustomobject]@{"Name" = $Name; "Prompt" = $Prompt})
 
-                        $MatchingPrompts = $SystemPrompts | Where-Object {$_.Name -eq $PromptName -and $_.Prompt -eq $PromptBody}
 
-                        $SystemPrompts = $SystemPrompts | Where-Object {$_.Name -ne $PromptName -and $_.Prompt -ne $PromptBody}
+    }
 
-                        $PromptsToPutBack = $MatchingPrompts.Count - $Group.Count
+    end {
 
-                        If ($PromptsToPutBack -ge 1){ (0..($PromptsToPutBack - 1)) | ForEach-Object {$SystemPrompts += $PromptObj} }
+        try {$SystemPrompts | Export-csv -Path $SysPromptFile -ErrorAction Stop}
+        catch {throw "[Add-LMSystemPrompt] Unable to save system prompt file [$SysPromptFile]"}
 
-                    }
+    }
+}
 
-                }
+function Remove-LMSystemPrompt {
+    [CmdletBinding(DefaultParameterSetName="Auto")]
+    param (
+        [Parameter(Mandatory=$false, ParameterSetName='Remove')]
+        [switch]$Bulk    
+    )
+    begin {
 
-                $False {
+        If ((Confirm-LMGlobalVariables -ReturnBoolean) -eq $false){throw "Config file variables not loaded. Run [Import-ConfigFile] to load them"}
+        Else {$SysPromptFile = $global:LMStudioVars.FilePaths.SystemPromptPath}
+    
+        if (!(Test-Path $Global:LMStudioVars.FilePaths.SystemPromptPath)){throw "System prompt file does not exist [$($Global:LMStudioVars.FilePaths.SystemPromptPath)]"}
 
-                    try {$RemovePrompt = Select-LMSystemPrompt -AsObject}
-                    catch {throw $_.Exception.Message}
+        try {$SystemPrompts = Import-Csv $SysPromptFile -ErrorAction Stop}
+        catch {throw "Unable to import system.prompts file [$SysPromptFile]"}
 
-                    $PromptName = $RemovePrompt.Name
-                    $PromptBody = $RemovePrompt.Prompt
+    }
 
-                    $PromptsToPutBack = ($SystemPrompts | Where-Object {$_.Name -eq $PromptName -and $_.Prompt -eq $PromptBody}).Count
+    process {
+
+        switch ($Bulk.IsPresent){
+
+            $True {
+                try {$RemovePrompts = Select-LMSystemPrompt -AsObject -Bulk}
+                catch {throw $_.Exception.Message}
+                    
+                $PromptGroups = $RemovePrompts | Group-Object Name,Prompt
+
+                Foreach ($Group in $PromptGroups){
+
+                    $PromptObj = $Group.Group[0]
+                    $PromptName = $PromptObj.Name
+                    $PromptBody = $PromptObj.Prompt
+
+                    $MatchingPrompts = $SystemPrompts | Where-Object {$_.Name -eq $PromptName -and $_.Prompt -eq $PromptBody}
 
                     $SystemPrompts = $SystemPrompts | Where-Object {$_.Name -ne $PromptName -and $_.Prompt -ne $PromptBody}
 
-                    If ($PromptsToPutBack -gt 1){$SystemPrompts += $RemovePrompt}
+                    $PromptsToPutBack = $MatchingPrompts.Count - $Group.Count
+
+                    If ($PromptsToPutBack -ge 1){ (0..($PromptsToPutBack - 1)) | ForEach-Object {$SystemPrompts += $PromptObj} }
 
                 }
+
+            }
+
+            $False {
+
+                try {$RemovePrompt = Select-LMSystemPrompt -AsObject}
+                catch {throw $_.Exception.Message}
+
+                $PromptName = $RemovePrompt.Name
+                $PromptBody = $RemovePrompt.Prompt
+
+                $PromptsToPutBack = ($SystemPrompts | Where-Object {$_.Name -eq $PromptName -and $_.Prompt -eq $PromptBody}).Count
+
+                $SystemPrompts = $SystemPrompts | Where-Object {$_.Name -ne $PromptName -and $_.Prompt -ne $PromptBody}
+
+                If ($PromptsToPutBack -gt 1){$SystemPrompts += $RemovePrompt}
 
             }
 
@@ -2758,11 +2773,10 @@ function Edit-LMSystemPrompt {
     end {
 
         try {$SystemPrompts | Export-csv -Path $SysPromptFile -ErrorAction Stop}
-        catch {throw "Unable to save system prompt file [$SysPromptFile]"}
+        catch {throw "[Remove-LMSystemPrompt] Unable to save system prompt file $SysPromptFile"}
 
     }
 }
-
 
 #This function consumes a Dialog, and returns a fully-furnished $Body object
 function Convert-LMDialogToBody {
@@ -3028,7 +3042,7 @@ function Set-LMTags {
 
     end {
 
-        If (($Dialog.Info.Tags).Where({$_ -ine 'dummyvalue'}) -ge 2){$Dialog.Info.Tags = $Dialog.Info.Tgs | Where-Object {$_ -ine 'dummyvalue'}}
+        If (($Dialog.Info.Tags).Where({$_ -ine 'dummyvalue'}) -ge 2){$Dialog.Info.Tags = $Dialog.Info.Tags | Where-Object {$_ -ine 'dummyvalue'}}
         
         try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
         catch {throw "[Set-LMTags] Dialog file save failed; Disabling file saving (:Save to recreate a Dialog file)"}
@@ -3507,7 +3521,7 @@ function Set-LMCLIOption {
     
                 If (!$Fault){
     
-                    try {Edit-LMSystemPrompt -Add -Name "Generated $((Get-Date).ToString())" -Prompt "$PromptValue"}
+                    try {Add-LMSystemPrompt -Name "Generated $((Get-Date).ToString())" -Prompt "$PromptValue"}
                     catch {
     
                         $ResultObj.Message = "$($_.Exception.Message)"
@@ -3642,7 +3656,7 @@ function Start-LMChat {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$False)]
-        [switch]$ResumeChat,
+        [switch]$Resume,
 
         [Parameter(Mandatory=$False)]
         [switch]$PrivacyMode
@@ -3670,7 +3684,7 @@ function Start-LMChat {
         Else {$PrivacyOn = $False}
         
         #region -ResumeChat Selector
-        switch ($ResumeChat.IsPresent){ 
+        switch ($Resume.IsPresent){ 
 
             #This section requires everything goes right (terminates with [throw] if it doesn't)
             $true { 
@@ -3788,7 +3802,7 @@ function Start-LMChat {
         $BodySettings.Add('stream', $Global:LMStudioVars.ChatSettings.stream)
         $BodySettings.Add('SystemPrompt', $Global:LMStudioVars.ChatSettings.SystemPrompt)
 
-        If ($ResumeChat.IsPresent){ #Play the previous conversation back to the 
+        If ($Resume.IsPresent){ #Play the previous conversation back to the 
 
             switch ($UseMarkDown){
 
@@ -3893,23 +3907,13 @@ function Start-LMChat {
                     }
 
                     {$OptionKey -ieq ":clear"}{
-                        
                         If ($UseMarkDown){Show-LMDialog -DialogMessages $Dialog.Messages -AsMarkdown}
                         Else {Show-LMDialog -DialogMessages $Dialog.Messages}
-
-                        continue main
-
-                        Else {Show-LMDialog -DialogMessages $Dialog.Messages}
-
-                        continue main
-                    
                     }
 
                     {$OptionKey -ieq ':tags'}{
                         Write-Host "Tags: " -ForegroundColor Magenta -NoNewline
                         Write-Host "$($Dialog.Info.Tags -join ', ')"
-        
-                        continue main
                     }
 
                     {$OptionKey -ieq ':addtags'}{
@@ -3923,11 +3927,14 @@ function Start-LMChat {
                                 $DialogFileExists = $False
                                 continue main
                             }
+
                         }
                         Else {
                             Write-Warning "Dialog file is marked as nonexistent; no tags were updated"
                             continue main
                         }
+
+                        $ReimportDialog = $True
 
                     }
                     
@@ -3946,12 +3953,8 @@ function Start-LMChat {
                             Write-Warning "Dialog file is marked as nonexistent; no tags were updated"
                             continue main
                         }
-
-                        try {$Dialog = Import-LMDialogFile -FilePath $DialogFilePath}
-                        catch {
-                            Write-Warning "$($_.Exception.Message)"
-                            $DialogFileExists = $False
-                        }
+                        
+                        $ReimportDialog = $True
                         
                     }
 
@@ -3976,10 +3979,13 @@ function Start-LMChat {
                         
                             try {Set-LMTitle -DialogFilePath $DialogFilePath -Title $Title -UpdateHistoryFile}
                             catch {
-                                Write-Warning "$($_.Exception.Message)"
+                                Write-Warning "Saves stopped: $($_.Exception.Message)"
                                 $DialogFileExists = $False
                                 continue main
                             }
+
+                            $ReimportDialog = $True
+
                         }
                         Else {
                             Write-Warning "Dialog file is marked as nonexistent; no tags were updated"
@@ -4005,6 +4011,19 @@ function Start-LMChat {
                     }
 
                 }
+
+                #Several commands require re-importing the Dialog (:settitle, :addtags, :remtags)
+                If ($ReimportDialog -eq $True){
+
+                    try {$Dialog = Import-LMDialogFile -FilePath $DialogFilePath}
+                    catch {
+                        Write-Warning "$($_.Exception.Message)"
+                        $DialogFileExists = $False
+                    }
+
+                    Remove-Variable ReimportDialog -ErrorAction SilentlyContinue
+
+                }   
             
                 $OptTriggered = $True            
                 continue main
