@@ -9,6 +9,32 @@
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 07/21/2024
+I integrated **$global:LMStudioVars.FilePaths.DialogFilePath** into **Start-LMChat**.
+
+Under every circumstance:
+- If the key doesn't exist (*you have an old version of the config file, missing the key*), it is created (as "new") in $global:LMStudioVars.FilePaths (not saved to the Config File)
+
+**Start-LMChat**'s new code works like this:
+
+- **Start-LMChat -Resume** first looks at the *DialogFilePath* key
+
+- If the path is *not* valid (via **Test-Path**), it sets a flag to trigger a Dialog file selection (from History)
+- If the path is valid, it sets **$DialogFilePath** to the value in **$global:LMStudioVars.FilePaths.DialogFilePath**
+- The value is saved to the Config file via **Set-LMConfigOptions -Commit**
+
+- **Start-LMChat -Resume -FromSelection** works exactly like **Start-LMChat -Resume** used to work: it goes straight to Dialog file selection.
+- When a Dialog file is selected, it is saved to $Global:LMStudioVars.FilePaths.DialogFilePath
+- The value is saved to the Config file via **Set-LMConfigOptions -Commit**
+
+There's a recurring theme where I anticipate changes/improvements/updates will be far more time and effort-consuming than they end up being. I also find myself thanking my past self for doing things in particular ways.
+
+I'm looking into methods to separate **Get-Help** output from a psm1 file, I would like to avoid making it 8000 lines long, being 50% in-module documentation.
+
+That's it for now.
+
+
+---
 ### 07/18/2024
 Before doing anything else, I split up ✅ **Edit-LMSystemPrompt** into the ✅ **Add-** and ✅ **Remove-** functions that they should have been from the very beginning.
 
@@ -41,14 +67,14 @@ Title and tags parameters are **not** working in **Start-LMChat**. I have to fix
 
 ### 07/16/2024
 I had a decent idea:
-💡 I should store the Dialog File path in **$global:LMStudioVars:FilePaths**.
+✅ I should store the Dialog File path in **$global:LMStudioVars:FilePaths**.
 
 Here's how I should do it:
-💡 I should use the History File to determine the last opened Dialog File
+❌ I should use the History File to determine the last opened Dialog File
 - I would trigger this through an external function (**Get-LatestDialogFile**)
 - It would exclusively be triggered by **Start-LMChat**, 
 
-This would allow me to do the following:
+✅ This would allow me to do the following:
 - Reassign **-ResumeChat** to automatically open the previously stored Dialog File
 - **-ResumeChat -Pick** (*or something similarly named*) should be used to initiate opening the History File
 - Allow me to include the Dialog File in **Show-LMSettings** without having to provide the path

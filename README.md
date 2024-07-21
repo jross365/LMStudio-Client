@@ -22,7 +22,7 @@ A feature-rich Powershell LMStudio client.
   - What these are and how to use them will be included in the documentation.
 
 I update my [**dev journal**](./Docs/Dev-Journal.md) when I work on this project.
-Last Update: **July 18, 2024**
+Last Update: **July 21, 2024**
 
 This project is not complete, and documentation is in the works. Things will change, but what I have in mind is usually in the journal.
 

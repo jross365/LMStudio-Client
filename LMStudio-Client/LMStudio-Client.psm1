@@ -345,6 +345,7 @@ end {
     } #Close End
 }
 
+
 #This function updates values in $GLobal:LMConfigVars. It also offers a -Commit function, that writes the changes to the Config file
 function Set-LMConfigOptions {
     [CmdletBinding()]
@@ -418,6 +419,7 @@ function New-LMTemplate { #Complete
                 "GreetingFilePath" = "";
                 "StreamCachePath" = "";
                 "SystemPromptPath" = "";
+                "DialogFilePath" = "";
             }            
 
             $ChatSettingsObj = [pscustomobject]@{
@@ -600,11 +602,15 @@ function Confirm-LMGlobalVariables ([switch]$ReturnBoolean) { #Complete, rewrote
 
                 $Leafs = $GlobalVarsTemplate.$Branch.psobject.Properties.Name
 
-                Foreach ($Leaf in $Leafs){
+                :lloop Foreach ($Leaf in $Leafs){
 
                     If ($Global:LMStudioVars.$Branch.$Leaf.Length -eq 0 -or $null -eq $Global:LMStudioVars.$Branch.$Leaf){
 
-                        $Errors.Add($("$Branch.$Leaf"))
+                        #region exclusions for non-mandatory field(s):
+                        If ("$($Branch + '.' + $Leaf)" -ieq 'FilePaths.DialogFilePath'){continue lloop}
+                        #endregion
+
+                        $Errors.Add($("$('$Global:LMStudioVars.')$Branch.$Leaf")) | Out-Null
 
                     }
 
@@ -616,7 +622,7 @@ function Confirm-LMGlobalVariables ([switch]$ReturnBoolean) { #Complete, rewrote
         }
     }
 
-    Else {$Errors.Add('$Global:LMStudioVars')}
+    Else {$Errors.Add('$Global:LMStudioVars') | Out-Null}
         
     Switch ($ReturnBoolean.IsPresent){
 
@@ -3655,8 +3661,11 @@ function Show-LMDialog {
 function Start-LMChat {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$False)]
+        [Parameter(Mandatory=$False,ParameterSetName='Resume')]
         [switch]$Resume,
+
+        [Parameter(Mandatory=$False,ParameterSetName='Resume')]
+        [switch]$FromSelection,
 
         [Parameter(Mandatory=$False)]
         [switch]$PrivacyMode
@@ -3688,30 +3697,57 @@ function Start-LMChat {
 
             #This section requires everything goes right (terminates with [throw] if it doesn't)
             $true { 
-                    #If the history file doesn't exist, find it:
-                    # I CAN DELETE THIS, i THINK (IMPORT-LMCONFIG -VERIFY MAKES IT SUPERFLUOUS) 07/10
-                    If (!(Test-Path $Global:LMStudioVars.FilePaths.HistoryFilePath)){
-            
-                        #Prompt to browse and "open" it
-                        try {$Global:LMStudioVars.FilePaths.HistoryFilePath = Invoke-LMSaveOrOpenUI -Action Open -Extension index -StartPath "$env:Userprofile\Documents"}
-                        catch {throw $_.Exception.Message}
-            
-                    }
-                    
-                    #Open a GridView selector from the history file
-                    try {$DialogFilePath = Select-LMHistoryEntry -HistoryFile $Global:LMStudioVars.FilePaths.HistoryFilePath}
-                    catch {
-                        If ($_.Exception.Message -match 'selection cancelled'){throw "Selection cancelled"}
-                        else {Write-Warning "$($_.Exception.Message)"; return}
+
+                    #Determine how we are to resume our chat:
+                    switch ($FromSelection.IsPresent){
+
+                        $True {$PickFromPrompt = $True}
+
+                        $False {
+                            #If the DialogFilePath key doesn't exist, create it:
+                            If ($null -eq $Global:LMStudioVars.FilePaths.DialogFilepath){$Global:LMStudioVars.FilePaths | Add-Member -MemberType NoteProperty -Name "DialogFilePath" -Value "new"}
+
+                            #If the path isn't valid, prompt for selection:
+                            If ((!(Test-Path $($Global:LMStudioVars.FilePaths.DialogFilePath)))){
+
+                                Write-Warning "Last-used dialog file not found (`$Global:LMStudioVars.FilePaths.DialogFilePath), please select a dialog file:"
+                                $PickFromPrompt = $True
+    
+                            }
+                            
+                            Else {
+                                
+                                $DialogFilePath = $Global:LMStudioVars.FilePaths.DialogFilePath
+                                $PickFromPrompt = $False
+    
+                            }
+
+                        }
 
                     }
+
+                    If ($PickFromPrompt){
+
+                        #Open a GridView selector from the history file
+                        try {$DialogFilePath = Select-LMHistoryEntry -HistoryFile $Global:LMStudioVars.FilePaths.HistoryFilePath}
+                        catch {
+                            
+                            If ($_.Exception.Message -match 'selection cancelled'){throw "Selection cancelled"}
+                            Else {throw "$($_.Exception.Message)"}
+
+                        }
+
+                }
 
                     #Otherwise: Read the contents of the chosen Dialog file
                     try {$Dialog = Import-LMDialogFile -FilePath $DialogFilePath -ErrorAction Stop}
                     catch {throw $_.Exception.Message}
 
-                    #If we made it this far, Let's set $Global:LMStudioVars.ChatSettings.Greeting and $DialogFIleExists
+                    #If we made it this far, Let's disable the greeting, save the dialogfilepath and set $DialogFileExists
+                    Set-LMConfigOptions -Branch FilePaths -Options @{"DialogFilePath" = $DialogFilePath} -Commit
+                   
                     $Global:LMStudioVars.ChatSettings.Greeting = $False
+                    
                     $DialogFileExists = $True
 
                     #We need to store the index of the last entry in the resumed dialog, in case we enable :privmode
@@ -3765,11 +3801,23 @@ function Start-LMChat {
 
                     If ($DialogFileExists -and $PrivacyOn -eq $False){
 
-                        try {$Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop}
+                        try {
+                            $Dialog | ConvertTo-Json -Depth 5 -ErrorAction Stop | Out-File $DialogFilePath -ErrorAction Stop
+                        
+                            #If the DialogFilePath key doesn't exist, create it:
+                            If ($null -eq $Global:LMStudioVars.FilePaths.DialogFilepath){
+                                $Global:LMStudioVars.FilePaths | Add-Member -MemberType NoteProperty -Name "DialogFilePath" -Value "$DialogFilePath"
+                            }
+
+                            #If we made it this far, Let's save the dialogfilepath:
+                            Set-LMConfigOptions -Branch FilePaths -Options @{"DialogFilePath" = $DialogFilePath} -Commit
+
+                        }
                         catch {
                             Write-Warning "$($_.Exception.Message)"
                             $DialogFileExists = $False
                         }
+
                     }
 
                     Else {
