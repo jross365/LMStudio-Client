@@ -9,6 +9,22 @@
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 07/22/2024
+I integrated **$global:LMStudioVars.FilePaths.DialogFilePath** into **Show-LMSettings**. Which was the whole reason I decided to keep the latest Dialog file in the Config in the first place.
+
+I have also created the Private/Public folder breakout for the file-individuated functions structure. The empty files have been placed as placeholders until I am ready to begin.
+
+My current plan is to follow this process:
+
+1. Copy the function into its named file.
+2. Write the **Get-Help** documentation for the function in the new file.
+3. Remove the function from the **LMStudio-Client.psm1** file.
+
+This process will ensure that the documentation for each function is written, without any being skipped.
+
+That's all for now.
+
+---
 ### 07/21/2024
 I integrated **$global:LMStudioVars.FilePaths.DialogFilePath** into **Start-LMChat**.
 

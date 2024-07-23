@@ -1874,7 +1874,7 @@ NUMBERS
 }
 
 #provides a graphical display of the Client chat settings
-function Show-LMSettings ([string]$DialogFile) { #Complete
+function Show-LMSettings ([switch]$InConsole) { #Complete
     If ($DialogFile.Length -eq 0 -or $null -eq $DialogFile){$DialogFile = "[unspecified]"}
     
     $OutputText = New-Object System.Collections.ArrayList
@@ -1897,21 +1897,18 @@ function Show-LMSettings ([string]$DialogFile) { #Complete
     $OutputText.Add(($Global:LMStudioVars.FilePaths | format-list | Out-String -Stream).Where({$_.Length -gt 0})) | Out-Null
 
 
-    #region THIS IS WHERE THE DIALOG FILE PATH RETRIEVAL GOES (07/16)
-    # $DialogOpened = $False
-    # try {
-    #      $DialogFile = Import-LMDialogFile -FilePath $Global:LMStudioVars.FilePaths.LastDialogFile
-    #      $DialogOpened = $True
-    # }
-    # 
-    # catch {$DialogOpened = $False}
-    #endregion
+    #region Dialog file path retrieval
+    #If the DialogFilePath key doesn't exist, create it:
+    If ($null -eq $Global:LMStudioVars.FilePaths.DialogFilepath){$Global:LMStudioVars.FilePaths | Add-Member -MemberType NoteProperty -Name "DialogFilePath" -Value "new"}
 
-    If ($DialogFile -ne '[unspecified]'){
+    #Copy into a variable:
+    $DialogFilePath = $Global:LMStudioVars.FilePaths.DialogFilePath
+
+    If (Test-Path $DialogFilePath){
         
         $DialogOpened = $False
         try {
-            $DialogInfo = (Import-LMDialogFile -FilePath $DialogFile).Info
+            $DialogInfo = (Import-LMDialogFile -FilePath $DialogFilePath).Info
             $DialogOpened = $True
         }
         catch {$DialogOpened = $False}
@@ -1928,14 +1925,21 @@ function Show-LMSettings ([string]$DialogFile) { #Complete
 
     }
 
-    $OutputText | Out-File $Env:TMP\lmspsc.txt
+    switch ($InConsole.IsPresent){
 
-    Start-Process $Env:TMP\lmspsc.txt
+        $True {return ($OutputText | Out-String -Stream)}
 
-    Start-Sleep -Seconds 2
+        $False {
+            $OutputText | Out-File $Env:TMP\lmspsc.txt
 
-    Remove-Item $env:TMP\lmspsc.txt
+            Start-Process $Env:TMP\lmspsc.txt
+        
+            Start-Sleep -Seconds 2
+        
+            Remove-Item $env:TMP\lmspsc.txt
+        }
 
+    }
 
 }
 #This function generates a greeting prompt for an LLM, for load in the LMChatClient
@@ -3737,7 +3741,7 @@ function Start-LMChat {
 
                         }
 
-                }
+                    }
 
                     #Otherwise: Read the contents of the chosen Dialog file
                     try {$Dialog = Import-LMDialogFile -FilePath $DialogFilePath -ErrorAction Stop}
@@ -3753,7 +3757,7 @@ function Start-LMChat {
                     #We need to store the index of the last entry in the resumed dialog, in case we enable :privmode
                     $LastEntryIndex = $Dialog.Messages.Count - 1
 
-            } #Close Case $True
+                } #Close Case $True
 
             #This section can accommodate a failure to create a new Dialog file
             $false { #If not Resume Chat, then Create New Dialog File
@@ -4242,7 +4246,7 @@ function Get-LMResponse {
 
             #region Validate Settings structure
             $SettingsFields = (New-LMTemplate -Type ManualSettings).GetEnumerator().Name
-            try {$ProvidedFields =$Settings.GetEnumerator().Name}
+            try {$ProvidedFields = $Settings.GetEnumerator().Name}
             catch {throw "[Get-LMResponse] -Settings object is missing requisite properties and methods"}
 
             $FieldComparison = Compare-Object -ReferenceObject $SettingsFields -DifferenceObject $ProvidedFields
@@ -4475,7 +4479,6 @@ function Get-LMResponse {
         #endregion
         
     }
-
     end {
 
         If ($SaveDialog){
