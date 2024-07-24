@@ -9,6 +9,21 @@
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 07/23/2024
+I've scrapped the previous plan. I'm putting the Help headers into the placeholder .ps1 files in the folders.
+
+When the help header is complete, I'm putting this comment above the function:
+
+```
+# Help Complete
+```
+
+I think I'll alternate between writing the GitHub Repo documentation (which will be more valuable) and writing the Powershell Module documentationl
+
+That's all for now.
+
+
+---
 ### 07/22/2024
 I integrated **$global:LMStudioVars.FilePaths.DialogFilePath** into **Show-LMSettings**. Which was the whole reason I decided to keep the latest Dialog file in the Config in the first place.
 

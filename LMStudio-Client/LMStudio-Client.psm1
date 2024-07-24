@@ -1,3 +1,4 @@
+#Help Complete
 function Confirm-LMYesNo {
 
     $Answered = $False
@@ -25,9 +26,7 @@ function Confirm-LMYesNo {
 
 }
 
-#This function prompts for server name and port:
-    # it prompts to create a new history file, or to load an existing one. 
-    # If loading an existing one, it needs to verify it.
+#Help Complete
 function New-LMConfig { #Complete
     [CmdletBinding()]
     param (
@@ -36,8 +35,8 @@ function New-LMConfig { #Complete
         [string]$Server,
         
         [Parameter(Mandatory=$false)]
-        [ValidateRange(1, 65535)
-        ][int]$Port,
+        [ValidateRange(1, 65535)]
+        [int]$Port,
 
         [Parameter(Mandatory=$false)]
         [ValidateScript({ if ([string]::IsNullOrEmpty($_)) { throw "Parameter cannot be null or empty" } else { $true } })]
