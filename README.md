@@ -22,9 +22,11 @@ A feature-rich Powershell LMStudio client.
   - What these are and how to use them will be included in the documentation.
 
 I update my [**dev journal**](./Docs/Dev-Journal.md) when I work on this project.
+
 Last Update: **July 23, 2024**
 
-I've begun writing the documentation, as [**Slow-Start Guide**](./Slow-Start-Guide.md).
+I've begun writing the documentation, as [**Slow-Start Guide**](./Docs/Slow-Start-Guide.md).
+
 Last Update: **July 25, 2024**
 
 
