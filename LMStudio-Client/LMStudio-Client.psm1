@@ -252,6 +252,7 @@ function New-LMConfig { #Complete
 }
 
 #This function reads the local LMConfigFile.cfg, verifies it (unless skipped), and then writes the values to the $Global:LMStudioVars
+#Help Complete
 function Import-LMConfig { #Complete
     [CmdletBinding()]
     param (
@@ -346,6 +347,7 @@ end {
 
 
 #This function updates values in $GLobal:LMConfigVars. It also offers a -Commit function, that writes the changes to the Config file
+#Help Complete
 function Set-LMConfigOptions {
     [CmdletBinding()]
     param(
@@ -391,6 +393,7 @@ function Set-LMConfigOptions {
     }
 
 #This function returns different kinds of objects needed by various functions
+#Help Complete
 function New-LMTemplate { #Complete
     [CmdletBinding()]
     param(

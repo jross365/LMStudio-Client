@@ -4,10 +4,10 @@
 # Slow-Start Guide
 Come on in, and make yourself at home!
 
-## Config Management
+# Config Management
 This section covers tools to create, import and modify the Config File.
 
-### Create a New Config
+## Create a New Config
 
 **New-LMConfig** requires two parameters:
 ```
@@ -26,7 +26,7 @@ The default Config path is *C:\Users\<YourName>\Documents\LMStudio-PSClient*.
 *Usage Example:*
 ![](https://raw.githubusercontent.com/jross365/LMStudio-Client/main/Docs/images/new-lmconfig-example.png)
 
-### Import an Existing Config
+## Import an Existing Config
 
 **Import-LMConfig** requires one parameter:
 ```
@@ -43,7 +43,7 @@ An additional parameter is also available:
 
 ![](https://raw.githubusercontent.com/jross365/LMStudio-Client/main/Docs/images/import-lmconfig-example.png)
 
-### View a Config
+## View a Config
 
 To view your current, loaded Config in a text file, run the following command:
 ```
@@ -57,7 +57,7 @@ Show-LMSettings -InConsole
 *Usage Example:*
 ![](https://raw.githubusercontent.com/jross365/LMStudio-Client/main/Docs/images/show-lm-settings-example.png)
 
-### Modify Config Settings
+## Modify Config Settings
 
 **Set-LMConfigOptions** requires two parameters:
 ```
@@ -73,12 +73,38 @@ An additional parameter is also available:
 
 However, all settings must be under the same Branch: **ChatSettings**, **FilePaths**, **ServerInfo** or **URIs**
 
-JSON-formatted example of the Config File key/value pairs under each Branch:
-![](https://raw.githubusercontent.com/jross365/LMStudio-Client/main/Docs/images/lmsc-cfg-example.png)
+```
+>> $Global:LMStudioVars.ServerInfo | Format-List
+
+Server   : localhost
+Port     : 1234
+Endpoint : localhost:1234
+```
+```
+>> $Global:LMStudioVars.ChatSettings | Format-List
+
+temperature  : 0.5
+max_tokens   : -1
+stream       : True
+ContextDepth : 10
+Greeting     : False
+SystemPrompt : You are a helpful, smart, kind, personal and open chat partner. You always fulfill the user's requests to the best of your ability.
+Markdown     : True
+SavePrompt   : True
+```
+```
+>> $Global:LMStudioVars.FilePaths | Format-List
+
+HistoryFilePath  : C:\Users\JoeBob\Documents\LMStudio-PSClient\JoeBob-HF.index
+DialogFolderPath : C:\Users\JoeBob\Documents\LMStudio-PSClient\JoeBob-HF-DialogFiles
+GreetingFilePath : C:\Users\JoeBob\Documents\LMStudio-PSClient\JoeBob-HF-DialogFiles\hello.greetings
+StreamCachePath  : C:\Users\JoeBob\Documents\LMStudio-PSClient\stream.cache
+SystemPromptPath : C:\Users\JoeBob\Documents\LMStudio-PSClient\system.prompts
+DialogFilePath   : C:\Users\JoeBob\Documents\LMStudio-PSClient\JoeBob-HF-DialogFiles\llama-3.1-test.dialog
+```
 
 *Usage Example:*
 ![](https://raw.githubusercontent.com/jross365/LMStudio-Client/main/Docs/images/set-lmconfigoptions-example.png)
-
 
 
 
