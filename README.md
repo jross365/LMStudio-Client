@@ -60,6 +60,26 @@ Start-LMChat
 :help
 ```
 
+## Understanding the Quick-Start
+
+![](/Docs/images/quickstart-diagram.png)
+
+3. **New-LMConfig**
+- Creates the "root" folder
+- Creates a new Config File (*lmsc.cfg*)
+- Creates a new History File (*username-HF.index*)
+- Creates a Dialog Files folder (*username-HF-DialogFiles*)
+
+4. **Import-LMConfig**
+- Imports the Config File (*lmsc.cfg*)
+- Stores settings in *$Global:LMStudioVars*
+
+5. **Start-LMChat**
+- [No Parameters] Creates a new *.dialog* file
+- [-Resume] Opens *.dialog* file in *$Global:LMStudioVars.FilePaths.DialogFilePath*
+- [-Resume -FromSelection] Opens *.dialog* file from selection prompt
+
+
 ## Notes/Addendum:
 
 

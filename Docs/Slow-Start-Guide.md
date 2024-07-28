@@ -16,14 +16,9 @@ New-LMConfig -Server <Name/IP> -Port <1234>
 
 Other parameters are also available:
 ```
-# Change the starting directory:
--BasePath <C:\Path\To\Folder> 
-
-# Check the Config File parameters and check server connectivity
--Verify
-
-# Import after creating:
--Import
+-BasePath <C:\Path\To\Folder> # Change the starting directory
+-Verify                       # Check the Config File parameters and check server connectivity
+-Import                       # Import after creating:
 ```
 
 The default Config path is *C:\Users\<YourName>\Documents\LMStudio-PSClient*.
@@ -41,8 +36,7 @@ Import-LMConfig -ConfigFile <C:\Path\To\Folder\lmsc.cfg>
 
 An additional parameter is also available:
 ```
-# Check the Config File parameters and check server connectivity
--Verify
+-Verify     # Check the Config File parameters and check server connectivity
 ```
 
 *Usage Example:*
@@ -72,8 +66,7 @@ Set-LMConfigOptions -Branch <Branch Name> -Options @{"HashKey"="HashValue}
 
 An additional parameter is also available:
 ```
-# Write the config option to your Config File (lmsc.cfg)
--Commit
+-Commit     # Write the config option to your Config File (lmsc.cfg)
 ```
 
 **-Options** can accept multiple key-value pairs. 

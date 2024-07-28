@@ -3661,6 +3661,16 @@ function Show-LMDialog {
 
 }
 
+#This function is a wrapper for **Show-LMDialog**
+# NOT STARTED
+function Get-LMDialogContent {
+
+#Params:
+# -AsMarkdown - Display with markdown
+# - Path      - Path to Dialog file (optional)
+    # - No "Path": Open History File for selection
+}
+
 function Start-LMChat {
     [CmdletBinding()]
     param (

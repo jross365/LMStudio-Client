@@ -7,6 +7,15 @@
 ⬜️ **- Feature/Improvement Incomplete**  ✅ **- Feature/Improvement Complete**
 
 💡 **- Idea  🐛 - Bug**
+---
+### 07/28/2024
+Working on documentation. It's tough; there's a lot to document.
+
+I also need to do two things:
+
+⬜️ Update/adapt **Show-LMDialog** to return the contents as an object/array instead of **Write-Host** output
+⬜️ Write **Get-LMDialogContent** as a wrapper for selecting, importing and then showing a Dialog File
+
 
 ---
 ### 07/23/2024
