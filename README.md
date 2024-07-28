@@ -23,6 +23,8 @@ A feature-rich Powershell LMStudio client.
 
 
 ## Quick-Start Guide
+![](/Docs/images/quickstart-diagram.png)
+
 Ready to get your alpha groove on? This quick-start guide assumes LMStudio is configured and running.
 
 1. Save the Module Folder (*LMStudio-Client*) to your **Documents\WindowsPowerShell\Modules** folder.
@@ -36,41 +38,31 @@ Import-Module LMStudio-Client
 ```
 New-LMConfig -Server <Name/IP> -Port <1234>
 ```
-
-4. Import the config:
-```
-Import-LMConfig -ConfigFile "$Env:USERPROFILE\Documents\LMStudio-PSClient\lmsc.cfg" -Verify
-```
-
-5. Start the chat program:
-```
-Start-LMChat
-```
-
-6. For help changing chat settings, in the chat prompt run this command:
-```
-:help
-```
-
-## Understanding the Quick-Start
-
-![](/Docs/images/quickstart-diagram.png)
-
-3. **New-LMConfig**
 - Creates the "root" folder
 - Creates a new Config File (*lmsc.cfg*)
 - Creates a new History File (*username-HF.index*)
 - Creates a Dialog Files folder (*username-HF-DialogFiles*)
 
-4. **Import-LMConfig**
+4. Import the config:
+```
+Import-LMConfig -ConfigFile "$Env:USERPROFILE\Documents\LMStudio-PSClient\lmsc.cfg" -Verify
+```
 - Imports the Config File (*lmsc.cfg*)
 - Stores settings in *$Global:LMStudioVars*
 
-5. **Start-LMChat**
+5. Start the chat program:
+```
+Start-LMChat
+```
 - [No Parameters] Creates a new *.dialog* file
 - [-Resume] Opens *.dialog* file in *$Global:LMStudioVars.FilePaths.DialogFilePath*
 - [-Resume -FromSelection] Opens *.dialog* file from selection prompt
 
+
+6. For help changing chat settings, in the chat prompt run this command:
+```
+:help
+```
 
 ## Notes/Addendum:
 
