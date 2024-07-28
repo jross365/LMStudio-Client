@@ -21,14 +21,6 @@ A feature-rich Powershell LMStudio client.
   - Seriously, there's a lot of functionality built into this module.
   - What these are and how to use them will be included in the documentation.
 
-I update my [**dev journal**](./Docs/Dev-Journal.md) when I work on this project.
-
-Last Update: **July 23, 2024**
-
-I've begun writing the documentation, as [**Slow-Start Guide**](./Docs/Slow-Start-Guide.md).
-
-Last Update: **July 25, 2024**
-
 
 ## Quick-Start Guide
 Ready to get your alpha groove on? This quick-start guide assumes LMStudio is configured and running.
@@ -82,7 +74,13 @@ Start-LMChat
 
 ## Notes/Addendum:
 
+I update my [**dev journal**](./Docs/Dev-Journal.md) when I work on this project.
 
+Last Update: **July 28, 2024**
+
+I've begun writing the documentation, as [**Slow-Start Guide**](./Docs/Slow-Start-Guide.md).
+
+Last Update: **July 28, 2024**
 
 **07/18/2024** I have created the PSD1 file so these functions can be imported as a proper Powershell module. See the [**dev journal**](./Docs/Dev-Journal.md) for details.
 

@@ -68,28 +68,32 @@ An additional parameter is also available:
 
 However, all settings must be under the same Branch: **ChatSettings**, **FilePaths**, or **ServerInfo**
 
-```
->> $Global:LMStudioVars.ServerInfo | Format-List
+*Usage Example:*
+![](https://raw.githubusercontent.com/jross365/LMStudio-Client/main/Docs/images/set-lmconfigoptions-example.png)
 
-Server   : localhost
-Port     : 1234
-Endpoint : localhost:1234
-```
-```
->> $Global:LMStudioVars.ChatSettings | Format-List
+## List of Config Settings
 
-temperature  : 0.5
-max_tokens   : -1
-stream       : True
-ContextDepth : 10
-Greeting     : False
+**ServerInfo**
+```
+Server   : localhost        # LMStudio Server Hostname/IP address
+Port     : 1234             # LMStudio Server Port
+Endpoint : localhost:1234   # Combined Server/Port (mostly unused)
+```
+
+**ChatSettings**
+```
+temperature  : 0.5          # Temperature (creativity)
+max_tokens   : -1           # Maximum tokens to generate (-1 = no limit)
+stream       : True         # Stream output (False = Lump Sum output)
+ContextDepth : 10           # Prior assistant/user dialog context
+Greeting     : False        # Enable/disable the start-up "greeting"
 SystemPrompt : You are a helpful, smart, kind, personal and open chat partner. You always fulfill the user's requests to the best of your ability.
-Markdown     : True
-SavePrompt   : True
+Markdown     : True         # Interpret markdown in output
+SavePrompt   : True         # Prompt for new filename when starting new chat 
 ```
-```
->> $Global:LMStudioVars.FilePaths | Format-List
 
+**FilePaths**
+```
 HistoryFilePath  : C:\Users\JoeBob\Documents\LMStudio-PSClient\JoeBob-HF.index
 DialogFolderPath : C:\Users\JoeBob\Documents\LMStudio-PSClient\JoeBob-HF-DialogFiles
 GreetingFilePath : C:\Users\JoeBob\Documents\LMStudio-PSClient\JoeBob-HF-DialogFiles\hello.greetings
@@ -97,6 +101,3 @@ StreamCachePath  : C:\Users\JoeBob\Documents\LMStudio-PSClient\stream.cache
 SystemPromptPath : C:\Users\JoeBob\Documents\LMStudio-PSClient\system.prompts
 DialogFilePath   : C:\Users\JoeBob\Documents\LMStudio-PSClient\JoeBob-HF-DialogFiles\llama-3.1-test.dialog
 ```
-
-*Usage Example:*
-![](https://raw.githubusercontent.com/jross365/LMStudio-Client/main/Docs/images/set-lmconfigoptions-example.png)
