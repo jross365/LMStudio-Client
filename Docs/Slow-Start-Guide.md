@@ -29,7 +29,7 @@ Other parameters are also available:
 The default Config path is *C:\Users\<YourName>\Documents\LMStudio-PSClient*.
 
 *Usage Example:*
-![](/images/new-lmconfig-example.png)
+![](https://raw.githubusercontent.com/jross365/LMStudio-Client/main/Docs/images/new-lmconfig-example.png)
 
 ### Import an Existing Config
 
@@ -47,7 +47,7 @@ An additional parameter is also available:
 
 *Usage Example:*
 
-![](/images/import-lmconfig-example.png)
+![](https://raw.githubusercontent.com/jross365/LMStudio-Client/main/Docs/images/import-lmconfig-example.png)
 
 ### View a Config
 
@@ -61,7 +61,7 @@ Show-LMSettings -InConsole
 ```
 
 *Usage Example:*
-![](/images/show-lm-settings-example.png)
+![](https://raw.githubusercontent.com/jross365/LMStudio-Client/main/Docs/images/show-lm-settings-example.png)
 
 ### Modify Config Settings
 
@@ -81,10 +81,10 @@ An additional parameter is also available:
 However, all settings must be under the same Branch: **ChatSettings**, **FilePaths**, **ServerInfo** or **URIs**
 
 JSON-formatted example of the Config File key/value pairs under each Branch:
-![](/images/lmsc-cfg-example.png)
+![](https://raw.githubusercontent.com/jross365/LMStudio-Client/main/Docs/images/lmsc-cfg-example.png)
 
 *Usage Example:*
-![](/images/set-lmconfigoptions-example.png)
+![](https://raw.githubusercontent.com/jross365/LMStudio-Client/main/Docs/images/set-lmconfigoptions-example.png)
 
 
 
