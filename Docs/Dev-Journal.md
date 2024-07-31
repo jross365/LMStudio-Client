@@ -7,6 +7,18 @@
 ⬜️ **- Feature/Improvement Incomplete**  ✅ **- Feature/Improvement Complete**
 
 💡 **- Idea  🐛 - Bug**
+
+---
+### 07/30/2024
+The last few days were spent working on structuring and creating a coherent format for the documentation.
+
+Not a lot of actual technical writing has been done yet, but I'm now at a point where I can buckle down and get it done.
+
+I also need to write the actual Powershell **Get-Help** documentation, which is drier but much easier to write.
+
+I'm also considering scrapping the separation of functions into respective **private** and **public** folders. I don't know, yet.
+
+
 ---
 ### 07/28/2024
 Working on documentation. It's tough; there's a lot to document.
@@ -35,6 +47,7 @@ That's all for now.
 ---
 ### 07/22/2024
 I integrated **$global:LMStudioVars.FilePaths.DialogFilePath** into **Show-LMSettings**. Which was the whole reason I decided to keep the latest Dialog file in the Config in the first place.
+*(Edit:) What I meant by this is that the Show-LMSettings function previously required the Dialog File path be provided, which was cludgy and unrefined. This is what motivated me to integrate DialogFilePath.*
 
 I have also created the Private/Public folder breakout for the file-individuated functions structure. The empty files have been placed as placeholders until I am ready to begin.
 
