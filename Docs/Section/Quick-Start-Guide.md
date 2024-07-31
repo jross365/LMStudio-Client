@@ -1,4 +1,4 @@
-Ready to get your alpha groove on? This quick-start guide assumes LMStudio is configured and running.
+**Ready to get your alpha groove on?** This quick-start guide assumes LMStudio is configured and running.
 
 1. Save the Module Folder (*LMStudio-Client*) to your **Documents\WindowsPowerShell\Modules** folder.
 

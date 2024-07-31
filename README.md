@@ -30,7 +30,7 @@ It assumes several prerequisites:
 - LM Studio is running 
 - The LM Studio web server is started in the software
 
-The [Slow-Start Guide](./Docs/Section/Quick-Start-Guide.md) is an index of more detailed documentation on how to use the module.
+The [Slow-Start Guide](./Docs/Section/Slow-Start-Guide.md) is an index of more detailed documentation on how to use the module.
 
 The Slow-Start Guide documentation is in the process of being written. Anything below "🚧 **Below in progress:**" is not complete.
 
