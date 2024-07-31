@@ -21,6 +21,7 @@ The default Config path is *C:\Users\<YourName>\Documents\LMStudio-PSClient*.
 *Usage Example:*
 ![](https://raw.githubusercontent.com/jross365/LMStudio-Client/main/Docs/images/new-lmconfig-example.png)
 
+
 ## Import an Existing Config
 
 **Import-LMConfig** requires one parameter:

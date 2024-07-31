@@ -22,57 +22,23 @@ A feature-rich Powershell LMStudio client.
   - What these are and how to use them will be included in the documentation.
 
 
-## Quick-Start Guide
-Ready to get your alpha groove on? This quick-start guide assumes LMStudio is configured and running.
+## Documentation
 
-![](/Docs/images/quickstart-diagram.png)
+The [Quick-Start Guide](./Docs/Section/Quick-Start-Guide.md) is a no-frills and no-explanations guide on getting the module up and running.
 
-1. Save the Module Folder (*LMStudio-Client*) to your **Documents\WindowsPowerShell\Modules** folder.
+It assumes several prerequisites:
+- LM Studio is running 
+- The LM Studio web server is started in the software
 
-2. Import the module:
-```
-Import-Module LMStudio-Client
-```
+The [Slow-Start Guide](./Docs/Section/Quick-Start-Guide.md) is an index of more detailed documentation on how to use the module.
 
-3. If a Config has never been created, create one:
-```
-New-LMConfig -Server <Name/IP> -Port <1234>
-```
-  - Creates the "root" folder
-  - Creates a new Config File (*lmsc.cfg*)
-  - Creates a new History File (*username-HF.index*)
-  - Creates a Dialog Files folder (*username-HF-DialogFiles*)
+The Slow-Start Guide documentation is in the process of being written. Anything below "🚧 **Below in progress:**" is not complete.
 
-4. Import the config:
-```
-Import-LMConfig -ConfigFile "$Env:USERPROFILE\Documents\LMStudio-PSClient\lmsc.cfg" -Verify
-```
-  - Imports the Config File (*lmsc.cfg*)
-  - Stores settings in *$Global:LMStudioVars*
+I maintain a [Development Journal](./Docs/Dev-Journal.md) to record and track my priorities, and to rationalize my design decisions. 
 
-5. Start the chat program:
-```
-Start-LMChat
-```
-  - No Parameters: Creates a new *.dialog* file
-  - **-Resume**: Opens *.dialog* file in *$Global:LMStudioVars.FilePaths.DialogFilePath*
-  - **-Resume -FromSelection**: Opens *.dialog* file from selection prompt
-
-
-6. For help changing chat settings, in the chat prompt run this command:
-```
-:help
-```
+Last Update was **July 30, 2024**.
 
 ## Notes/Addendum:
-
-I update my [**dev journal**](./Docs/Dev-Journal.md) when I work on this project.
-
-Last Update: **July 28, 2024**
-
-I've begun writing the documentation, as [**Slow-Start Guide**](./Docs/Slow-Start-Guide.md).
-
-Last Update: **July 28, 2024**
 
 **07/18/2024** I have created the PSD1 file so these functions can be imported as a proper Powershell module. See the [**dev journal**](./Docs/Dev-Journal.md) for details.
 
