@@ -1,9 +1,11 @@
 # LMStudio-Client
 
-A feature-rich Powershell LMStudio client.
+A feature-rich LMStudio console client for Powershell.
 
 ![](/Docs/images/alpacas-prompt.gif)
 
+**Current Version:** 0.5.4
+**Last Code Update:** 07/31/2024
 
 ## Features:
 
@@ -11,7 +13,8 @@ A feature-rich Powershell LMStudio client.
 
 - Records and saves LLM chat dialogs locally
   - Built-in file management, indexing (*search* will be included)
-  - Previous dialogs can be resumed easily 
+  - Resume and continue previous dialogs
+  - Search the contents of your chat history
 
 - Persistent configuration management:
   - Settings are preserved in a configuration file
@@ -34,9 +37,11 @@ The [Slow-Start Guide](./Docs/Section/Slow-Start-Guide.md) is an index of more d
 
 The Slow-Start Guide documentation is in the process of being written. Anything below "🚧 **Below in progress:**" is not complete.
 
-I maintain a [Development Journal](./Docs/Dev-Journal.md) to record and track my priorities, and to rationalize my design decisions. 
+I maintain a [Development Journal](./Docs/Dev-Journal.md) to record and track my priorities, and to rationalize my design decisions.
 
-Last Update was **July 30, 2024**.
+It may be dry to some, and not dry to othres.
+
+Last Update was **July 31, 2024**.
 
 ## Notes/Addendum:
 

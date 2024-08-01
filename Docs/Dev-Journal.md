@@ -8,6 +8,25 @@
 
 💡 **- Idea  🐛 - Bug**
 
+
+---
+### 07/31/2024
+🐛 :markdown in **Start-LMChat** wasn't working. I need to go through the **Set-LMCLIOption** settings and make sure the substring matching is correct for each setting. (Oops)
+
+Until I fix the the substring parameters in **Set-LMCLIOption**, options won't always work correctly. I'll fix this sooner rather than later.
+
+**Follow-Up:**
+Quite a few updates to the documentation. I've written the **Start-LMChat** user guide. I also fixed some broken links. It's coming together quite nicely.
+
+I also ✅ fixed the **Start-LMChat** options being utterly broken.
+The mistake I'd made was that when I shifted from the fixed-length (5) options names to the variable-length names, I forgot to update the *$UserInput.SubString()* statements used to parse the input.
+
+I have adjusted the SubString Start and Count values to accommodate each commands' lengths (":markdown" being 9, for example). This solves the problem.
+
+I also ✅ Added a **Module Version** and **Last Update** fields to the README.md. I need to be more vigilant about updating the minor code version in the PSD1 file.
+
+I'm enjoying writing the documentation, and I expect to get more done soon. More later!
+
 ---
 ### 07/30/2024
 The last few days were spent working on structuring and creating a coherent format for the documentation.

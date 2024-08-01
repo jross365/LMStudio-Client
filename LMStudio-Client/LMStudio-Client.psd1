@@ -12,7 +12,7 @@
  RootModule = 'LMStudio-Client.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.5.1'
+ModuleVersion = '0.5.4'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()

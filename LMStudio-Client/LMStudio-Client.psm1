@@ -3201,7 +3201,7 @@ function Set-LMCLIOption {
     
             {$_ -ieq ":temp"}{ #Test Good
     
-                try {$TempValue = $UserInput.Substring(5,($UserInput.Length - 5))}
+                try {$TempValue = $UserInput.Substring(6,($UserInput.Length - 6))}
                 catch {
                     $ResultObj.Message = "Incorrect input: cannot be correctly parsed."
                     $Fault = $True
@@ -3305,7 +3305,7 @@ function Set-LMCLIOption {
     
             {$_ -ieq ":stream"}{ #Test Good
     
-                try {$StreamValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
+                try {$StreamValue = $UserInput.SubString(8,(($UserInput.Length - 8)))}
                 catch {
                     $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
                     $Fault = $True
@@ -3345,7 +3345,7 @@ function Set-LMCLIOption {
     
             {$_ -ieq ":saveprompt"}{ #Test Good
     
-                try {$SaveValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
+                try {$SaveValue = $UserInput.SubString(12,(($UserInput.Length - 12)))}
                 catch {
                     $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
                     $Fault = $True
@@ -3385,7 +3385,7 @@ function Set-LMCLIOption {
     
             {$_ -ieq ":markdown"}{ #Test Good
     
-                try {$MarkValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
+                try {$MarkValue = $UserInput.SubString(10,(($UserInput.Length - 10)))}
                 catch {
                     $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
                     $Fault = $True
@@ -3425,7 +3425,7 @@ function Set-LMCLIOption {
     
             {$_ -ieq ":greeting"}{ #Test Good
     
-                try {$GreetValue = $UserInput.SubString(5,(($UserInput.Length - 5))).Trim()}
+                try {$GreetValue = $UserInput.SubString(10,(($UserInput.Length - 10)))}
                 catch {
                     $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
                     $Fault = $True
@@ -3465,7 +3465,7 @@ function Set-LMCLIOption {
     
             {$_ -ieq ":condepth"}{ #Test Good
     
-                try {$CondValue = ([int]($UserInput.SubString(5,($UserInput.Length - 5))))}
+                try {$CondValue = ([int]($UserInput.SubString(10,($UserInput.Length - 10))))}
                 catch {
                     $ResultObj.Message = "Incorrect input: cannot be correctly parsed"
                     $Fault = $True
@@ -3523,7 +3523,7 @@ function Set-LMCLIOption {
     
             {$_ -ieq ":newprompt"}{ #Test Good
     
-                $PromptValue = $UserInput.Substring(5,($UserInput.Length -5))
+                $PromptValue = $UserInput.Substring(11,($UserInput.Length -11))
     
                 If ($PromptValue.Length -eq 0){
                     $ResultObj.Message = "No string was provided after :newprompt"
