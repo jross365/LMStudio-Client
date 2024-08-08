@@ -4,6 +4,7 @@ A feature-rich LMStudio console client for Powershell.
 
 ![](/Docs/images/alpacas-prompt.gif)
 
+
 **Current Version:** 0.5.4
 **Last Code Update:** 07/31/2024
 
@@ -27,21 +28,24 @@ A feature-rich LMStudio console client for Powershell.
 
 ## Documentation
 
+This module contains a lightweight C# HTTP client to provide the response streaming.
+The C# code requires **.Net Framework 4.5** or greater.
+
 The [Quick-Start Guide](./Docs/Section/Quick-Start-Guide.md) is a no-frills and no-explanations guide on getting the module up and running.
 
 It assumes several prerequisites:
 - LM Studio is running 
 - The LM Studio web server is started in the software
 
-The [Slow-Start Guide](./Docs/Section/Slow-Start-Guide.md) is an index of more detailed documentation on how to use the module.
+The [Full User Guide](./Docs/Section/Slow-Start-Guide.md) is an index of more detailed documentation on how to use the module.
 
-The Slow-Start Guide documentation is in the process of being written. Anything below "🚧 **Below in progress:**" is not complete.
+The User Guide documentation is in the process of being written. Anything below "🚧 **Below in progress:**" is not complete.
 
 I maintain a [Development Journal](./Docs/Dev-Journal.md) to record and track my priorities, and to rationalize my design decisions.
 
 It may be dry to some, and not dry to othres.
 
-Last Update was **July 31, 2024**.
+Last Update was **August 7, 2024**.
 
 ## Notes/Addendum:
 

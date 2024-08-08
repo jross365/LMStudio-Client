@@ -8,6 +8,32 @@
 
 💡 **- Idea  🐛 - Bug**
 
+---
+### 08/07/2024
+I haven't committed any updates in a bit over a week, but I have been chipping away at the documentation. The User Guide (called the *slow start guide* right now) is coming along pretty well, and I think it will be more valuable than the cmdlet options.
+
+A few improvements are on my mind:
+
+💡 I should add a **RootFolderPath** key/value pair to the **Global:LMConfigVars.FilePaths** Config Branch. This would make moving a user profile *much* easier, requiring only one key change.
+If I go this route, *every single instance* where I reference one of the **FilePaths** Leafs will need to be updated as a concatenation of **RootFolderPath** and the relative path of the file.
+
+⬜️ **Get-LMDialogContent** is unwritten. It'll more or less be this:
+```
+Show-LMDialog -DialogMessages  (Import-LMDialogFile -FilePath $(Select-LMHistoryEntry)).Messages
+```
+*which leads to the next improvement...*
+ 
+ ⬜️**Show-LMDialog** should provide two options:
+ 
+ - Display in console (*-AsConsoleText*): provides markdown options
+
+ - Default (*No parameter*): return as a string object
+
+ For now, I'm going to put that **Show-LMDialog** chain of function inputs as the way to display text. But I very much need to write **Get-LMDialogContent** as a wrapper for this.
+ The reason I didn't finish the function is because I was burned out a bit; but I've had enough time away from coding now to pick up where I left off.
+
+ I'll keep chipping away at the documentation. That's all for now.
+
 
 ---
 ### 07/31/2024
