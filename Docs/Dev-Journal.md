@@ -9,6 +9,16 @@
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 08/08/2024
+I'm making additional solid progress on the User Guide. I have a few more instructionals to put into the **history-and-dialog.md** file, and that will knock out another whole section to write about.
+
+⬜️ I need to strip out all manual parameters which provide inputs to the History File.
+
+⬜️ In my code, I throw an error that states to **Run Import-ConfigFile** (or something to that effect). I need to correct this error.
+
+That's all for now.
+
+---
 ### 08/07/2024
 I haven't committed any updates in a bit over a week, but I have been chipping away at the documentation. The User Guide (called the *slow start guide* right now) is coming along pretty well, and I think it will be more valuable than the cmdlet options.
 

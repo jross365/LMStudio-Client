@@ -65,11 +65,10 @@ The History File is used by **Start-LMChat** to select a prompt, and by several 
 
 The articles below detail different actions involving Dialog Files and/or the History File:
 
-🚧 **Below in progress:** (Updated 07/31/2024)
-[View History File Contents](./history-and-dialog.md#view-history-file-contents)
+[View History File](./history-and-dialog.md#view-history-file-contents)
 
 [Repair History File](./history-and-dialog.md#repair-history-file)
-
+🚧 **Below in progress:** (Updated 08/08/2024)
 [Remove a Dialog File and History Entry](./history-and-dialog.md#remove-a-dialog-file-and-history-entry)
 
 [Searching Dialog Files](./history-and-dialog.md#searching-dialog-files)
