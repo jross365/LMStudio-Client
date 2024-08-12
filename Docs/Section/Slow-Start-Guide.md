@@ -54,32 +54,31 @@ Dialog Files are JSON-formatted records of interactions with LM Studio. They con
 
 Dialog Files are not user-friendly, and can become numerous. A **History File** is used to make Dialog Files easier to manage.
 
-The History File is an index containing an entry for each Dialog File. It stores identifying information about each Dialog File, such as:
-- Creation/Modification timestamps
-- The "opener" (first submitted user prompt)
-- Title
-- Tags
-- Relative file path
+The History File is **not** a repository of unique information: it is constructed entirely from the attributes of your Dialog Files:
 
-The History File is used by **Start-LMChat** to select a prompt, and by several other functions.
+- **Created**: Timestamp of when the Dialog File was created
+- **Modified**: Timestamp of when the Dialog File was last modified
+- **Title**: Title assigned to Dialog File via *Start-LMChat*
+- **Opener**: The first user statement in the chat dialog
+- **Model**: The last model used in the chat dialog
+- **FilePath**: Relative path of the Dialog File
+- **Tags**: Tags assigned to Dialog File via *Start-LMChat*
+
+The History File is used by **Start-LMChat** to select a prompt, and by related functions involving Dialog Files.
 
 The articles below detail different actions involving Dialog Files and/or the History File:
 
 [View History File](./history-and-dialog.md#view-history-file-contents)
 
 [Repair History File](./history-and-dialog.md#repair-history-file)
-🚧 **Below in progress:** (Updated 08/08/2024)
+
 [Remove a Dialog File and History Entry](./history-and-dialog.md#remove-a-dialog-file-and-history-entry)
 
 [Searching Dialog Files](./history-and-dialog.md#searching-dialog-files)
 
 [Read a Dialog File](./history-and-dialog.md#read-a-dialog-file)
 
-[Assign a Title to a Dialog File](./history-and-dialog.md#assign-a-title-to-a-dialog-file)
-
-[Assign Tags to a Dialog File](./history-and-dialog.md#assign-tags-to-a-dialog-file)
-
-
+🚧 **Below in progress:** (Updated 08/08/2024)
 ## Other Tools and Utilities
 
 [Retrieve Loaded LMStudio Model]()

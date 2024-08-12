@@ -37,7 +37,7 @@ It assumes several prerequisites:
 - LM Studio is running 
 - The LM Studio web server is started in the software
 
-The [Full User Guide](./Docs/Section/Slow-Start-Guide.md) is an index of more detailed documentation on how to use the module.
+The [Full User Guide](./Docs/Section/Slow-Start-Guide.md) is an index of short articles on how to use the module.
 
 The User Guide documentation is in the process of being written. Anything below "🚧 **Below in progress:**" is not complete.
 
@@ -45,7 +45,7 @@ I maintain a [Development Journal](./Docs/Dev-Journal.md) to record and track my
 
 It may be dry to some, and not dry to othres.
 
-Last Update was **August 8, 2024**.
+Last Update was **August 11, 2024**.
 
 ## Notes/Addendum:
 
