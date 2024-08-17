@@ -1,13 +1,13 @@
 **Ready to get your alpha groove on?** This quick-start guide assumes LMStudio is configured and running.
 
-1. Save the Module Folder (*LMStudio-Client*) to your **Documents\WindowsPowerShell\Modules** folder.
+## 1. Save the Module Folder (*LMStudio-Client*) to your **Documents\WindowsPowerShell\Modules** folder.
 
-2. Import the module:
+## 2. Import the module:
 ```
 Import-Module LMStudio-Client
 ```
 
-3. If a Config has never been created, create one:
+## 3. If a Config has never been created, create one:
 ```
 New-LMConfig -Server <Name/IP> -Port <1234>
 ```
@@ -16,14 +16,14 @@ New-LMConfig -Server <Name/IP> -Port <1234>
   - Creates a new History File (*username-HF.index*)
   - Creates a Dialog Files folder (*username-HF-DialogFiles*)
 
-4. Import the config:
+## 4. Import the config:
 ```
 Import-LMConfig -ConfigFile "$Env:USERPROFILE\Documents\LMStudio-PSClient\lmsc.cfg" -Verify
 ```
   - Imports the Config File (*lmsc.cfg*)
   - Stores settings in *$Global:LMStudioVars*
 
-5. Start the chat program:
+## 5. Start the chat program:
 ```
 Start-LMChat
 ```
@@ -32,7 +32,7 @@ Start-LMChat
   - **-Resume -FromSelection**: Opens *.dialog* file from selection prompt
 
 
-6. For help changing chat settings, in the chat prompt run this command:
+## 6. For help changing chat settings, in the chat prompt run this command:
 ```
 :help
 ```
