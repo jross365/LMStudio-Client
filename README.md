@@ -6,7 +6,7 @@ A feature-rich LMStudio console client for Powershell.
 
 
 **Current Version:** 0.5.4
-**Last Code Update:** 07/31/2024
+**Last Code Update:** 08/17/2024
 
 ## Features:
 
@@ -43,9 +43,9 @@ The User Guide documentation is in the process of being written. Anything below 
 
 I maintain a [Development Journal](./Docs/Dev-Journal.md) to record and track my priorities, and to rationalize my design decisions.
 
-It may be dry to some, and not dry to othres.
+It may be dry to some, and not dry to others.
 
-Last Update was **August 11, 2024**.
+Last Update was **August 17, 2024**.
 
 ## Notes/Addendum:
 

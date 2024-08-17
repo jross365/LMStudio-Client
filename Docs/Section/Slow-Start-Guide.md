@@ -2,7 +2,13 @@
 # User Guide
 Come on in, and make yourself at home!
 
-## LMStudio Configuration
+To make this documentation easier to use, click the **Outline** button on the right-hand side the screen:
+
+![](https://raw.githubusercontent.com/jross365/LMStudio-Client/main/Docs/images/show-outline.png)
+
+This will display an outline of the document:
+
+![](https://raw.githubusercontent.com/jross365/LMStudio-Client/main/Docs/images/outline-display.png)
 
 
 ## Config Management
@@ -50,7 +56,7 @@ Dialog Files are JSON-formatted records of interactions with LM Studio. They con
 - Chat settings (temperature, max tokens, model, system prompt)
 - User-defined Title and Tags
 
-### History and Dialog Files
+### The History File
 
 Dialog Files are not user-friendly, and can become numerous. A **History File** is used to make Dialog Files easier to manage.
 
@@ -81,8 +87,8 @@ The articles below detail different actions involving Dialog Files and/or the Hi
 🚧 **Below in progress:** (Updated 08/08/2024)
 ## Other Tools and Utilities
 
-[Retrieve Loaded LMStudio Model]()
+[Retrieve Loaded LMStudio Model](./other-tools.md#retrieve-the-loaded-lmstudio-model)
 
-[Using the Module Programmatically]()
+[Using the Module Programmatically](./other-tools.md#using-this-module-programmatically)
 
-[The Greeting Toy]()
+[The Greeting Toy](./other-tools.md#the-greeting-toy)

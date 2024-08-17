@@ -9,6 +9,14 @@
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 08/17/2024
+I've made some very good progress with the documentation, and I think I can call it "*complete enough*" to put it on hold and work on some other things.
+
+I had some help with the greetings generator for **Get-LMGreeting**, and I fixed a 🐛problem stemming from missing some commas in an array.
+
+After I commit these updates, I'll probably begin working on the Powershell Help.
+
+---
 ### 08/08/2024
 I'm making additional solid progress on the User Guide. I have a few more instructionals to put into the **history-and-dialog.md** file, and that will knock out another whole section to write about.
 

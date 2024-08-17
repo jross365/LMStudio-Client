@@ -1953,9 +1953,12 @@ function New-LMGreetingPrompt { #Complete
         "Talk like a valley girl",
         "Talk like Arnold Schwarzenegger",
         "Talk like you're porky pig",
-        "Talk like you have severe social anxiety",
+        "Talk like you are very shy",
         "Talk like you're Goofy",
-        "Talk like you're Jeremy Clarkson"
+        "Talk like you're Jeremy Clarkson",
+        "Talk like you're a well-known character that was played by Robin Williams",
+        "Talk like you're Severus Snape",
+        "Talk like you're Shakespeare, and respond only in iambic pentameter"
     )
 
     $ChosenPremise = $Premises[$(Get-Random -Minimum 0 -Maximum $($Premises.GetUpperBound(0)) -SetSeed ([System.Environment]::TickCount))]
@@ -1972,8 +1975,11 @@ function New-LMGreetingPrompt { #Complete
         "$ChosenPremise. Choose a proper noun that contains these three letters: $ThreeLetters. Then provide a fact about the chosen proper noun.",
         "$ChosenPremise. Please try to baffle me.",
         "$ChosenPremise. Choose a proper noun that contains these three letters: $ThreeLetters. Then generate a haiku that includes this word.",
-        "$ChosenPremise. Choose a proper noun that contains these three letters: $ThreeLetters. Please generate a short poem about this word."
-        "$ChosenPremise. Please wish me well for today."
+        "$ChosenPremise. Choose a proper noun that contains these three letters: $ThreeLetters. Please generate a short poem about this word.",
+        "$ChosenPremise. Please wish me well for today.",
+        "$ChosenPremise. As a gameshow host, please tell me what I've won!",
+        "$ChosenPremise. As a tour bus guide, tell me about a feature or sight in a major city.",
+        "$ChosenPremise. Please give me a comedic story in two sentences."
     )
     
     $ChosenGreeting = $Greetings[$(Get-Random -Minimum 0 -Maximum $($Greetings.GetUpperBound(0)) -SetSeed ([System.Environment]::TickCount))]
