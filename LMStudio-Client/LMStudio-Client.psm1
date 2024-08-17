@@ -1,4 +1,32 @@
-#Help Complete
+<#
+.SYNOPSIS
+Prompts a user for confirmation
+
+.DESCRIPTION
+Presents a user with a repeating "(y/N)" prompt.
+Returns $True (for Yes) or $False (for No.)
+
+.INPUTS
+No pipeline inputs accepted.
+
+.OUTPUTS
+Returns a boolean value [$True | $False]
+
+.EXAMPLE
+PS> $Question = Confirm-LMYesNo
+Accept? (y/N): y
+PS> $Question
+$True
+
+.EXAMPLE
+PS> $Question = Confirm-LMYesNo
+Accept? (y/N): n
+PS> $Question
+$False
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+#>
 function Confirm-LMYesNo {
 
     $Answered = $False
@@ -26,7 +54,43 @@ function Confirm-LMYesNo {
 
 }
 
-#Help Complete
+<#
+.SYNOPSIS
+Creates a new Configuration File
+
+.DESCRIPTION
+Uses supplied parameters to generate a configuration file.
+The configuration file contains various settings. These settings
+control different server, file and console settings.
+
+.PARAMETER Server
+The hostname or IP address of the LMStudio server.
+
+.PARAMETER Port
+The TCP Port of the LMStudio server.
+
+.PARAMETER BasePath
+Optional. A folder where you want to save the config file, and all other files.
+
+.PARAMETER Import
+Optional. Import the configuration file into $Global after creation.
+
+.INPUTS
+No pipeline inputs accepted.
+
+.OUTPUTS
+Produces various file and folder outputs, and some console output.
+
+.EXAMPLE
+PS> New-LMConfig -Server localhost -Port 1234
+
+.EXAMPLE
+PS> New-LMConfig -Server localhost -Port 1234 -Import
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function New-LMConfig { #Complete
     [CmdletBinding()]
     param (
@@ -251,8 +315,37 @@ function New-LMConfig { #Complete
 
 }
 
-#This function reads the local LMConfigFile.cfg, verifies it (unless skipped), and then writes the values to the $Global:LMStudioVars
-#Help Complete
+<#
+.SYNOPSIS
+Imports a Configuration File
+
+.DESCRIPTION
+Imports an existing Configuration File (lmsc.cfg).
+The configuration file contains various settings. These settings
+control different server, file and console settings.
+
+.PARAMETER ConfigFile
+The full path to the Configuration File
+
+.PARAMETER Verify
+Optional. Validates Config File contents, and server accessibility
+
+.INPUTS
+No pipeline inputs accepted.
+
+.OUTPUTS
+If -Verify is specified, returns verification status.
+
+.EXAMPLE
+PS> Import-LMConfig $env:UserProfile\Documents\LMStudio-PSClient\lmsc.cfg
+
+.EXAMPLE
+PS> Import-LMConfig $env:UserProfile\Documents\LMStudio-PSClient\lmsc.cfg -Verify
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Import-LMConfig { #Complete
     [CmdletBinding()]
     param (
@@ -345,9 +438,38 @@ end {
     } #Close End
 }
 
+<#
+.SYNOPSIS
+Modifies Configuration Settings
 
-#This function updates values in $GLobal:LMConfigVars. It also offers a -Commit function, that writes the changes to the Config file
-#Help Complete
+.DESCRIPTION
+Writes new values to the Configuration hive ($Global:LMStudioVars).
+Can also save new values to the Configuration File (lmsc.cfg).
+
+.PARAMETER Branch
+The Configuration hive branch containing the setting(s) to modify.
+Valid options are 'ServerInfo', 'ChatSettings', 'FilePaths', 'URIs'
+
+
+.PARAMETER Options
+The settings to modify under the designated branch.
+
+.PARAMETER Commit
+Optional. Saves the Configuration hive to the Configuration file.
+
+.OUTPUTS
+None.
+
+.EXAMPLE
+PS> Set-LMConfigOptions -Branch ChatSettings -Options @{"Greeting"=$False}
+
+.EXAMPLE
+PS> Set-LMConfigOptions -Branch ChatSettings -Options @{"ContextDepth"=6, "temperature"=0.8} -Commit
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Set-LMConfigOptions {
     [CmdletBinding()]
     param(
@@ -392,8 +514,36 @@ function Set-LMConfigOptions {
 
     }
 
-#This function returns different kinds of objects needed by various functions
-#Help Complete
+<#
+.SYNOPSIS
+Returns object templates.
+
+.DESCRIPTION
+Provides a variety of different pre-constructed Powershell
+objects, for use by or with different functions.
+
+.PARAMETER Type
+The type of object to return.
+Valid options are:
+'Body'
+'ChatDialog'
+'ChatGreeting'
+'ConfigFile'
+'DialogMessage'
+'HistoryEntry'
+'ManualSettings'
+'SystemPrompts'
+
+.OUTPUTS
+Returns the requested object.
+
+.EXAMPLE
+PS> $Dialog = New-LMTemplate -Type DialogMessage
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function New-LMTemplate { #Complete
     [CmdletBinding()]
     param(
@@ -589,7 +739,30 @@ $Object = @'
 
 }
 
-#This function validates $Global:LMStudioVars is fully populated
+<#
+.SYNOPSIS
+Validates a configuration
+
+.DESCRIPTION
+Checks each branch of the LMStudio PSClient configuration, and confirms all properties are present.
+
+.PARAMETER ReturnBoolean
+Switch parameter.
+
+If specified, returns $True (for good) or $False (for failed) instead of throwing an error.
+
+.OUTPUTS
+If successful, does not return a value.
+
+If -ReturnBoolean is specified, returns a boolean value ($True or $False)
+
+.EXAMPLE
+PS> try {Confirm-LMGlobalVariables} catch {throw $_.Exception.Message}
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Confirm-LMGlobalVariables ([switch]$ReturnBoolean) { #Complete, rewrote this to be completely property name-agnostic
 
     $Errors = New-Object System.Collections.ArrayList
@@ -645,7 +818,37 @@ function Confirm-LMGlobalVariables ([switch]$ReturnBoolean) { #Complete, rewrote
 
 }
 
-#This function imports the content of an existing history file, for either use or to verify the format is correct
+<#
+.SYNOPSIS
+Imports a History File
+
+.DESCRIPTION
+Reads a History File and returns the contents as a collection of objects.
+
+.PARAMETER FilePath
+Optional parameter.
+
+The relative or absolute path to a History File.
+
+If not specified, the loaded Config's history file is used.
+
+.PARAMETER AsTest
+Switch parameter.
+
+If specified, successful import returns $True.
+
+.OUTPUTS
+Returns History File entries as a collection of Powershell objects.
+
+If -AsTest is specified, returns a boolean value instead.
+
+.EXAMPLE
+PS> $History = Import-LMHistoryFile
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Import-LMHistoryFile { #Complete
     [CmdletBinding()]
     param (
@@ -731,7 +934,37 @@ function Import-LMHistoryFile { #Complete
 
 } #Close Function
 
-#This function reads the contents of a dialog folder, and rebuilds a history file from the contents
+
+<#
+.SYNOPSIS
+Repairs (rebuilds) a History File
+
+.DESCRIPTION
+Creates a new History File from the Dialog files in a Dialog Folder.
+
+.PARAMETER FilePath
+Optional parameter.
+
+The relative or absolute path to a History File.
+
+If not specified, the loaded Config's history file is used.
+
+.PARAMETER WriteProgress
+Switch parameter.
+
+Provides a progress bar of the repair progress.
+
+.OUTPUTS
+Returns a console output summary of the repair results.
+
+.EXAMPLE
+PS> Repair-LMHistoryFile -WriteProgress
+WARNING: Import succeeded: 58, Import failed: 0, History file update failed: 0
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Repair-LMHistoryFile {
     param (
     [Parameter(Mandatory=$False)]
@@ -797,7 +1030,7 @@ function Repair-LMHistoryFile {
             
             }
 
-            try {Update-LMHistoryFile -FilePath $FilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $($File.FullName))}
+            try {Update-LMHistoryEntry -FilePath $FilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $($File.FullName))}
             catch {
             
                 $UpdateFailed++
@@ -832,8 +1065,43 @@ function Repair-LMHistoryFile {
 
 }
 
-#This function saves a history entry to the history file
-function Update-LMHistoryFile { #Complete, requires testing
+<#
+.SYNOPSIS
+Updates a History File entry
+
+.DESCRIPTION
+Adds or Modifies an Entry in the History File.
+
+.PARAMETER Entry
+Mandatory parameter.
+
+The updated History Entry.
+
+.PARAMETER FilePath
+Optional parameter.
+
+The relative or absolute path to a History File.
+
+If not specified, the loaded Config's history file is used.
+
+.PARAMETER ReturnAsObject
+Switch parameter.
+
+Returns the updated History File as a collection of objects, instead of writing to the History File.
+
+.OUTPUTS
+No default outputs.
+
+If -ReturnAsObject is specified, the History is returned as a collection.
+
+.EXAMPLE
+This function is not intended for normal user interactions.
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
+function Update-LMHistoryEntry { #Complete, requires testing
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
@@ -913,7 +1181,7 @@ function Update-LMHistoryFile { #Complete, requires testing
                 } #Close Case -gt 1
 
                 Default {$Index = 0} #PS5/7 difference: PS5 doesn't assign a ".Count" property to most non-array objects, PS7 does. This Default addresses a PS5 behavior
-                #Default {throw "[Update-LMHistoryFile] : Something went wrong while trying to find/remove duplicates"}
+                #Default {throw "[Update-LMHistoryEntry] : Something went wrong while trying to find/remove duplicates"}
 
             } #Close switch
 
@@ -930,7 +1198,7 @@ function Update-LMHistoryFile { #Complete, requires testing
 
         If (!($ReturnAsObject.IsPresent)){
             try {$History | Sort-Object Modified -Descending | ConvertTo-Json -Depth 10 -ErrorAction Stop | Out-File -FilePath $FilePath -ErrorAction Stop}
-            catch {throw "[Update-LMHistoryFile] : Unable to save history to File Path: $($_.Exception.Message)"}
+            catch {throw "[Update-LMHistoryEntry] : Unable to save history to File Path: $($_.Exception.Message)"}
         }
 
         Else {return ($History | Sort-Object Modified -Descending)}
@@ -939,7 +1207,60 @@ function Update-LMHistoryFile { #Complete, requires testing
 
 }
 
-#This function allows the removal and/or deletion of History Entries and their dialogs
+<#
+.SYNOPSIS
+Removes a History File entry/entries
+
+.DESCRIPTION
+Presents a GUI to select and remove History File entries.
+Can remove entries from the History File as an individual or bulk operation.
+
+Can also delete the corresponding Dialog File(s).
+
+.PARAMETER FilePath
+Optional parameter.
+
+The relative or absolute path to a History File.
+
+If not specified, the loaded Config's history file is used.
+
+.PARAMETER BulkRemoval
+Switch parameter.
+
+If specified, a Bulk Removal (multi-entry selection) prompt is presented.
+
+.PARAMETER DeleteDialogFiles
+Switch parameter.
+
+If specified, the Dialog Files will also be deleted, along with the History Entry.
+
+.PARAMETER Confirm
+Boolean ($True or $False)
+
+If specified, will explicitly confirm or not confirm deletions.
+
+.PARAMETER DialogFilePath
+The absolute filepath of a Dialog File.
+
+If specified, the filepath provided will be used to select and delete the History File entry. This suppresses the UI.
+
+.OUTPUTS
+No default outputs.
+
+.EXAMPLE
+PS> Remove-LMHistoryEntry -BulkRemoval -Confirm $False
+
+Prompts for bulk removal of History entries
+
+.EXAMPLE
+PS> Remove-LMHistoryEntry -DeleteDialogFiles
+
+Prompts for removal of a single History entry, and deletes the associated Dialog File
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Remove-LMHistoryEntry {
     [CmdletBinding()]
     param (
@@ -3076,7 +3397,7 @@ function Set-LMTags {
             
             If ($DialogConversion){
             
-                try {Update-LMHistoryFile -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
+                try {Update-LMHistoryEntry -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
                 catch {Write-Warning "[Set-LMTags] Unable to append Dialog updates to History file; Disabling file-saving (:Save to recreate a Dialog file)"}
             
             }
@@ -3139,7 +3460,7 @@ function Set-LMTitle {
             
             If ($DialogConversion){
             
-                try {Update-LMHistoryFile -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
+                try {Update-LMHistoryEntry -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
                 catch {Write-Warning "[Set-LMTitle] Unable to append Dialog updates to History file; Disabling file-saving (:Save to recreate a Dialog file)"}
             
             }
@@ -3947,7 +4268,7 @@ function Start-LMChat {
 
                                         If ($DialogReverted){
 
-                                            try {Update-LMHistoryFile -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
+                                            try {Update-LMHistoryEntry -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
                                             catch {Write-Warning "History file update failed; New dates prior to :privmode will remain in file"}
 
                                         }
@@ -4178,12 +4499,12 @@ function Start-LMChat {
                 # Update the History File
                 If ($DialogFileExists){ 
                 
-                    try {Update-LMHistoryFile -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
+                    try {Update-LMHistoryEntry -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
                     catch { #Sleep and then try once more, in case we're stepping on our own feet (multiple)
                         
                         Start-Sleep -Seconds 2
 
-                        try {Update-LMHistoryFile -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
+                        try {Update-LMHistoryEntry -FilePath $Global:LMStudioVars.FilePaths.HistoryFilePath -Entry $(Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $DialogFilePath)}
                         catch {
                         
                             Write-Warning "Unable to append Dialog updates to History file; Disabling file-saving (:Save to recreate a Dialog file)"
@@ -4513,3 +4834,4 @@ function Get-LMResponse {
         }
 
 }
+

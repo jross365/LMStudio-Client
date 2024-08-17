@@ -16,6 +16,12 @@ I had some help with the greetings generator for **Get-LMGreeting**, and I fixed
 
 After I commit these updates, I'll probably begin working on the Powershell Help.
 
+**Follow-Up:**
+
+I renamed *Update-LMHistoryFile* to **Update-LMHistoryEntry**. It makes more sense.
+
+Completed several Powershell Help headers.
+
 ---
 ### 08/08/2024
 I'm making additional solid progress on the User Guide. I have a few more instructionals to put into the **history-and-dialog.md** file, and that will knock out another whole section to write about.

@@ -2,6 +2,7 @@
 # User Guide
 Come on in, and make yourself at home!
 
+## Show the Outline Pane
 To make this documentation easier to use, click the **Outline** button on the right-hand side the screen:
 
 ![](https://raw.githubusercontent.com/jross365/LMStudio-Client/main/Docs/images/show-outline.png)
