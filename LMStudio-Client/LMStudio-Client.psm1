@@ -1424,7 +1424,35 @@ function Remove-LMHistoryEntry {
 
 }
 
-#$This function imports a dialog file, converts it to a non-fixed sized format [array => arraylist], and then returns it
+<#
+.SYNOPSIS
+Imports  a Dialog File
+
+.DESCRIPTION
+imports a dialog file as a Powershell object with the correct property types.
+
+
+.PARAMETER FilePath
+The relative or absolute path to a Dialog File.
+
+
+.PARAMETER AsTest
+Switch parameter.
+
+If specified, returns $True instead of the contents of the Dialog File
+
+.OUTPUTS
+Returns the contents of the dialog file.
+
+.EXAMPLE
+PS> $Dialog = Import-LMDialogFile $global:LMStudioVars.FilePaths.DialogFilePath
+
+Imports the most recently opened Dialog File.
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Import-LMDialogFile {
 [CmdletBinding()]
 param (
@@ -1505,8 +1533,36 @@ end {
 
 }
 
-#This function retrieves the model information from the server.
-#It can also be used as a connection test with the -AsTest parameter
+<#
+.SYNOPSIS
+Requests the model name
+
+.DESCRIPTION
+Retrieves the loaded model from the LM Studio server
+
+.PARAMETER Server
+IP address or hostname of the LM Studio server
+
+.PARAMETER Port
+TCP port LM Studio server is listening on
+
+.PARAMETER AsTest
+Switch parameter.
+
+If specified, returns $True instead of the model name. Can be used to test server connectivity.
+
+.OUTPUTS
+Returns the model as a string.
+
+.EXAMPLE
+PS>Get-LMModel
+
+lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF/Meta-Llama-3.1-8B-Instruct-Q6_K.gguf
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Get-LMModel {
     [CmdletBinding()]
     param (
@@ -1568,7 +1624,117 @@ function Get-LMModel {
 
 }
 
-#Searches the HistoryFile for strings and provides multiple ways to output the contents
+<#
+.SYNOPSIS
+Searches for text
+
+.DESCRIPTION
+Searches Dialog Files for text, and returns matches that fit the provided conditions
+
+.PARAMETER Match
+The match conditions of the search terms.
+
+Accepts "Any", "All" or "Exact".
+
+.PARAMETER SearchTerms
+The keywords to match against.
+
+If searching for multiple keywords, comma-separate the values.
+
+.PARAMETER SearchScope
+The prompts to search for the keywords.
+
+Accepts "User", "Assistant" or "All".
+
+.PARAMETER BeforeDate
+Limits results to prompts on or BEFORE the specified date-time.
+
+Can accept string-formatted dates, but [datetime] objects are recommended.
+
+.PARAMETER AfterDate
+Limits results to prompts on or AFTER the specified date-time object.
+
+Can accept string-formatted dates, but [datetime] objects are recommended.
+
+.PARAMETER PriorContext
+Specifies the number of User/Assistant exchanges to include that are PRIOR to a matched keyword.
+
+Recommended to keep this value low (0 or 1).
+
+.PARAMETER AfterContext
+Specifies the number of User/Assistant exchanges to include that are AFTER a matched keyword.
+
+Recommended to keep this value low (0 or 1).
+
+.PARAMETER ShowAsCapitals
+Switch parameter.
+
+If specified, KEYWORDS in the RESULTS will be CAPITALIZED
+
+.PARAMETER AsObject
+Switch parameter.
+
+If specified, Results will be returned as an of Powershell objects.
+
+.PARAMETER FilePath
+The relative or absolute path to a History File.
+
+If not specified, search defaults to the History File of the loaded Config.
+
+.OUTPUTS
+The default output is a human-friendly textual output of the search results, structured like this:
+
+Search Summary
+=============
+
+Matching File #1 Info
+=====================
+Matching File #1 User/Assistant Dialogs
+=======================================
+
+=====================
+Matching File #2 Info
+=====================
+Matching File #2 User/Assistant Dialogs
+=======================================
+
+#############################################################################################
+If the -AsObject parameter is specified, the results a returned with the following structure:
+
+# Assuming:
+$Results = Search-LMChatDialog...
+
+# The search summary:
+$Results.SearchSettings 
+
+# The Index of History File entries that matched the search, including FilePath:
+$Results.SearchResults.Index
+
+# The matching Dialogs in a given file, as a collection of objects:
+$Results.SearchResults.'[Relative File Path]'
+
+.EXAMPLE
+PS>Search-LMChatDialog -Match All -SearchTerms "alpaca" -PriorContext 1 -ShowAsCapitals
+
+Finds the word 'alpaca' in User and Assistant messages: includes (1) prior User/Assistant dialog leading up to each match. Matched words are capitalized.
+
+.EXAMPLE
+PS>Search-LMChatDialog -Match Any -SearchScope User -SearchTerms "alpaca","llama" -ShowAsCapitals
+
+Finds the word 'alpaca' or "llama" in User messages. Matched words are capitalized.
+
+.EXAMPLE
+PS>$Results = Search-LMChatDialog -Match Any -SearchTerms "alpaca","llama" -ShowAsCapitals -AsObject
+
+PS>$Results.SearchResults.Index.FilePath.Foreach({Write-Output "`nFILE: $_`n"; $Results.SearchResults.$_ | Select-Object MatchPhrase,Role,Content | Format-Table -Auto})
+
+For each matching file, returns the matching output in table format. Presents the properties "MatchPhrase", "Role" and "Content".
+
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Search-LMChatDialog { #COMPLETE
 [CmdletBinding()]
 param (
@@ -1623,7 +1789,7 @@ begin {
     }
     Else {
         $DirectoryPath = $FilePath.TrimEnd('.index') + "-DialogFiles"
-        If (!(Test-Path $DirectoryPath)){throw "Dialog file directory $DirectoryPath dooesn't exist"}
+        If (!(Test-Path $DirectoryPath)){throw "Dialog file directory $DirectoryPath doesn't exist"}
     
     }
 

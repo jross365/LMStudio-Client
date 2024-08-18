@@ -9,6 +9,10 @@
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 08/18/2024
+Additional progress made on the Powershell help. Finished help for **Search-LMChatDialog**.
+
+---
 ### 08/17/2024
 I've made some very good progress with the documentation, and I think I can call it "*complete enough*" to put it on hold and work on some other things.
 
