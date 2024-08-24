@@ -9,6 +9,12 @@
 💡 **- Idea  🐛 - Bug**
 
 ---
+### 08/24/2024
+Additional progress made on the Powershell help. Finished help for **Invoke-LMStream**.
+
+I've been busy, but trying to finish this part of the work before I go through the "nice-to-haves" and begin implementing them.
+
+---
 ### 08/18/2024
 Additional progress made on the Powershell help. Finished help for **Search-LMChatDialog**.
 

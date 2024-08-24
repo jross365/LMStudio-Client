@@ -2153,8 +2153,48 @@ end {return $Results}
 
 }
 
+<#
+.SYNOPSIS
+UI Prompt to Save or Open a file.
 
-#This function invokes Windows Forms Open and SaveAs for files:
+.DESCRIPTION
+Presents a Windows form to save or to open a file.
+
+.PARAMETER Action
+The type of prompt to present.
+
+'Save' provides a "Save As" prompt.
+
+'Open' provides an "Open" prompt.
+
+.PARAMETER Extension
+The file extension the prompt filters on.
+
+Accepts 'cfg', 'dialog','greeting' or 'index'.
+
+.PARAMETER StartPath
+The filesystem directory the 'Open' or 'Save As' prompt should start from.
+
+.PARAMETER FileName
+The file name the 'Open' or 'Save As' prompt should default on.
+
+.OUTPUTS
+Returns the absolute path of the file to save or open.
+
+.EXAMPLE
+PS>$DialogFile = Invoke-LMSaveOrOpenUI -Action Open -Extension dialog -StartPath "$($Env:USERPROFILE\Documents)"
+
+Presents an "Open" prompt for a ".dialog" file in the user's Documents folder.
+
+.EXAMPLE
+PS>$DialogFile = Invoke-LMSaveOrOpenUI -Action Save -Extension index -StartPath "$($Env:USERPROFILE\Documents)" -FileName "$(Get-Date).index"
+
+Presents a "Save" prompt for a ".index" file named after the current date, in the user's Documents folder.
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Invoke-LMSaveOrOpenUI {
     [CmdletBinding()]
     param (
@@ -2280,7 +2320,28 @@ function Invoke-LMSaveOrOpenUI {
 
 }
 
-#This function invokes Windows Forms Open, for selecting a directory path:
+<#
+.SYNOPSIS
+UI Prompt to open a folder.
+
+.DESCRIPTION
+Presents a Windows form to open a folder.
+
+.PARAMETER StartPath
+The filesystem directory the 'Open' prompt should start from.
+
+.OUTPUTS
+Returns the absolute path of the selected folder.
+
+.EXAMPLE
+PS>$Folder = Invoke-LMOpenFolderUI -StartPath "$($Env:USERPROFILE\Documents)"
+
+Presents an "Open" prompt, starting in the user's Documents folder.
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Invoke-LMOpenFolderUI {
     [CmdletBinding()]
     param (
@@ -2325,44 +2386,35 @@ function Invoke-LMOpenFolderUI {
 
 }
 
-#Provides a graphical help interface for the LM-Client
-function Show-LMHelp { #Complete
-    Add-Type -AssemblyName PresentationCore,PresentationFramework
-    $ButtonType = [System.Windows.MessageBoxButton]::OK
-    $MessageboxTitle = “LMStudio-PSClient Help”
-$Messageboxbody = @'
-SWITCHES
-:help   - Displays this Help
-:priv   - Enables Privacy Mode
-:show   - Shows the current Chat Settings
-:quit   - Quits the application
-:selp   - Select a System Prompt
-:tags   - Show Tags
+<#
+.SYNOPSIS
+Displays settings
 
-STRINGS
-:newp <[str]>   - Create a System Prompt
-:atag <[str]>   - Add a Tag     (comma-separate 2+)
-:rtag <[str]>   - Remove a Tag  (comma-separate 2+)
+.DESCRIPTION
+Presents module and session configuration settings as a text file, or as console output.
 
-TOGGLES
-:gret <true or false>   - Toggles start-up Greeting
-:strm <true or false>   - Toggles response Streaming
-:save <true or false>   - Toggles Save prompt on launch
-:mark <true or false>   - Toggles Markdown rendering
+.PARAMETER InConsole
+Optional switch parameter.
 
-NUMBERS
-:cond <[int] of 2 or greater>   - Sets the Context Depth
-:mtok <[int] of -1 or greater>  - Sets the Maximum Tokens
-:temp <0.0 to 2.0>   - Sets the Temperature
+Shows settings as console output instead of as a text file in notepad.
 
-'@
-    
-    $MessageIcon = [System.Windows.MessageBoxImage]::Question
-    [System.Windows.MessageBox]::Show($Messageboxbody,$MessageboxTitle,$ButtonType,$messageicon)
+.OUTPUTS
+Displays configuration settings as a text file in Notepad, or as console output.
 
-}
+.EXAMPLE
+PS> Show-LMSettings
 
-#provides a graphical display of the Client chat settings
+Opens a text file showing your settings.
+
+.EXAMPLE
+PS> Show-LMSettings -InConsole
+
+Displays your settings in the Powershell console.
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Show-LMSettings ([switch]$InConsole) { #Complete
     If ($DialogFile.Length -eq 0 -or $null -eq $DialogFile){$DialogFile = "[unspecified]"}
     
@@ -2431,7 +2483,26 @@ function Show-LMSettings ([switch]$InConsole) { #Complete
     }
 
 }
-#This function generates a greeting prompt for an LLM, for load in the LMChatClient
+
+<#
+.SYNOPSIS
+Generates a greeting prompt
+
+.DESCRIPTION
+Generates a pseudo-random greeting prompt. Used by Get-LMGreeting.
+
+.OUTPUTS
+Returns a novel greeting prompt.
+
+.EXAMPLE
+PS> New-LMGreetingPrompt
+
+Talk like you're porky pig. Please try to baffle me.
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function New-LMGreetingPrompt { #Complete
     
     ###FEATURE TO INCLUDE HERE: RETURN A SYSTEM PROMPT
@@ -2475,7 +2546,39 @@ function New-LMGreetingPrompt { #Complete
 
 } #Close Function
 
-#This function invokes a synchronous connection to "blob" chat output to the console
+<#
+.SYNOPSIS
+Sends a prompt to an LM Studio server and returns the server's response
+
+.DESCRIPTION
+Sends a user prompt to the LM Studio API endpoint. Returns the server's response all at once (as a "blob") instead of streaming the output (letter-by-letter).
+
+.PARAMETER CompletionURI
+The full path to the LM Studio API
+
+.PARAMETER Body
+The body to POST to the API, as a [pscustomobject] Powershell object.
+
+The command "New-LMTemplate -Type Body" will return a Body template to use with this parameter.
+
+.PARAMETER NoConsoleOut
+Optional switch. If specified, returns the LM Studio response as an object, without writing out to the console.
+
+.PARAMETER StreamSim
+Optional switch. If specified, simulates output streaming by writing the response to the console 'letter-by-letter'.
+
+.OUTPUTS
+Displays the LM Studio server response. Returns the response as a Powershell object.
+
+.EXAMPLE
+PS> $Response = Invoke-LMBlob -CompletionURI "http://localhost:1234/v1/chat/completions" -Body $Body -NoConsoleOut
+
+Sends a request to the LM Studio server, and returns the response to $Response. Does not write the response to console.
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Invoke-LMBlob { 
     param (
         [Parameter(Mandatory=$true)][string]$CompletionURI,
@@ -2509,7 +2612,46 @@ function Invoke-LMBlob {
         return $Response
 }
 
-#This function establishes an asynchronous connection to "stream" chat output to the console
+<#
+.SYNOPSIS
+Sends a prompt to an LM Studio server and returns the server's response.
+
+.DESCRIPTION
+Sends a user prompt to the LM Studio API endpoint. Returns the server's response as it's received, 'letter-by-letter'.
+
+.PARAMETER CompletionURI
+The full path to the LM Studio API
+
+.PARAMETER Body
+The body to POST to the API, as a [pscustomobject] Powershell object.
+
+The command "New-LMTemplate -Type Body" will return a Body template to use with this parameter.
+
+.PARAMETER File
+The absolute path for the generated stream cache file.
+
+.PARAMETER KeepJob
+Optional parameter. If specified, the Powershell Job will not be removed after the function completes.
+
+Useful for troubleshooting.
+
+.PARAMETER KeepFile
+Optional parameter. If specified, the stream cachce file will not be removed after the function completes.
+
+Useful for troubleshooting.
+
+.OUTPUTS
+Displays the LM Studio server response as the response is received ('letter-by-letter'). Returns the response as a Powershell object.
+
+.EXAMPLE
+PS> $Response = Invoke-LMBStream -CompletionURI "http://localhost:1234/v1/chat/completions" -Body $Body -File "$($ENV:USERPROFILE)\Documents\stream.cache"
+
+Sends a request to the LM Studio server, and returns the response as $Response
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Invoke-LMStream { #Complete
     [CmdletBinding()]
 param (
