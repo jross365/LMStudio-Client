@@ -2926,7 +2926,49 @@ end {
 
 } #Close function
 
-#This function initiates a "greeting"
+<#
+.SYNOPSIS
+Gets a greeting from LM Studio
+
+.DESCRIPTION
+Generates and sends a request for a random greeting, and returns the response.
+
+.PARAMETER Settings
+Optional parameter. requires a hashtable as input.
+
+'New-LMTemplate -Type ManualSettings' returns an object template that's compatible with this parameter.
+
+.PARAMETER GreetingFile
+Optional parameter. Path to a Greeting File.
+
+.OUTPUTS
+Displays a randomly generated greeting question, and an LLM response.
+
+.EXAMPLE
+PS> Get-LMGreeting
+You: Talk like you're Severus Snape. Please try to baffle me.
+
+AI: (Snape's voice) Ah, the impertinence of the uninitiated. You think yourself capable of grasping the complexities that lie before you? I doubt it.
+
+Very well, I shall present you with a riddle, one that will test your feeble minds. But be warned, the solution is not for the faint of heart.
+
+I speak of a word, a term that encompasses both the tangible and intangible, the seen and unseen. It is a concept that has been debated by scholars and philosophers for centuries, yet remains shrouded in mystery.
+
+The word begins with the letter "M", but do not think it refers to the mundane notion of "magnitude" or "mass". No, this is something far more... esoteric.
+
+It is a term that can be applied to both the natural world and the realm of magic. It is a concept that has been studied by the great minds of Hogwarts, yet remains an enigma even to the most learned among us.
+
+Can you, perhaps, unravel the mystery of this word? (Skeptical gaze) I think not.
+
+(Snape pauses, then adds)
+
+HINT: The word is not "magic" itself, but rather a property or aspect of it. And do not bother trying to guess; your efforts will be... futile.
+
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Get-LMGreeting {
     [CmdletBinding(DefaultParameterSetName="Auto")]
     param (
@@ -3231,7 +3273,44 @@ end {
 
 }
 
-#This function presents a selection prompt (Out-Gridview) for the system prompt
+<#
+.SYNOPSIS
+Selects a system prompt
+
+.DESCRIPTION
+Presents a UI to select a system prompt.
+
+.PARAMETER Pin
+Optional switch parameter. Saves the system prompt selection to the Config. This makes the selection persistent.
+
+.PARAMETER AsObject
+Optional switch parameter. Returns the selection as a Powershell object, instead of applying it to the Config.
+
+.PARAMETER Bulk
+Optional switch parameter. Enables the selection of multiple system prompts.
+
+Compatible with -AsObject. Incompatible with -Pin.
+
+.OUTPUTS
+Selection presents a spreadsheet-like UI (Out-GridView).
+
+If -AsObject is specified, system prompt(s) are returned as Powershell objects.
+
+.EXAMPLE
+PS> Select-LMSystemPrompt -Pin
+
+Selects a system prompt, and assigns the system prompt to the Config (making it persistent).
+
+.EXAMPLE
+PS> $Prompt = Select-LMSystemPrompt -AsObject
+
+Selects a system prompt, and returns it as a Powershell object. Output is saved as $Prompt.
+
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Select-LMSystemPrompt {
     [CmdletBinding(DefaultParameterSetName="Set")]
     param (
@@ -3297,7 +3376,33 @@ function Select-LMSystemPrompt {
 
 }
 
-#This function allows you to add or remove system prompt entries
+<#
+.SYNOPSIS
+Creates a system prompt
+
+.DESCRIPTION
+Creates and saves a system prompt to the system prompts file (system.prompts)
+
+.PARAMETER Name
+Optional string parameter. The name to assign to the system prompt.
+
+If not specified, you will be asked for an input for the -Name parameter.
+
+.PARAMETER Prompt
+Optional string parameter. The text that constitutes the system prompt.
+
+If not specified, you will be asked for an input for the -Prompt parameter.
+
+.OUTPUTS
+None
+
+.EXAMPLE
+PS> Add-LMSystemPrompt -Name "Scholar" -Prompt "You are a scholarly assistant. Please provide detailed but concise responses. Please include references if you have them."
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Add-LMSystemPrompt {
     [CmdletBinding(DefaultParameterSetName="Auto")]
     param (
@@ -3351,6 +3456,34 @@ function Add-LMSystemPrompt {
     }
 }
 
+<#
+.SYNOPSIS
+Removes a system prompt
+
+.DESCRIPTION
+Presents a UI to remove system prompt(s) from the system prompts file (system.prompts).
+
+.PARAMETER Bulk
+Optional switch parameter. Enables the selection of multiple prompts, for removal.
+
+
+.OUTPUTS
+None
+
+.EXAMPLE
+PS> Remove-LMSystemPrompt
+
+Presents a UI to select and remove a system prompt
+
+.EXAMPLE
+PS> Remove-LMSystemPrompt -Bulk
+
+Presents a UI to select and remove multiple system prompts.
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Remove-LMSystemPrompt {
     [CmdletBinding(DefaultParameterSetName="Auto")]
     param (
@@ -4516,6 +4649,12 @@ function Start-LMChat {
     :main do { 
 
             $UseMarkDown = $global:LMStudioVars.ChatSettings.MarkDown
+            
+            # Set $BodySettings parameters every cycle:
+            $BodySettings.temperature = $Global:LMStudioVars.ChatSettings.temperature
+            $BodySettings.max_tokens = $Global:LMStudioVars.ChatSettings.max_tokens
+            $BodySettings.stream = $Global:LMStudioVars.ChatSettings.stream
+            $BodySettings.SystemPrompt = $Global:LMStudioVars.ChatSettings.SystemPrompt
 
             #region Prevent empty responses
             do {

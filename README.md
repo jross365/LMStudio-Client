@@ -4,8 +4,8 @@ A feature-rich LMStudio console client for Powershell.
 
 ![](/Docs/images/alpacas-prompt.gif)
 
-**Current Version:** 0.5.4
-**Last Code Update:** 08/17/2024
+**Current Version:** 0.5.5
+**Last Code Update:** 08/25/2024
 
 Requires **.Net Framework 4.5** or greater.
 
@@ -38,12 +38,4 @@ The [Full User Guide](./Docs/Section/Slow-Start-Guide.md) is an index of short a
 
 I maintain a [Development Journal](./Docs/Dev-Journal.md) to record and track my priorities, and to rationalize my design decisions.
 
-Last Update was **August 18, 2024**.
-
-## Notes/Addendum:
-
-**07/18/2024** I have created the PSD1 file so these functions can be imported as a proper Powershell module. See the [**dev journal**](./Docs/Dev-Journal.md) for details.
-
-**07/07/2024** ~~The current version of the code does **not** work with Powershell 5. I will attempt to resolve this issue, and I'm not sure when it was first introduced.~~ This issue is caused by the use of the **clean {}** block in Powershell, which I learned was only introduced in 7.3.
-
-I've commented out the **clean {}** block (for now).
+Last Update was **August 25, 2024**.

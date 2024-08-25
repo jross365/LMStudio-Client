@@ -7,6 +7,23 @@
 ⬜️ **- Feature/Improvement Incomplete**  ✅ **- Feature/Improvement Complete**
 
 💡 **- Idea  🐛 - Bug**
+---
+### 08/25/2024
+Additional progress made on the Powershell help.
+
+🐛 I discovered a problem where the defined settings (max_tokens, temperature, etc) as defined in $BodySettings of **Start-LMChat**, was being updated *administratively* but not actually being applied.
+
+This is because the **$BodySettings** hashtable was initially defined in the top of the *process {}* block, but not in the **:main** loop. It was set once, and it could be changed in the Config and updated in the Dialog Files, but the settings weren't actually being applied after the initial application.
+
+I discovered this issue while evaluating the parameters for **Convert-LMDialogToBody**, which is where I left off on the Powershell help.
+
+Unrelated, I'm putting this here (from the README.md) for posterity:
+
+**07/07/2024** ~~The current version of the code does **not** work with Powershell 5. I will attempt to resolve this issue, and I'm not sure when it was first introduced.~~ This issue is caused by the use of the **clean {}** block in Powershell, which I learned was only introduced in 7.3.
+
+I've commented out the **clean {}** block (for now).
+
+That's all for now.
 
 ---
 ### 08/24/2024

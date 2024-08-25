@@ -12,7 +12,7 @@
  RootModule = 'LMStudio-Client.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.5.4'
+ModuleVersion = '0.5.5'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -30,7 +30,7 @@ CompanyName = 'jross365'
 Copyright = '(c) 2024 jross365. All rights reserved.'
 
 # Description of the functionality provided by this module
- Description = 'LMStudio-PSClient is a Powershell-based client for LMStudio'
+ Description = 'A Powershell-based client for LMStudio'
 
 # Minimum version of the PowerShell engine required by this module
  PowerShellVersion = '5.1'
@@ -123,7 +123,7 @@ PrivateData = @{
 } # End of PrivateData hashtable
 
 # HelpInfo URI of this module
- HelpInfoURI = 'https://github.com/jross365/LMStudio-Client/blob/main/README.md'
+ HelpInfoURI = 'https://github.com/jross365/LMStudio-Client/blob/main/Docs/Section/Slow-Start-Guide.md'
 
 # Default prefix for commands exported from this module. Override the default prefix using Import-Module -Prefix.
 # DefaultCommandPrefix = ''
