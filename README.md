@@ -5,7 +5,8 @@ A feature-rich LMStudio console client for Powershell.
 ![](/Docs/images/alpacas-prompt.gif)
 
 **Current Version:** 0.5.5
-**Last Code Update:** 08/25/2024
+
+**Last Code Update:** 08/27/2024
 
 Requires **.Net Framework 4.5** or greater.
 

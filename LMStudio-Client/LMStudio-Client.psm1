@@ -2322,10 +2322,10 @@ function Invoke-LMSaveOrOpenUI {
 
 <#
 .SYNOPSIS
-UI Prompt to open a folder.
+UI Prompt to select a folder.
 
 .DESCRIPTION
-Presents a Windows form to open a folder.
+Presents a Windows form to select a folder.
 
 .PARAMETER StartPath
 The filesystem directory the 'Open' prompt should start from.
@@ -3558,7 +3558,37 @@ function Remove-LMSystemPrompt {
     }
 }
 
-#This function consumes a Dialog, and returns a fully-furnished $Body object
+<#
+.SYNOPSIS
+Converts LLM Messages to a Body
+
+.DESCRIPTION
+This function takes a Dialog's messages, and some settings, and converts them into a HTTP.
+
+The Body is used for submitting a prompt to an LLM over a web connection.
+
+.PARAMETER DialogMessages
+An array containing a Dialog's Messages.
+
+.PARAMETER ContextDepth
+The number of user/assistant interactions to include in the body.
+
+.PARAMETER Settings
+Requisite parameters required by LM Studio's API, as a hashtable.
+
+You can provision this using 'New-LMTemplate -Type ManualSettings', and only
+filling out model, temperature, max_tokens, stream and 'System Prompt' properties.
+
+.OUTPUTS
+Returns a fully assembled LM Studio API Body as a pscustomobject.
+
+.EXAMPLE
+PS> $Body = Convert-LMDialogToBody -DialogMessages $Dialog.Messages -ContextDepth 6 -Settings $MySettings
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Convert-LMDialogToBody {
 
     [CmdletBinding(DefaultParameterSetName="Auto")]
@@ -3660,6 +3690,30 @@ function Convert-LMDialogToBody {
 #This function is an odd duck, because I have the path (which is all I need) but I specify the $DialogObject anyway.
 #The reason it does this is because of the way I needed to implement it: it needs the path for the history entry,
 #not because it needs to read the file (it already has the contents)
+
+<#
+.SYNOPSIS
+Converts a Dialog to a History Entry
+
+.DESCRIPTION
+Converts a Dialog to a History Entry
+
+.PARAMETER DialogObject
+A Dialog object, typically imported from a Dialog File
+
+.PARAMETER DialogFilePath
+The absollute path to the Dialog File which corresponds with the Dialog Object
+
+.OUTPUTS
+Returns an entry for the History File.
+
+.EXAMPLE
+PS> $Entry = Convert-LMDialogToHistoryEntry -DialogObject $Dialog -DialogFilePath $($Env:USERPROFILE)\Documents\LMStudio-PSClient\Jason-HF-DialogFiles\file.dialog
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Convert-LMDialogToHistoryEntry { #Complete
     [CmdletBinding()]
     param (
@@ -4241,7 +4295,7 @@ function Set-LMCLIOption {
     
                 If (!$Fault){
     
-                    If (($UserInput.Length -gt 11) -or ($CondValue -notmatch '(\d+)')){
+                    If (($UserInput.Length -gt 12) -or ($CondValue -notmatch '(\d+)')){
                         $ResultObj.Message = "Incorrect syntax: expected :cond number of 2 or greater expected"
                         $Fault = $True
                     }
