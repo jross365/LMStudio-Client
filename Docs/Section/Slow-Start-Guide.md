@@ -11,21 +11,19 @@ This will display an outline of the document:
 
 ![](https://raw.githubusercontent.com/jross365/LMStudio-Client/main/Docs/images/outline-display.png)
 
+## How to Import the Module
+This module can be imported with several different options.
 
-## Config Management
-Persistent user settings are recorded and maintained with a JSON-formatted configuration file, typically named **lmsc.cfg**.
+The articles below demonstrate how to expose all module functions, and how to auto-load the config.
 
-The articles below provide instruction for how to create and modify different settings in the Config File.
+ [Normal Import](./import-module.md#normal-import)
 
- [Creating a New Configuration File](./config-management.md#create-a-new-config)
+ [Autoload Config](./import-module.md#autoload-config)
 
- [Importing a Configuration](./config-management.md#import-an-existing-config)
+ [Expose Public and Private Functions](./import-module.md#expose-all-functions)
 
- [View Config Settings](./config-management.md#view-a-config)
-
- [Modify Config Settings](./config-management.md#modify-config-settings)
-
- [List of Config Settings](./config-management.md#list-of-config-settings)
+ [Autoload Config and Expose All Functions](./import-module.md#autoload-config-and-expose-all-functions)
+ 
 
 ## Start-LMChat
 **Start-LMChat** is an interactive, console-based chat client for LM Studio.
@@ -47,33 +45,9 @@ Dialog Files and the History File are important features for this module.
 
 They enable the ability to continue, read or search a previous chat dialog with an LLM.
 
-### Dialog Files
-
-Each **Start-LMChat** session produces a **Dialog File** (*excluding when using Privacy Mode*).
-
-Dialog Files are JSON-formatted records of interactions with LM Studio. They contain:
-- Timestamped user and assistant interactions
-- Creation/Modification timestamps
-- Chat settings (temperature, max tokens, model, system prompt)
-- User-defined Title and Tags
-
-### The History File
-
-Dialog Files are not user-friendly, and can become numerous. A **History File** is used to make Dialog Files easier to manage.
-
-The History File is **not** a repository of unique information: it is constructed entirely from the attributes of your Dialog Files:
-
-- **Created**: Timestamp of when the Dialog File was created
-- **Modified**: Timestamp of when the Dialog File was last modified
-- **Title**: Title assigned to Dialog File via *Start-LMChat*
-- **Opener**: The first user statement in the chat dialog
-- **Model**: The last model used in the chat dialog
-- **FilePath**: Relative path of the Dialog File
-- **Tags**: Tags assigned to Dialog File via *Start-LMChat*
-
-The History File is used by **Start-LMChat** to select a prompt, and by related functions involving Dialog Files.
-
 The articles below detail different actions involving Dialog Files and/or the History File:
+
+[About the History and Dialog Files](./history-and-dialog.md#about-history-and-dialog-files)
 
 [View History File](./history-and-dialog.md#view-history-file-contents)
 
@@ -85,8 +59,9 @@ The articles below detail different actions involving Dialog Files and/or the Hi
 
 [Read a Dialog File](./history-and-dialog.md#read-a-dialog-file)
 
-🚧 **Below in progress:** (Updated 08/08/2024)
+
 ## Other Tools and Utilities
+These are other components of the module which don't fall within one of the other sections.
 
 [Retrieve Loaded LMStudio Model](./other-tools.md#retrieve-the-loaded-lmstudio-model)
 

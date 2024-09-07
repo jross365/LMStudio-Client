@@ -10,7 +10,29 @@
 
 ---
 ### 09/07/2024
-I have completed the preliminary Powershell help. It's somewhat sparse, but it's all there.
+I have completed the preliminary Powershell help. It's somewhat sparse, but it's all there and usable.
+
+✅ I have settled on keeping all the functions in a single **psm1** file. I've deleted the *Public* and *Private* folders, and the empty files in those directories.
+
+✅ I have also expanded the module import to include arguments:
+
+**Exports all (public and private) functions**
+```
+Import-Module LMStudio-Client -ArgumentList "ExportAll"
+```
+
+**Auto-loads the config on import**
+```
+Import-Module LMStudio-Client -ArgumentList "Auto"
+```
+
+The documentation has been updated to include how to use the ```-ArgumentList``` parameter with **Import-Module**.
+
+I also updated other documentation: I moved the Dialog/History File information into **history-and-dialog.md**. This decluttered the **Slow-Start-Guide.md** file.
+
+I needed a break. After jumping back into this project today, I was able to complete a whole lot of other tasks.
+
+That's all for now.
 
 ---
 ### 08/27/2024

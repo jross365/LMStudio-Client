@@ -1,12 +1,12 @@
 # LMStudio-Client
 
-A feature-rich LMStudio console client for Powershell.
+A feature-rich [LM Studio](https://lmstudio.ai) console client for Powershell.
 
 ![](/Docs/images/alpacas-prompt.gif)
 
-**Current Version:** 0.5.6
+**Current Version:** 0.6.0
 
-**Last Code Update:** 09/06/2024
+**Last Code Update:** 09/07/2024
 
 Requires **.Net Framework 4.5** or greater.
 
@@ -39,4 +39,4 @@ The [Full User Guide](./Docs/Section/Slow-Start-Guide.md) is an index of short a
 
 I maintain a [Development Journal](./Docs/Dev-Journal.md) to record and track my priorities, and to rationalize my design decisions.
 
-Last Update was **September 6, 2024**.
+Last Docs update was **September 7, 2024**.

@@ -5,6 +5,35 @@ The steps below assume the prerequisites have been completed:
 - The module has been imported;
 - A Config has been imported.
 
+## About History and Dialog Files
+This section covers information about Dialog and History files
+
+### Dialog Files
+
+Each **Start-LMChat** session produces a **Dialog File** (*excluding when using Privacy Mode*).
+
+Dialog Files are JSON-formatted records of interactions with LM Studio. They contain:
+- Timestamped user and assistant interactions
+- Creation/Modification timestamps
+- Chat settings (temperature, max tokens, model, system prompt)
+- User-defined Title and Tags
+
+### The History File
+
+Dialog Files are not user-friendly, and can become numerous. A **History File** is used to make Dialog Files easier to manage.
+
+The History File is **not** a repository of unique information: it is constructed entirely from the attributes of your Dialog Files:
+
+- **Created**: Timestamp of when the Dialog File was created
+- **Modified**: Timestamp of when the Dialog File was last modified
+- **Title**: Title assigned to Dialog File via *Start-LMChat*
+- **Opener**: The first user statement in the chat dialog
+- **Model**: The last model used in the chat dialog
+- **FilePath**: Relative path of the Dialog File
+- **Tags**: Tags assigned to Dialog File via *Start-LMChat*
+
+The History File is used by **Start-LMChat** to select a prompt, and by related functions involving Dialog Files.
+
 ## View History File
 To view the History File in a graphical interface, run the following command:
 ```

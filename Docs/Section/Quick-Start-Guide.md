@@ -1,4 +1,7 @@
-**Ready to get your alpha groove on?** This quick-start guide assumes LMStudio is configured and running.
+**Ready to get your alpha groove on?** 
+This quick-start guide assumes LMStudio is configured and running.
+
+If you need help understanding the LMStudio Server configuration, check out [the official LM Studio docs](https://lmstudio.ai/docs/local-server).
 
 ## 1. Save the Module:
 Put *LMStudio-Client* in your **Documents\WindowsPowerShell\Modules** folder.

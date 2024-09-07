@@ -4647,7 +4647,6 @@ function Get-LMDialogContent {
 }
 @'
 
-
 <#
 .SYNOPSIS
 Starts an LM Studio Chat
@@ -5565,3 +5564,69 @@ function Get-LMResponse {
 
 }
 
+#region Export Public functions
+$PublicFunctions = @(
+    "Import-LMConfig",
+    "New-LMConfig",
+    "Set-LMConfigOptions",
+    "Get-LMModel",
+    "New-LMTemplate",
+    "Get-LMDialogContent",
+    "Search-LMChatDialog",
+    "Repair-LMHistoryFile",
+    "Add-LMSystemPrompt",
+    "Remove-LMSystemPrompt",
+    "Select-LMSystemPrompt",
+    "Show-LMSettings",
+    "Get-LMGreeting",
+    "Get-LMResponse",
+    "Start-LMChat"
+    )
+
+Foreach ($Function in $PublicFunctions){Export-ModuleMember -Function $Function}
+
+#endregion
+
+#region Export Private functions
+$PrivateFunctions = @(
+    "Confirm-LMGlobalVariables",
+    "Invoke-LMBlob",
+    "Invoke-LMStream",
+    "Convert-LMDialogToBody",
+    "Convert-LMDialogToHistoryEntry",
+    "Import-LMDialogFile",
+    "Show-LMDialog",
+    "Import-LMHistoryFile",
+    "Remove-LMHistoryEntry",
+    "Select-LMHistoryEntry",
+    "Update-LMHistoryFile",
+    "Confirm-LMYesNo",
+    "Invoke-LMOpenFolderUI",
+    "Invoke-LMSaveOrOpenUI",
+    "New-LMGreetingPrompt",
+    "Set-LMCLIOption",
+    "Set-LMTags",
+    "Set-LMTitle"
+)
+
+If ($args -icontains 'ExportAll'){
+
+    Foreach ($Function in $PrivateFunctions){Export-ModuleMember -Function $Function}
+    
+}
+#endregion
+
+#region Auto-import Config
+$DefaultConfig = "$($env:USERPROFILE)\Documents\LMStudio-PSClient\lmsc.cfg"
+
+If ($args -icontains 'Auto'){
+
+    If (Test-Path $DefaultConfig){
+        
+        Write-Verbose "Importing Config $DefaultConfig" -Verbose; Write-Host ""
+        
+        Import-LMConfig -ConfigFile $DefaultConfig -Verify}
+
+}
+
+#endregion
