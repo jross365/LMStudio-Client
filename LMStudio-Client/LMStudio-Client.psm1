@@ -3749,7 +3749,28 @@ function Convert-LMDialogToHistoryEntry { #Complete
 
 }
 
-#This function presents a selection prompt (Out-Gridview) to continue a history file
+
+<#
+.SYNOPSIS
+Selects a History Entry
+
+.DESCRIPTION
+Presents an Out-Gridview UI to select a History Entry
+
+.PARAMETER HistoryFile
+Optional parameter. The history file to select from.
+
+.OUTPUTS
+Returns the absolute path of a Dialog File
+
+.EXAMPLE
+PS> Select-LMHistoryEntry
+C:\Users\User\Documents\LMStudio-PSClient\User-HF-DialogFiles\07132024_1046_lmchat.dialog
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Select-LMHistoryEntry {
     [CmdletBinding()]
     param (
@@ -3800,7 +3821,44 @@ function Select-LMHistoryEntry {
 
 }
 
-#This function assigns a title to a Dialog File and History File
+
+<#
+.SYNOPSIS
+Manages tags for a Dialog File
+
+.DESCRIPTION
+Adds or removes tags from a Dialog File
+
+.PARAMETER DialogFilePath
+The path to the Dialog File you're modifying tags in.
+
+.PARAMETER Action
+The action to take. Valid inputs are Add and Remove
+
+.PARAMETER Tags
+The tag or tags. Comma-separate for multiple values
+
+.PARAMETER UpdateHistoryFile
+If specified, will update the corresponding History File entry as well as the Dialog File
+
+.OUTPUTS
+None
+
+.EXAMPLE
+PS> Set-LMTags -DialogFilePath .\User-HF-DialogFiles\07132022_0946_lmchat.dialog -Action Add -Tags Cooking,Research -UpdateHistoryFile
+
+Adds tags to 07132022_0946_lmchat.dialog, and updates the history file.
+
+.EXAMPLE
+PS> Set-LMTags -DialogFilePath .\User-HF-DialogFiles\07132022_0946_lmchat.dialog -Action Remove -Tags Cars -UpdateHistoryFile
+
+Removes tags to 07132022_0946_lmchat.dialog, and updates the history file.
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
+
 function Set-LMTags {
     [CmdletBinding()]
     param (
@@ -3902,6 +3960,34 @@ function Set-LMTags {
     }
 }
 
+<#
+.SYNOPSIS
+Manages Title for a Dialog File
+
+.DESCRIPTION
+Sets the Title for a Dialog File
+
+.PARAMETER DialogFilePath
+The path to the Dialog File you're modifying tags in.
+
+.PARAMETER Title
+The title to set for the Dialog File
+
+.PARAMETER UpdateHistoryFile
+If specified, will update the corresponding History File entry as well as the Dialog File
+
+.OUTPUTS
+None
+
+.EXAMPLE
+PS> Set-LMTitle -DialogFilePath .\User-HF-DialogFiles\07132022_0946_lmchat.dialog -Title "History of Soup" -UpdateHistoryFile
+
+Sets the title to "History of Soup"
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Set-LMTitle {
     [CmdletBinding()]
     param (
@@ -3965,7 +4051,35 @@ function Set-LMTitle {
     }
 }
 
-#This function intakes a user prompt, interprets an option and executes a command
+<#
+.SYNOPSIS
+Sets options for Start-LMChat
+
+.DESCRIPTION
+Takes user input beginning with a colon (':'), parses, interprets and executes the provided instruction.
+
+Valid instructions vary, and include Config settings, History File settings, Dialog File settings, chat session settings, etc.
+
+.PARAMETER UserInput
+The command/instruction to execute.
+
+.OUTPUTS
+Returns an object that reports success or failure.
+
+.EXAMPLE
+PS> Set-LMCLIOption -UserInput ":temp 0.8"
+
+Sets the temperature to 0.8.
+
+.EXAMPLE
+PS> Set-LMCLIOption -UserInput ":help"
+
+Launches the Start-LMChat commands help page.
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Set-LMCLIOption {
     [CmdletBinding()]
     param (
@@ -4395,7 +4509,42 @@ function Set-LMCLIOption {
     
     } #Close function
 
-#This function converts Dialog Messages to Markdown output
+<#
+.SYNOPSIS
+Outputs a Dialog to console
+
+.DESCRIPTION
+Converts the messages in a Dialog File to console-friendly output, and displays the output to console.
+
+Can also display Dialog messages in Markdown.
+
+.PARAMETER DialogMessages
+The messages in a Dialog file, as an Array
+
+.PARAMETER AsMarkdown
+Output the Dialog messages with Markdown formatting.
+
+.PARAMETER CheckMarkdown
+Checks the availability of Markdown with the current session.
+
+.OUTPUTS
+Returns the Dialog to console in a colorized "User"/"Assistant" format.
+
+.EXAMPLE
+PS> Show-LMDialog -DialogMessages $Dialog.Messages -AsMarkdown
+
+Outputs the Dialog's messages as markdown to console.
+
+.EXAMPLE
+PS> Show-LMDialog -CheckMarkdown
+True
+
+Displays markdown compatibility.
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Show-LMDialog {
 
     [CmdletBinding(DefaultParameterSetName="Auto")]
@@ -4486,7 +4635,8 @@ function Show-LMDialog {
 
 }
 
-#This function is a wrapper for **Show-LMDialog**
+'@
+This function is a wrapper for **Show-LMDialog**
 # NOT STARTED
 function Get-LMDialogContent {
 
@@ -4495,7 +4645,46 @@ function Get-LMDialogContent {
 # - Path      - Path to Dialog file (optional)
     # - No "Path": Open History File for selection
 }
+@'
 
+
+<#
+.SYNOPSIS
+Starts an LM Studio Chat
+
+.DESCRIPTION
+Establishes an interactive chat session with LM Studio.
+
+.PARAMETER Resume
+Resumes the previous chat.
+
+.PARAMETER FromSelection
+Switch parameter, used with -Resume.
+
+Launches a UI to select the chat you wish to resume
+
+.PARAMETER PrivacyMode
+Enables Privacy Mode (chat messages are not saved to file.)
+
+Can be used with or without -Resume and -FromSelection.
+
+.OUTPUTS
+Establishes a user-interactive dialog with LM Studio.
+
+.EXAMPLE
+PS> Start-LMChat -Resume -FromSelection
+
+Presents a UI to select a chat to resume; resumes the chat dialog.
+
+.EXAMPLE
+PS> Start-LMChat -PrivacyMode
+
+Starts a new LM Studio chat session; does not save any of the output.
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Start-LMChat {
     [CmdletBinding()]
     param (
@@ -5057,6 +5246,46 @@ function Start-LMChat {
     #>
 }
 
+<#
+.SYNOPSIS
+Provides programmatic interface with LM Studio.
+
+.DESCRIPTION
+Is a non-interactive LM Studio client intended for programmatic use.
+
+.PARAMETER UserPrompt
+The user prompt (question or rquest) to send LM Stuidio.
+
+Part of the 'NoSettings' parameter set.
+
+.PARAMETER DialogFile
+Absolute or relative path to a Dialog File.
+
+Part of the 'NoSettings' parameter set.
+
+.PARAMETER Settings
+A hashtable containing settings from the "ManualSettings" template.
+Used exclusively from the 'NoSettings' parameters.
+
+The hashtable structure can be generated with this command, which stores the contents as $Settings:
+
+$Settings = New-LMTemplate -Type ManualSettings
+
+.PARAMETER IgnoreWarnings
+If specified, suppresses warnings.
+
+.OUTPUTS
+Returns the LLM response.
+
+.EXAMPLE
+PS> $Query = Get-LMResponse -Settings $Settings -IgnoreWarnings
+
+Submits an LLM request using $Settings, which is stored as $Query. Suppresses warning output.
+
+.LINK
+GitHub Repository: https://github.com/jross365/LMStudio-Client
+
+#>
 function Get-LMResponse {
     [CmdletBinding()]
     param (

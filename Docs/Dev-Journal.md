@@ -7,6 +7,11 @@
 ⬜️ **- Feature/Improvement Incomplete**  ✅ **- Feature/Improvement Complete**
 
 💡 **- Idea  🐛 - Bug**
+
+---
+### 09/07/2024
+I have completed the preliminary Powershell help. It's somewhat sparse, but it's all there.
+
 ---
 ### 08/27/2024
 🐛 ```:condepth ##**``` wasn't working, but I fixed it. Probably worthy of a minor version increment, but it's not really necessary.
